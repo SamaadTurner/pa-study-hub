@@ -1,0 +1,343 @@
+version: "3.9"
+
+# PA Study Hub — Docker Compose
+# Spins up all microservices, databases, and the frontend.
+# Prerequisites: Docker Desktop, .env file (copy from .env.example)
+#
+# Usage:
+#   docker-compose up -d          # Start everything in background
+#   docker-compose logs -f        # Follow logs
+#   docker-compose down -v        # Stop and delete volumes
+
+networks:
+  pa-study-network:
+    driver: bridge
+
+volumes:
+  flashcard-db-data:
+  exam-db-data:
+  progress-db-data:
+  user-db-data:
+  ai-db-data:
+
+services:
+
+  # =============================================
+  # DATABASES
+  # =============================================
+
+  flashcard-db:
+    image: postgres:15-alpine
+    container_name: flashcard-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${FLASHCARD_DB_NAME:-flashcard_db}
+      POSTGRES_USER: ${FLASHCARD_DB_USERNAME:-flashcard_user}
+      POSTGRES_PASSWORD: ${FLASHCARD_DB_PASSWORD:-flashcard_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - flashcard-db-data:/var/lib/postgresql/data
+    networks:
+      - pa-study-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${FLASHCARD_DB_USERNAME:-flashcard_user} -d ${FLASHCARD_DB_NAME:-flashcard_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  exam-db:
+    image: postgres:15-alpine
+    container_name: exam-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${EXAM_DB_NAME:-exam_db}
+      POSTGRES_USER: ${EXAM_DB_USERNAME:-exam_user}
+      POSTGRES_PASSWORD: ${EXAM_DB_PASSWORD:-exam_pass}
+    ports:
+      - "5433:5432"
+    volumes:
+      - exam-db-data:/var/lib/postgresql/data
+    networks:
+      - pa-study-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${EXAM_DB_USERNAME:-exam_user} -d ${EXAM_DB_NAME:-exam_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  progress-db:
+    image: postgres:15-alpine
+    container_name: progress-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PROGRESS_DB_NAME:-progress_db}
+      POSTGRES_USER: ${PROGRESS_DB_USERNAME:-progress_user}
+      POSTGRES_PASSWORD: ${PROGRESS_DB_PASSWORD:-progress_pass}
+    ports:
+      - "5434:5432"
+    volumes:
+      - progress-db-data:/var/lib/postgresql/data
+    networks:
+      - pa-study-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PROGRESS_DB_USERNAME:-progress_user} -d ${PROGRESS_DB_NAME:-progress_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-db:
+    image: postgres:15-alpine
+    container_name: user-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${USER_DB_NAME:-user_db}
+      POSTGRES_USER: ${USER_DB_USERNAME:-user_service_user}
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD:-user_pass}
+    ports:
+      - "5435:5432"
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+    networks:
+      - pa-study-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${USER_DB_USERNAME:-user_service_user} -d ${USER_DB_NAME:-user_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ai-db:
+    image: postgres:15-alpine
+    container_name: ai-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${AI_DB_NAME:-ai_assistant_db}
+      POSTGRES_USER: ${AI_DB_USERNAME:-ai_user}
+      POSTGRES_PASSWORD: ${AI_DB_PASSWORD:-ai_pass}
+    ports:
+      - "5436:5432"
+    volumes:
+      - ai-db-data:/var/lib/postgresql/data
+    networks:
+      - pa-study-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AI_DB_USERNAME:-ai_user} -d ${AI_DB_NAME:-ai_assistant_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =============================================
+  # MICROSERVICES
+  # =============================================
+
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: user-db
+      DB_PORT: 5432
+      DB_NAME: ${USER_DB_NAME:-user_db}
+      DB_USERNAME: ${USER_DB_USERNAME:-user_service_user}
+      DB_PASSWORD: ${USER_DB_PASSWORD:-user_pass}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_EXPIRY_MS: ${JWT_ACCESS_TOKEN_EXPIRY_MS:-900000}
+      JWT_REFRESH_TOKEN_EXPIRY_DAYS: ${JWT_REFRESH_TOKEN_EXPIRY_DAYS:-7}
+    ports:
+      - "8084:8084"
+    depends_on:
+      user-db:
+        condition: service_healthy
+    networks:
+      - pa-study-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8084/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  flashcard-service:
+    build:
+      context: ./services/flashcard-service
+      dockerfile: Dockerfile
+    container_name: flashcard-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: flashcard-db
+      DB_PORT: 5432
+      DB_NAME: ${FLASHCARD_DB_NAME:-flashcard_db}
+      DB_USERNAME: ${FLASHCARD_DB_USERNAME:-flashcard_user}
+      DB_PASSWORD: ${FLASHCARD_DB_PASSWORD:-flashcard_pass}
+      JWT_SECRET: ${JWT_SECRET}
+      PROGRESS_SERVICE_URL: ${PROGRESS_SERVICE_URL:-http://study-progress-service:8083}
+    ports:
+      - "8081:8081"
+    depends_on:
+      flashcard-db:
+        condition: service_healthy
+    networks:
+      - pa-study-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8081/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  exam-service:
+    build:
+      context: ./services/exam-service
+      dockerfile: Dockerfile
+    container_name: exam-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: exam-db
+      DB_PORT: 5432
+      DB_NAME: ${EXAM_DB_NAME:-exam_db}
+      DB_USERNAME: ${EXAM_DB_USERNAME:-exam_user}
+      DB_PASSWORD: ${EXAM_DB_PASSWORD:-exam_pass}
+      JWT_SECRET: ${JWT_SECRET}
+      PROGRESS_SERVICE_URL: ${PROGRESS_SERVICE_URL:-http://study-progress-service:8083}
+    ports:
+      - "8082:8082"
+    depends_on:
+      exam-db:
+        condition: service_healthy
+    networks:
+      - pa-study-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8082/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  study-progress-service:
+    build:
+      context: ./services/study-progress-service
+      dockerfile: Dockerfile
+    container_name: study-progress-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: progress-db
+      DB_PORT: 5432
+      DB_NAME: ${PROGRESS_DB_NAME:-progress_db}
+      DB_USERNAME: ${PROGRESS_DB_USERNAME:-progress_user}
+      DB_PASSWORD: ${PROGRESS_DB_PASSWORD:-progress_pass}
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8083:8083"
+    depends_on:
+      progress-db:
+        condition: service_healthy
+    networks:
+      - pa-study-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8083/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  ai-assistant-service:
+    build:
+      context: ./services/ai-assistant-service
+      dockerfile: Dockerfile
+    container_name: ai-assistant-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: ai-db
+      DB_PORT: 5432
+      DB_NAME: ${AI_DB_NAME:-ai_assistant_db}
+      DB_USERNAME: ${AI_DB_USERNAME:-ai_user}
+      DB_PASSWORD: ${AI_DB_PASSWORD:-ai_pass}
+      JWT_SECRET: ${JWT_SECRET}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-20250514}
+      ANTHROPIC_MAX_TOKENS: ${ANTHROPIC_MAX_TOKENS:-4096}
+      AI_DAILY_TOKEN_BUDGET_PER_USER: ${AI_DAILY_TOKEN_BUDGET_PER_USER:-50000}
+      AI_RATE_LIMIT_REQUESTS_PER_MINUTE: ${AI_RATE_LIMIT_REQUESTS_PER_MINUTE:-10}
+      PROGRESS_SERVICE_URL: ${PROGRESS_SERVICE_URL:-http://study-progress-service:8083}
+    ports:
+      - "8085:8085"
+    depends_on:
+      ai-db:
+        condition: service_healthy
+    networks:
+      - pa-study-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8085/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      USER_SERVICE_URL: ${USER_SERVICE_URL:-http://user-service:8084}
+      FLASHCARD_SERVICE_URL: ${FLASHCARD_SERVICE_URL:-http://flashcard-service:8081}
+      EXAM_SERVICE_URL: ${EXAM_SERVICE_URL:-http://exam-service:8082}
+      PROGRESS_SERVICE_URL: ${PROGRESS_SERVICE_URL:-http://study-progress-service:8083}
+      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai-assistant-service:8085}
+    ports:
+      - "8080:8080"
+    depends_on:
+      user-service:
+        condition: service_healthy
+      flashcard-service:
+        condition: service_healthy
+      exam-service:
+        condition: service_healthy
+      study-progress-service:
+        condition: service_healthy
+      ai-assistant-service:
+        condition: service_healthy
+    networks:
+      - pa-study-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # =============================================
+  # FRONTEND
+  # =============================================
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api/v1}
+    ports:
+      - "3000:80"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    networks:
+      - pa-study-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

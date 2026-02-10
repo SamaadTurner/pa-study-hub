@@ -1,0 +1,126 @@
+spring:
+  application:
+    name: user-service
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5435}/${DB_NAME:user_db}
+    username: ${DB_USERNAME:user_service_user}
+    password: ${DB_PASSWORD:user_pass}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        # Batch inserts for better performance
+        jdbc.batch_size: 20
+        order_inserts: true
+
+  # Flyway manages schema migrations
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+server:
+  port: 8084
+  # Error handling — never expose stack traces
+  error:
+    include-stacktrace: never
+    include-message: never
+
+jwt:
+  secret: ${JWT_SECRET:local-dev-secret-must-be-replaced-in-production-min-32-chars}
+  access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:900000}
+  refresh-token-expiry-days: ${JWT_REFRESH_TOKEN_EXPIRY_DAYS:7}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
+    com.pastudyhub: DEBUG
+    org.springframework.security: WARN
+    # NEVER log JWT tokens — configure sensitive header masking
+    org.springframework.web.filter: WARN
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+# TLS configuration for production (uncomment and configure for HTTPS):
+# server:
+#   ssl:
+#     enabled: true
+#     key-store: classpath:keystore.p12
+#     key-store-password: ${SSL_KEY_STORE_PASSWORD}
+#     key-store-type: PKCS12
+#     key-alias: user-service
+
+---
+# Dev profile — relaxed settings for local development
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  flyway:
+    enabled: false
+
+logging:
+  level:
+    com.pastudyhub: DEBUG
+    org.springframework.security: DEBUG
+
+---
+# Test profile — in-memory settings for unit/integration tests
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    # Testcontainers overrides this URL at runtime
+    url: jdbc:tc:postgresql:15:///user_db_test
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  flyway:
+    enabled: false
+
+jwt:
+  secret: test-secret-for-unit-tests-only-not-production
+
+---
+# Docker profile — environment variables provide all config
+spring:
+  config:
+    activate:
+      on-profile: docker
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true

@@ -1,0 +1,102 @@
+# ==========================================
+# Java / Gradle
+# ==========================================
+.gradle/
+build/
+out/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# Gradle wrapper JARs (keep wrapper scripts, not binaries)
+!gradle/wrapper/gradle-wrapper.jar
+!**/gradle-wrapper.jar
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+.idea_modules/
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# ==========================================
+# Node / Frontend
+# ==========================================
+node_modules/
+dist/
+.pnp
+.pnp.js
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+
+# Vite
+.vite/
+
+# ==========================================
+# Environment & Secrets
+# ==========================================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.jks
+
+# ==========================================
+# Docker
+# ==========================================
+.docker/
+
+# ==========================================
+# Logs
+# ==========================================
+logs/
+*.log
+log/
+
+# ==========================================
+# Test / Coverage Reports
+# ==========================================
+test-results/
+**/build/reports/
+**/build/jacoco/
+cypress/screenshots/
+cypress/videos/
+
+# ==========================================
+# OS
+# ==========================================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/

@@ -1,0 +1,69 @@
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+
+  # Disable Spring Security autoconfiguration — we use our own filter
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+
+jwt:
+  secret: ${JWT_SECRET:superSecretKeyThatIsAtLeast256BitsLongForHS256Algorithm!}
+
+cors:
+  allowed-origins:
+    - http://localhost:5173
+    - http://localhost:3000
+
+services:
+  user-service:
+    url: ${USER_SERVICE_URL:http://user-service:8080}
+  flashcard-service:
+    url: ${FLASHCARD_SERVICE_URL:http://flashcard-service:8082}
+  exam-service:
+    url: ${EXAM_SERVICE_URL:http://exam-service:8083}
+  progress-service:
+    url: ${PROGRESS_SERVICE_URL:http://study-progress-service:8083}
+  ai-assistant-service:
+    url: ${AI_SERVICE_URL:http://ai-assistant-service:8084}
+
+logging:
+  level:
+    com.pastudyhub: INFO
+    org.springframework.cloud.gateway: INFO
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+services:
+  user-service:
+    url: http://localhost:8081
+  flashcard-service:
+    url: http://localhost:8082
+  exam-service:
+    url: http://localhost:8083
+  progress-service:
+    url: http://localhost:8083
+  ai-assistant-service:
+    url: http://localhost:8084

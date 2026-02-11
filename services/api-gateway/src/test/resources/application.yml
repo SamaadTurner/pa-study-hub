@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: api-gateway-test
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration
+
+server:
+  port: 0
+
+jwt:
+  secret: testSecretKeyThatIsAtLeast256BitsLongForHS256TestingPurposes!
+
+cors:
+  allowed-origins:
+    - http://localhost:5173

@@ -10,6 +10,10 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
 
     implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.flywaydb:flyway-core")
+    implementation("org.flywaydb:flyway-database-postgresql")
+    runtimeOnly("org.postgresql:postgresql")
 
     // Anthropic Java SDK for Claude API calls
     // Official SDK: https://github.com/anthropics/anthropic-sdk-java
@@ -22,13 +26,14 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
+    testImplementation("com.h2database:h2")
     testImplementation("org.testcontainers:junit-jupiter:1.19.4")
     testImplementation("org.testcontainers:postgresql:1.19.4")
     testImplementation("org.wiremock:wiremock-standalone:3.3.1")
 }
 
 springBoot {
-    mainClass.set("com.pastudyhub.ai.AiAssistantServiceApplication")
+    mainClass.set("com.pastudyhub.ai.AiAssistantApplication")
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {

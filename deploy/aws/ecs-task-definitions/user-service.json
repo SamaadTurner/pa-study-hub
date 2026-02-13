@@ -1,0 +1,48 @@
+{
+  "family": "pa-study-hub-user-service",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/pa-study-hub-task-execution-role",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/pa-study-hub-task-role",
+  "containerDefinitions": [
+    {
+      "name": "user-service",
+      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/pa-study-hub/user-service:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8084,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "SPRING_PROFILES_ACTIVE", "value": "docker" },
+        { "name": "DB_PORT",               "value": "5432" }
+      ],
+      "secrets": [
+        { "name": "DB_HOST",              "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/pa-study-hub/user-service/db-host" },
+        { "name": "DB_NAME",              "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/pa-study-hub/user-service/db-name" },
+        { "name": "DB_USERNAME",          "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/pa-study-hub/user-service/db-username" },
+        { "name": "DB_PASSWORD",          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:pa-study-hub/user-service/db-password" },
+        { "name": "JWT_SECRET",           "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:pa-study-hub/jwt-secret" }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "wget -q --spider http://localhost:8084/actuator/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group":         "/ecs/pa-study-hub/user-service",
+          "awslogs-region":        "REGION",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

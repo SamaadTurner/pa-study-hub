@@ -1,0 +1,54 @@
+{
+  "family": "pa-study-hub-ai-assistant-service",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/pa-study-hub-task-execution-role",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/pa-study-hub-task-role",
+  "containerDefinitions": [
+    {
+      "name": "ai-assistant-service",
+      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/pa-study-hub/ai-assistant-service:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8085,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "SPRING_PROFILES_ACTIVE",              "value": "docker" },
+        { "name": "DB_PORT",                             "value": "5432" },
+        { "name": "PROGRESS_SERVICE_URL",                "value": "http://study-progress-service.pa-study-hub.local:8083" },
+        { "name": "ANTHROPIC_MODEL",                     "value": "claude-sonnet-4-20250514" },
+        { "name": "ANTHROPIC_MAX_TOKENS",                "value": "4096" },
+        { "name": "AI_DAILY_TOKEN_BUDGET_PER_USER",      "value": "50000" },
+        { "name": "AI_RATE_LIMIT_REQUESTS_PER_MINUTE",   "value": "10" }
+      ],
+      "secrets": [
+        { "name": "DB_HOST",           "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/pa-study-hub/ai-service/db-host" },
+        { "name": "DB_NAME",           "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/pa-study-hub/ai-service/db-name" },
+        { "name": "DB_USERNAME",       "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/pa-study-hub/ai-service/db-username" },
+        { "name": "DB_PASSWORD",       "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:pa-study-hub/ai-service/db-password" },
+        { "name": "JWT_SECRET",        "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:pa-study-hub/jwt-secret" },
+        { "name": "ANTHROPIC_API_KEY", "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:pa-study-hub/anthropic-api-key" }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "wget -q --spider http://localhost:8085/actuator/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group":         "/ecs/pa-study-hub/ai-assistant-service",
+          "awslogs-region":        "REGION",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: pa-study-hub-user-service
+  annotations:
+    run.googleapis.com/ingress: internal-and-cloud-load-balancing
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "5"
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/cloudsql-instances: "PROJECT_ID:REGION:pa-study-hub-postgres"
+    spec:
+      serviceAccountName: pa-study-hub-sa@PROJECT_ID.iam.gserviceaccount.com
+      containers:
+        - image: REGION-docker.pkg.dev/PROJECT_ID/pa-study-hub/user-service:latest
+          ports:
+            - containerPort: 8084
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: docker
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_HOST
+              value: /cloudsql/PROJECT_ID:REGION:pa-study-hub-postgres
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: user-service-db-name
+                  key: latest
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: user-service-db-username
+                  key: latest
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: user-service-db-password
+                  key: latest
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: latest
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8084
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8084
+            periodSeconds: 30

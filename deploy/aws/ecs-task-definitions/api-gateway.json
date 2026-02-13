@@ -1,0 +1,49 @@
+{
+  "family": "pa-study-hub-api-gateway",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/pa-study-hub-task-execution-role",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/pa-study-hub-task-role",
+  "containerDefinitions": [
+    {
+      "name": "api-gateway",
+      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/pa-study-hub/api-gateway:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "SPRING_PROFILES_ACTIVE",  "value": "docker" },
+        { "name": "CORS_ALLOWED_ORIGINS",    "value": "https://app.pa-study-hub.com" },
+        { "name": "USER_SERVICE_URL",        "value": "http://user-service.pa-study-hub.local:8084" },
+        { "name": "FLASHCARD_SERVICE_URL",   "value": "http://flashcard-service.pa-study-hub.local:8081" },
+        { "name": "EXAM_SERVICE_URL",        "value": "http://exam-service.pa-study-hub.local:8082" },
+        { "name": "PROGRESS_SERVICE_URL",    "value": "http://study-progress-service.pa-study-hub.local:8083" },
+        { "name": "AI_SERVICE_URL",          "value": "http://ai-assistant-service.pa-study-hub.local:8085" }
+      ],
+      "secrets": [
+        { "name": "JWT_SECRET", "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:pa-study-hub/jwt-secret" }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 90
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group":         "/ecs/pa-study-hub/api-gateway",
+          "awslogs-region":        "REGION",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

@@ -6,7 +6,9 @@ import StreakWidget from '@/components/dashboard/StreakWidget'
 import ReviewRatingButtons from '@/components/flashcards/ReviewRatingButtons'
 import CircularProgress from '@/components/common/CircularProgress'
 import DeckCard from '@/components/flashcards/DeckCard'
-import type { Deck } from '@/types'
+import ExamTimer from '@/components/exams/ExamTimer'
+import AnswerOptions from '@/components/exams/AnswerOptions'
+import type { Deck, AnswerOption } from '@/types'
 
 // Mock react-router-dom's navigate so DeckCard tests don't need full routing
 const mockNavigate = vi.fn()
@@ -175,5 +177,104 @@ describe('DeckCard', () => {
     )
     fireEvent.click(screen.getByText('Edit'))
     expect(onEdit).toHaveBeenCalledWith(mockDeck)
+  })
+})
+
+// ── ExamTimer ──────────────────────────────────────────────────────────────
+describe('ExamTimer', () => {
+  it('displays formatted time', () => {
+    render(<ExamTimer initialSeconds={125} onExpire={vi.fn()} />)
+    expect(screen.getByText('02:05')).toBeInTheDocument()
+  })
+
+  it('shows timer icon', () => {
+    render(<ExamTimer initialSeconds={60} onExpire={vi.fn()} />)
+    expect(screen.getByText('⏱')).toBeInTheDocument()
+  })
+
+  it('renders 00:00 when initialSeconds is 0', () => {
+    render(<ExamTimer initialSeconds={0} onExpire={vi.fn()} />)
+    expect(screen.getByText('00:00')).toBeInTheDocument()
+  })
+})
+
+// ── AnswerOptions ──────────────────────────────────────────────────────────
+const mockOptions: AnswerOption[] = [
+  { id: 'opt-a', text: 'Aspirin' },
+  { id: 'opt-b', text: 'Metoprolol' },
+  { id: 'opt-c', text: 'Lisinopril' },
+  { id: 'opt-d', text: 'Atorvastatin' },
+]
+
+describe('AnswerOptions', () => {
+  it('renders all option texts', () => {
+    render(
+      <AnswerOptions
+        options={mockOptions}
+        selectedId={null}
+        correctId={null}
+        onSelect={vi.fn()}
+      />
+    )
+    expect(screen.getByText('Aspirin')).toBeInTheDocument()
+    expect(screen.getByText('Metoprolol')).toBeInTheDocument()
+    expect(screen.getByText('Lisinopril')).toBeInTheDocument()
+    expect(screen.getByText('Atorvastatin')).toBeInTheDocument()
+  })
+
+  it('renders letter labels A B C D', () => {
+    render(
+      <AnswerOptions
+        options={mockOptions}
+        selectedId={null}
+        correctId={null}
+        onSelect={vi.fn()}
+      />
+    )
+    expect(screen.getByText('A')).toBeInTheDocument()
+    expect(screen.getByText('B')).toBeInTheDocument()
+    expect(screen.getByText('C')).toBeInTheDocument()
+    expect(screen.getByText('D')).toBeInTheDocument()
+  })
+
+  it('calls onSelect with the option id when clicked', () => {
+    const onSelect = vi.fn()
+    render(
+      <AnswerOptions
+        options={mockOptions}
+        selectedId={null}
+        correctId={null}
+        onSelect={onSelect}
+      />
+    )
+    fireEvent.click(screen.getByText('Aspirin'))
+    expect(onSelect).toHaveBeenCalledWith('opt-a')
+  })
+
+  it('disables all options when disabled prop is true', () => {
+    render(
+      <AnswerOptions
+        options={mockOptions}
+        selectedId={null}
+        correctId={null}
+        onSelect={vi.fn()}
+        disabled
+      />
+    )
+    const buttons = screen.getAllByRole('radio')
+    buttons.forEach(btn => expect(btn).toBeDisabled())
+  })
+
+  it('shows checkmark on correct option after submission', () => {
+    render(
+      <AnswerOptions
+        options={mockOptions}
+        selectedId={'opt-a'}
+        correctId={'opt-b'}
+        onSelect={vi.fn()}
+      />
+    )
+    expect(screen.getByText('✓')).toBeInTheDocument()
+    expect(screen.getByText('✕')).toBeInTheDocument()
   })
 })

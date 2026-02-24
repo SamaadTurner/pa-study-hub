@@ -1,0 +1,222 @@
+services:
+  # =============================================
+  # BACKEND MICROSERVICES
+  # =============================================
+
+  - type: web
+    name: flashcard-service
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./services/flashcard-service/Dockerfile
+    dockerContext: ./services/flashcard-service
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: flashcard-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: flashcard-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: flashcard-db
+          property: password
+      - key: SERVER_PORT
+        value: 8081
+      - key: JWT_SECRET
+        sync: false
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+    healthCheckPath: /actuator/health
+
+  - type: web
+    name: exam-service
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./services/exam-service/Dockerfile
+    dockerContext: ./services/exam-service
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: exam-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: exam-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: exam-db
+          property: password
+      - key: SERVER_PORT
+        value: 8082
+      - key: JWT_SECRET
+        sync: false
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+    healthCheckPath: /actuator/health
+
+  - type: web
+    name: study-progress-service
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./services/study-progress-service/Dockerfile
+    dockerContext: ./services/study-progress-service
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: progress-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: progress-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: progress-db
+          property: password
+      - key: SERVER_PORT
+        value: 8083
+      - key: JWT_SECRET
+        sync: false
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+    healthCheckPath: /actuator/health
+
+  - type: web
+    name: user-service
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./services/user-service/Dockerfile
+    dockerContext: ./services/user-service
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: user-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: user-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: user-db
+          property: password
+      - key: SERVER_PORT
+        value: 8084
+      - key: JWT_SECRET
+        sync: false
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+    healthCheckPath: /actuator/health
+
+  - type: web
+    name: ai-assistant-service
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./services/ai-assistant-service/Dockerfile
+    dockerContext: ./services/ai-assistant-service
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: ai-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: ai-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: ai-db
+          property: password
+      - key: SERVER_PORT
+        value: 8085
+      - key: JWT_SECRET
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+    healthCheckPath: /actuator/health
+
+  - type: web
+    name: api-gateway
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./services/api-gateway/Dockerfile
+    dockerContext: ./services/api-gateway
+    envVars:
+      - key: SERVER_PORT
+        value: 8080
+      - key: JWT_SECRET
+        sync: false
+      - key: FLASHCARD_SERVICE_URL
+        value: https://flashcard-service.onrender.com
+      - key: EXAM_SERVICE_URL
+        value: https://exam-service.onrender.com
+      - key: PROGRESS_SERVICE_URL
+        value: https://study-progress-service.onrender.com
+      - key: USER_SERVICE_URL
+        value: https://user-service.onrender.com
+      - key: AI_SERVICE_URL
+        value: https://ai-assistant-service.onrender.com
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+    healthCheckPath: /actuator/health
+
+  # =============================================
+  # FRONTEND
+  # =============================================
+
+  - type: web
+    name: pa-study-hub-frontend
+    runtime: static
+    plan: free
+    region: oregon
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://api-gateway.onrender.com/api/v1
+
+# =============================================
+# DATABASES (PostgreSQL)
+# =============================================
+
+databases:
+  - name: flashcard-db
+    plan: free
+    databaseName: flashcard_db
+    user: flashcard_user
+    region: oregon
+
+  - name: exam-db
+    plan: free
+    databaseName: exam_db
+    user: exam_user
+    region: oregon
+
+  - name: progress-db
+    plan: free
+    databaseName: progress_db
+    user: progress_user
+    region: oregon
+
+  - name: user-db
+    plan: free
+    databaseName: user_db
+    user: user_user
+    region: oregon
+
+  - name: ai-db
+    plan: free
+    databaseName: ai_assistant_db
+    user: ai_user
+    region: oregon

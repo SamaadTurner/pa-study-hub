@@ -179,7 +179,6 @@ services:
     name: pa-study-hub-frontend
     runtime: static
     plan: free
-    region: oregon
     buildCommand: cd frontend && npm ci && npm run build
     staticPublishPath: ./frontend/dist
     envVars:

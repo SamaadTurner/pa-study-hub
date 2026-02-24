@@ -181,8 +181,15 @@ Swagger UI is available at each service and aggregated through the gateway:
 
 ## Deployment
 
+- **Render (Recommended for Portfolio):** See [DEPLOYMENT.md](DEPLOYMENT.md) - Free tier available
 - **AWS (ECS Fargate + RDS):** See [deploy/aws/README-aws.md](deploy/aws/README-aws.md)
 - **GCP (Cloud Run + Cloud SQL):** See [deploy/gcp/README-gcp.md](deploy/gcp/README-gcp.md)
+
+**Quick Deploy to Render:**
+1. Push code to GitHub - See [GITHUB-SETUP.md](GITHUB-SETUP.md)
+2. Connect Render to your repo
+3. Add environment variables (JWT_SECRET, ANTHROPIC_API_KEY)
+4. Deploy! (~15 minutes)
 
 ## Project Structure
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { sendChatMessage } from '@/api/ai'
 import type { ChatMessage } from '@/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
@@ -83,22 +84,49 @@ export default function AiChatPage() {
     <div className="max-w-2xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
 
       {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-gray-200 flex-shrink-0">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">AI Tutor</h1>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Powered by Claude · Ask anything about PA medicine
-          </p>
+      <div className="pb-4 border-b border-gray-200 flex-shrink-0 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">AI Tutor</h1>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Powered by Claude · Ask anything about PA medicine
+            </p>
+          </div>
+          {messages.length > 0 && (
+            <button
+              onClick={handleNewChat}
+              className="text-xs text-gray-400 hover:text-gray-600 transition-colors px-3 py-1.5
+                border border-gray-200 rounded-lg hover:border-gray-300"
+            >
+              New chat
+            </button>
+          )}
         </div>
-        {messages.length > 0 && (
-          <button
-            onClick={handleNewChat}
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors px-3 py-1.5
-              border border-gray-200 rounded-lg hover:border-gray-300"
+
+        {/* AI Tools Navigation */}
+        <div className="flex gap-2">
+          <Link
+            to="/ai"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+              bg-primary-50 text-primary-700 border border-primary-200"
           >
-            New chat
-          </button>
-        )}
+            💬 Chat
+          </Link>
+          <Link
+            to="/ai/generate"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+              text-gray-600 hover:bg-gray-100 border border-gray-200"
+          >
+            🃏 Generate Flashcards
+          </Link>
+          <Link
+            to="/ai/study-plan"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+              text-gray-600 hover:bg-gray-100 border border-gray-200"
+          >
+            📅 Study Plan
+          </Link>
+        </div>
       </div>
 
       {/* Message list */}

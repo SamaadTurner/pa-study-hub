@@ -12,12 +12,15 @@ import DecksPage        from '@/pages/decks/DecksPage'
 import DeckDetailPage   from '@/pages/decks/DeckDetailPage'
 import ReviewPage       from '@/pages/decks/ReviewPage'
 import CardEditorPage   from '@/pages/decks/CardEditorPage'
+import PublicDecksPage  from '@/pages/decks/PublicDecksPage'
 import ExamSetupPage    from '@/pages/exam/ExamSetupPage'
 import ExamPage         from '@/pages/exam/ExamPage'
 import ExamResultsPage  from '@/pages/exam/ExamResultsPage'
 import ExamHistoryPage  from '@/pages/exam/ExamHistoryPage'
 import AnalyticsPage    from '@/pages/analytics/AnalyticsPage'
 import AiChatPage       from '@/pages/ai/AiChatPage'
+import AiGeneratorPage  from '@/pages/ai/AiGeneratorPage'
+import AiStudyPlanPage  from '@/pages/ai/AiStudyPlanPage'
 
 export default function App() {
   return (
@@ -36,6 +39,7 @@ export default function App() {
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path="/dashboard"                            element={<DashboardPage />} />
                   <Route path="/decks"                                element={<DecksPage />} />
+                  <Route path="/decks/public"                         element={<PublicDecksPage />} />
                   <Route path="/decks/:deckId"                        element={<DeckDetailPage />} />
                   <Route path="/decks/:deckId/review"                 element={<ReviewPage />} />
                   <Route path="/decks/:deckId/cards/new"              element={<CardEditorPage />} />
@@ -47,6 +51,8 @@ export default function App() {
                   <Route path="/exam/:sessionId/results"              element={<ExamResultsPage />} />
                   <Route path="/analytics"                            element={<AnalyticsPage />} />
                   <Route path="/ai"                                   element={<AiChatPage />} />
+                  <Route path="/ai/generate"                          element={<AiGeneratorPage />} />
+                  <Route path="/ai/study-plan"                        element={<AiStudyPlanPage />} />
                 </Route>
               </Route>
 

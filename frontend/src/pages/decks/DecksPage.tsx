@@ -101,7 +101,13 @@ export default function DecksPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Flashcard Decks</h1>
           <p className="text-gray-500 text-sm mt-0.5">
-            {decks.length} {decks.length === 1 ? 'deck' : 'decks'} total
+            {decks.length} {decks.length === 1 ? 'deck' : 'decks'} total ·{' '}
+            <button
+              onClick={() => navigate('/decks/public')}
+              className="text-primary-600 hover:text-primary-700 font-medium"
+            >
+              Browse public decks
+            </button>
           </p>
         </div>
         <Button onClick={() => setModalOpen(true)}>+ Create Deck</Button>

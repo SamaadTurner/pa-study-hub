@@ -83,7 +83,7 @@ flyctl launch \
 
 # Set secrets
 flyctl secrets set \
-  JWT_SECRET=78bf3c95fb5738059dde3b9502e9bda46fe448791730ea1544422d8bdaf76648 \
+  JWT_SECRET=<your-jwt-secret> \
   SPRING_DATASOURCE_URL=<postgres-connection-string-from-step-3> \
   SPRING_DATASOURCE_USERNAME=postgres \
   SPRING_DATASOURCE_PASSWORD=<from-step-3> \
@@ -106,7 +106,7 @@ flyctl launch \
   --no-deploy
 
 flyctl secrets set \
-  JWT_SECRET=78bf3c95fb5738059dde3b9502e9bda46fe448791730ea1544422d8bdaf76648 \
+  JWT_SECRET=<your-jwt-secret> \
   SPRING_DATASOURCE_URL=<postgres-connection-string> \
   SPRING_DATASOURCE_USERNAME=postgres \
   SPRING_DATASOURCE_PASSWORD=<from-step-3> \
@@ -128,7 +128,7 @@ flyctl launch \
   --no-deploy
 
 flyctl secrets set \
-  JWT_SECRET=78bf3c95fb5738059dde3b9502e9bda46fe448791730ea1544422d8bdaf76648 \
+  JWT_SECRET=<your-jwt-secret> \
   SPRING_DATASOURCE_URL=<postgres-connection-string> \
   SPRING_DATASOURCE_USERNAME=postgres \
   SPRING_DATASOURCE_PASSWORD=<from-step-3> \
@@ -150,7 +150,7 @@ flyctl launch \
   --no-deploy
 
 flyctl secrets set \
-  JWT_SECRET=78bf3c95fb5738059dde3b9502e9bda46fe448791730ea1544422d8bdaf76648 \
+  JWT_SECRET=<your-jwt-secret> \
   SPRING_DATASOURCE_URL=<postgres-connection-string> \
   SPRING_DATASOURCE_USERNAME=postgres \
   SPRING_DATASOURCE_PASSWORD=<from-step-3> \
@@ -172,8 +172,8 @@ flyctl launch \
   --no-deploy
 
 flyctl secrets set \
-  JWT_SECRET=78bf3c95fb5738059dde3b9502e9bda46fe448791730ea1544422d8bdaf76648 \
-  ANTHROPIC_API_KEY=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 \
+  JWT_SECRET=<your-jwt-secret> \
+  ANTHROPIC_API_KEY=<your-anthropic-api-key> \
   SPRING_DATASOURCE_URL=<postgres-connection-string> \
   SPRING_DATASOURCE_USERNAME=postgres \
   SPRING_DATASOURCE_PASSWORD=<from-step-3> \
@@ -195,7 +195,7 @@ flyctl launch \
   --no-deploy
 
 flyctl secrets set \
-  JWT_SECRET=78bf3c95fb5738059dde3b9502e9bda46fe448791730ea1544422d8bdaf76648 \
+  JWT_SECRET=<your-jwt-secret> \
   FLASHCARD_SERVICE_URL=https://pa-study-flashcard-service.fly.dev \
   EXAM_SERVICE_URL=https://pa-study-exam-service.fly.dev \
   PROGRESS_SERVICE_URL=https://pa-study-progress-service.fly.dev \

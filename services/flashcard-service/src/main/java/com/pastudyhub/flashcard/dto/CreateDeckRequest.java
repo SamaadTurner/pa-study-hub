@@ -4,10 +4,16 @@ import com.pastudyhub.flashcard.model.MedicalCategory;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /** Request body for POST /api/v1/decks. */
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class CreateDeckRequest {
 
     @NotBlank(message = "Deck title is required")
@@ -20,5 +26,6 @@ public class CreateDeckRequest {
     @NotNull(message = "Category is required")
     private MedicalCategory category;
 
+    @Builder.Default
     private boolean isPublic = false;
 }

@@ -1,7 +1,7 @@
 // Root build file — shared configuration applied to all subprojects
 
 plugins {
-    id("java") apply false
+    java
     id("org.springframework.boot") version "3.2.2" apply false
     id("io.spring.dependency-management") version "1.1.4" apply false
     id("jacoco")

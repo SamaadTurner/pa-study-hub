@@ -12,12 +12,13 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.flywaydb:flyway-core")
-    implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
 
     // Anthropic Java SDK for Claude API calls
     // Official SDK: https://github.com/anthropics/anthropic-sdk-java
-    implementation("com.anthropic:anthropic-sdk-java:1.+")
+    // TODO: Replace with actual SDK when available in Maven Central
+    // For now, using HTTP client to call API directly
+    // implementation("com.anthropic:anthropic-sdk-java:1.+")
 
     // WebClient for calling study-progress-service to get analytics context
     implementation("org.springframework.boot:spring-boot-starter-webflux")

@@ -1,6 +1,7 @@
 package com.pastudyhub.user.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.user.dto.LoginRequest;
 import com.pastudyhub.user.dto.RegisterRequest;
 import com.pastudyhub.user.repository.UserRepository;
@@ -8,15 +9,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -24,26 +19,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Integration tests for AuthController using Testcontainers PostgreSQL.
+ * Integration tests for AuthController.
  *
- * <p>Starts a real PostgreSQL container, bootstraps the full Spring context,
- * and tests the actual HTTP request/response cycle end to end.
- *
- * <p>Uses @ActiveProfiles("test") to load the test application profile
- * which disables Flyway and uses create-drop DDL for test isolation.
+ * <p>Uses Testcontainers PostgreSQL via BaseIntegrationTest for full database compatibility.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("test")
 @DisplayName("AuthController Integration Tests")
-class AuthControllerIntegrationTest {
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
-            .withDatabaseName("user_db_test")
-            .withUsername("test_user")
-            .withPassword("test_pass");
+class AuthControllerIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

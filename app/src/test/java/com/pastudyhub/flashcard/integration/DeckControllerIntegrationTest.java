@@ -1,14 +1,12 @@
 package com.pastudyhub.flashcard.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.flashcard.dto.CreateDeckRequest;
 import com.pastudyhub.flashcard.model.MedicalCategory;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -22,16 +20,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Integration tests for DeckController.
  *
- * <p>Uses the 'test' Spring profile which configures H2 in-memory database with
- * hibernate create-drop, so tests are isolated without needing Docker/Testcontainers.
- * For full PostgreSQL compatibility tests, run with the 'docker' profile and a live DB.
+ * <p>Uses Testcontainers PostgreSQL via BaseIntegrationTest for full database compatibility.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("DeckController Integration Tests")
-class DeckControllerIntegrationTest {
+class DeckControllerIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

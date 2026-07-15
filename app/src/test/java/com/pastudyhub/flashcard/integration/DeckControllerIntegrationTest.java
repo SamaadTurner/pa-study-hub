@@ -80,7 +80,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrors.title").exists());
+                .andExpect(jsonPath("$.errors.title").exists());
     }
 
     @Test

@@ -119,9 +119,10 @@ class AiAssistantControllerIntegrationTest extends BaseIntegrationTest {
     @DisplayName("POST /ai/explain: 200 OK returns explanation")
     void explainWrongAnswer_returns200() throws Exception {
         // Re-stub with text response
+        Message mockMessage = buildMockMessage(TEXT_RESPONSE);
         AnthropicClient.Messages messagesMock = org.mockito.Mockito.mock(AnthropicClient.Messages.class);
         when(anthropicClient.messages()).thenReturn(messagesMock);
-        when(messagesMock.create(any())).thenReturn(buildMockMessage(TEXT_RESPONSE));
+        when(messagesMock.create(any())).thenReturn(mockMessage);
 
         ExplainAnswerRequest request = new ExplainAnswerRequest(
                 "A 55-year-old patient presents with a BP of 165/95. Which drug is first-line?",
@@ -160,9 +161,10 @@ class AiAssistantControllerIntegrationTest extends BaseIntegrationTest {
     @Order(6)
     @DisplayName("POST /ai/study-plan: 200 OK returns study plan text")
     void generateStudyPlan_returns200() throws Exception {
+        Message mockMessage = buildMockMessage("Monday: Cardiology flashcards...");
         AnthropicClient.Messages messagesMock = org.mockito.Mockito.mock(AnthropicClient.Messages.class);
         when(anthropicClient.messages()).thenReturn(messagesMock);
-        when(messagesMock.create(any())).thenReturn(buildMockMessage("Monday: Cardiology flashcards..."));
+        when(messagesMock.create(any())).thenReturn(mockMessage);
 
         StudyPlanRequest request = new StudyPlanRequest(
                 List.of("Cardiology", "Pulmonology"), 30, 60);
@@ -197,10 +199,10 @@ class AiAssistantControllerIntegrationTest extends BaseIntegrationTest {
     @Order(8)
     @DisplayName("POST /ai/chat: 200 OK starts new session")
     void chat_newSession_returns200() throws Exception {
+        Message mockMessage = buildMockMessage("Great question! Atrial fibrillation is characterized by...");
         AnthropicClient.Messages messagesMock = org.mockito.Mockito.mock(AnthropicClient.Messages.class);
         when(anthropicClient.messages()).thenReturn(messagesMock);
-        when(messagesMock.create(any())).thenReturn(
-                buildMockMessage("Great question! Atrial fibrillation is characterized by..."));
+        when(messagesMock.create(any())).thenReturn(mockMessage);
 
         ChatRequest request = new ChatRequest("What is atrial fibrillation?", null);
 
@@ -237,16 +239,16 @@ class AiAssistantControllerIntegrationTest extends BaseIntegrationTest {
      */
     private Message buildMockMessage(String text) {
         TextBlock textBlock = org.mockito.Mockito.mock(TextBlock.class);
-        when(textBlock.type()).thenReturn(TextBlock.Type.TEXT);
-        when(textBlock.text()).thenReturn(text);
+        org.mockito.Mockito.lenient().when(textBlock.type()).thenReturn(TextBlock.Type.TEXT);
+        org.mockito.Mockito.lenient().when(textBlock.text()).thenReturn(text);
 
         // ContentBlock is the sealed parent; TextBlock is a ContentBlock
         ContentBlock contentBlock = org.mockito.Mockito.mock(ContentBlock.class);
-        when(contentBlock.isText()).thenReturn(true);
-        when(contentBlock.asText()).thenReturn(textBlock);
+        org.mockito.Mockito.lenient().when(contentBlock.isText()).thenReturn(true);
+        org.mockito.Mockito.lenient().when(contentBlock.asText()).thenReturn(textBlock);
 
         Message message = org.mockito.Mockito.mock(Message.class);
-        when(message.content()).thenReturn(List.of(contentBlock));
+        org.mockito.Mockito.lenient().when(message.content()).thenReturn(List.of(contentBlock));
 
         return message;
     }

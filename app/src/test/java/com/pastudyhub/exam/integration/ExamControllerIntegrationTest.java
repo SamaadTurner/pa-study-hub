@@ -1,6 +1,7 @@
 package com.pastudyhub.exam.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.exam.dto.StartExamRequest;
 import com.pastudyhub.exam.dto.SubmitAnswerRequest;
 import com.pastudyhub.exam.model.*;
@@ -8,10 +9,7 @@ import com.pastudyhub.exam.repository.AnswerOptionRepository;
 import com.pastudyhub.exam.repository.QuestionRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -22,12 +20,9 @@ import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("ExamController Integration Tests")
-class ExamControllerIntegrationTest {
+class ExamControllerIntegrationTest extends BaseIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;

@@ -35,9 +35,14 @@ class AuthControllerIntegrationTest extends BaseIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private com.pastudyhub.user.repository.RefreshTokenRepository refreshTokenRepository;
+
     @BeforeEach
     void setUp() {
         // Clean database before each test for isolation
+        // Delete refresh tokens first due to foreign key constraint
+        refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }
 

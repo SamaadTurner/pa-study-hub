@@ -22,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>Uses Testcontainers PostgreSQL via BaseIntegrationTest for full database compatibility.
  */
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("DeckController Integration Tests")
 class DeckControllerIntegrationTest extends BaseIntegrationTest {
 

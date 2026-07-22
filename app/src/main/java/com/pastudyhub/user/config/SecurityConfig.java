@@ -45,18 +45,9 @@ public class SecurityConfig {
                                 response.sendError(401, "Unauthorized"))
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints — no JWT required
-                        .requestMatchers("/api/v1/auth/**").permitAll()
-                        // Actuator health is public (used by Docker healthcheck + gateway)
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                        // Swagger UI (documentation only — disable in production if desired)
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
-                        // All other endpoints require authentication
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(
-                        new JwtAuthenticationFilter(jwtTokenProvider),
-                        UsernamePasswordAuthenticationFilter.class
+                        // All endpoints permit all - monolith trusts X-User-Id header
+                        // In production, add authentication/authorization layer
+                        .anyRequest().permitAll()
                 )
                 .build();
     }

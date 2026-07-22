@@ -53,6 +53,8 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
                         .header("X-User-Id", USER_A.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
+                .andDo(res -> System.out.println("Status: " + res.getResponse().getStatus()))
+                .andDo(res -> System.out.println("Body: " + res.getResponse().getContentAsString()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isString())
                 .andExpect(jsonPath("$.title").value("Cardiology Essentials"))

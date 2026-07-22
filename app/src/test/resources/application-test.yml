@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: pa-study-hub-test
+
+  # Database configuration - H2 in-memory for tests
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:test_db;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: test
+    password: test
+
+  h2:
+    console:
+      enabled: false
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop  # Auto-generate schema from entities for tests
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: false
+
+  # Disable Flyway for tests (use JPA auto-DDL instead)
+  flyway:
+    enabled: false
+
+# Logging
+logging:
+  level:
+    root: WARN
+    com.pastudyhub: INFO
+    org.springframework.web: WARN
+    org.hibernate: WARN
+    org.testcontainers: WARN
+
+# JWT Configuration for tests
+jwt:
+  secret: test-jwt-secret-key-must-be-at-least-32-characters-long-for-hs256
+  access-token-expiry-ms: 900000
+  refresh-token-expiry-days: 7
+
+# Anthropic API (mocked in tests)
+anthropic:
+  api-key: test-api-key
+  model: claude-sonnet-4-20250514
+  max-tokens: 4096
+
+# AI Rate Limiting (lenient for tests)
+ai:
+  daily-token-budget-per-user: 1000000
+  rate-limit-requests-per-minute: 1000

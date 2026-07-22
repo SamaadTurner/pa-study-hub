@@ -1,0 +1,62 @@
+spring:
+  application:
+    name: pa-study-hub
+
+  main:
+    allow-bean-definition-overriding: true
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:pa_study_hub}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: always
+    include-stacktrace: on_param
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:default-secret-change-in-production-must-be-at-least-32-characters-long}
+  expiration: 86400000 # 24 hours in milliseconds
+  refresh-expiration: 604800000 # 7 days
+
+# Anthropic API Configuration
+anthropic:
+  api-key: ${ANTHROPIC_API_KEY:}
+  model: ${ANTHROPIC_MODEL:claude-sonnet-4-5-20250929}
+  max-tokens: ${ANTHROPIC_MAX_TOKENS:2048}
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.pastudyhub: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG

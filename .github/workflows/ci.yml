@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, develop, "feat/**"]
+    branches: [main, develop, consolidate-to-monolith, "feat/**"]
   pull_request:
     branches: [main, develop]
 
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   # ============================================================
-  # Backend — build and test all Spring Boot services
+  # Backend — build and test monolith application
   # ============================================================
   backend:
     name: Backend Tests
@@ -47,12 +47,17 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Run backend tests
-        run: ./gradlew :services:api-gateway:test --no-daemon
+      - name: Build monolith
+        run: ./gradlew :app:build -x test --no-daemon
         env:
           JWT_SECRET: test-jwt-secret-for-ci-must-be-at-least-32-chars
-        # TODO: Re-enable all service tests after fixing database integration test issues
-        # Currently only testing API gateway to get CI green
+          ANTHROPIC_API_KEY: test-anthropic-key
+
+      - name: Run backend tests
+        run: ./gradlew :app:test --no-daemon
+        env:
+          JWT_SECRET: test-jwt-secret-for-ci-must-be-at-least-32-chars
+          ANTHROPIC_API_KEY: test-anthropic-key
 
       - name: Upload test reports
         if: failure()
@@ -60,6 +65,14 @@ jobs:
         with:
           name: backend-test-reports
           path: "**/build/reports/tests/"
+          retention-days: 7
+
+      - name: Upload coverage reports
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: "**/build/reports/jacoco/"
           retention-days: 7
 
   # ============================================================
@@ -106,7 +119,7 @@ jobs:
           retention-days: 3
 
   # ============================================================
-  # Docker — build all images to verify Dockerfiles are valid
+  # Docker — build monolith and frontend images
   # (Only on pushes to main/develop — skipped on PRs to save time)
   # ============================================================
   docker-build:
@@ -122,59 +135,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build user-service image
+      - name: Build monolith image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: services/user-service/Dockerfile
+          file: Dockerfile
           push: false
-          cache-from: type=gha,scope=user-service
-          cache-to: type=gha,mode=max,scope=user-service
-
-      - name: Build flashcard-service image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: services/flashcard-service/Dockerfile
-          push: false
-          cache-from: type=gha,scope=flashcard-service
-          cache-to: type=gha,mode=max,scope=flashcard-service
-
-      - name: Build exam-service image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: services/exam-service/Dockerfile
-          push: false
-          cache-from: type=gha,scope=exam-service
-          cache-to: type=gha,mode=max,scope=exam-service
-
-      - name: Build study-progress-service image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: services/study-progress-service/Dockerfile
-          push: false
-          cache-from: type=gha,scope=progress-service
-          cache-to: type=gha,mode=max,scope=progress-service
-
-      - name: Build ai-assistant-service image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: services/ai-assistant-service/Dockerfile
-          push: false
-          cache-from: type=gha,scope=ai-service
-          cache-to: type=gha,mode=max,scope=ai-service
-
-      - name: Build api-gateway image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: services/api-gateway/Dockerfile
-          push: false
-          cache-from: type=gha,scope=api-gateway
-          cache-to: type=gha,mode=max,scope=api-gateway
+          cache-from: type=gha,scope=monolith
+          cache-to: type=gha,mode=max,scope=monolith
 
       - name: Build frontend image
         uses: docker/build-push-action@v5

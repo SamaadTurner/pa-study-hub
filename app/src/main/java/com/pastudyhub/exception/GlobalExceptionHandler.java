@@ -1,4 +1,4 @@
-package com.pastudyhub.flashcard.exception;
+package com.pastudyhub.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Global exception handler for the Flashcard Service.
+ * Global exception handler for PA Study Hub monolith.
  * Returns RFC 7807 Problem Details JSON — never exposes stack traces.
  */
 @Slf4j
@@ -23,16 +23,25 @@ public class GlobalExceptionHandler {
 
     private static final String ERROR_TYPE_BASE = "https://pastudyhub.com/errors/";
 
-    @ExceptionHandler(StudyHubException.class)
-    public ProblemDetail handleStudyHubException(StudyHubException ex) {
-        if (ex.getHttpStatus().is5xxServerError()) {
+    /**
+     * Handles all StudyHubException subclasses from any module.
+     * Uses reflection to get httpStatus since StudyHubException classes are in different packages.
+     */
+    @ExceptionHandler({
+        com.pastudyhub.flashcard.exception.StudyHubException.class,
+        com.pastudyhub.user.exception.StudyHubException.class,
+        com.pastudyhub.exam.exception.StudyHubException.class
+    })
+    public ProblemDetail handleStudyHubException(RuntimeException ex) {
+        HttpStatus status = extractHttpStatus(ex);
+        if (status.is5xxServerError()) {
             log.error("Server error: {}", ex.getMessage(), ex);
         } else {
-            log.warn("Client error [{}]: {}", ex.getHttpStatus(), ex.getMessage());
+            log.warn("Client error [{}]: {}", status, ex.getMessage());
         }
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(ex.getHttpStatus(), ex.getMessage());
-        problem.setTitle(ex.getHttpStatus().getReasonPhrase());
-        problem.setType(URI.create(ERROR_TYPE_BASE + ex.getHttpStatus().value()));
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, ex.getMessage());
+        problem.setTitle(status.getReasonPhrase());
+        problem.setType(URI.create(ERROR_TYPE_BASE + status.value()));
         problem.setProperty("timestamp", Instant.now().toString());
         return problem;
     }
@@ -62,5 +71,19 @@ public class GlobalExceptionHandler {
         problem.setType(URI.create(ERROR_TYPE_BASE + "internal"));
         problem.setProperty("timestamp", Instant.now().toString());
         return problem;
+    }
+
+    /**
+     * Extracts HTTP status from StudyHubException using reflection
+     * since we have multiple StudyHubException classes in different packages.
+     */
+    private HttpStatus extractHttpStatus(RuntimeException ex) {
+        try {
+            var method = ex.getClass().getMethod("getHttpStatus");
+            return (HttpStatus) method.invoke(ex);
+        } catch (Exception e) {
+            log.warn("Could not extract HTTP status from exception, defaulting to 500", e);
+            return HttpStatus.INTERNAL_SERVER_ERROR;
+        }
     }
 }

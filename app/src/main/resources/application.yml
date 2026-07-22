@@ -2,6 +2,9 @@ spring:
   application:
     name: pa-study-hub
 
+  main:
+    allow-bean-definition-overriding: true
+
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:pa_study_hub}
     username: ${DB_USER:postgres}

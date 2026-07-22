@@ -60,7 +60,7 @@ public class ReviewSchedule {
     /**
      * Days until the next review. Starts at 0 (review today/now).
      */
-    @Column(name = "interval", nullable = false)
+    @Column(name = "review_interval", nullable = false)
     @Builder.Default
     private int interval = 0;
 

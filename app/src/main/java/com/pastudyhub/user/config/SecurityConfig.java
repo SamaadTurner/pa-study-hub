@@ -40,6 +40,10 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, authException) ->
+                                response.sendError(401, "Unauthorized"))
+                )
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints — no JWT required
                         .requestMatchers("/api/v1/auth/**").permitAll()

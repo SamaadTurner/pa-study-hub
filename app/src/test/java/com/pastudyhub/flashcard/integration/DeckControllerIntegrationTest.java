@@ -129,6 +129,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
     void updateDeck_ownerCanUpdate() throws Exception {
         CreateDeckRequest update = CreateDeckRequest.builder()
                 .title("Updated Cardiology")
+                .category(MedicalCategory.CARDIOLOGY)
                 .build();
 
         mockMvc.perform(put("/api/v1/decks/{deckId}", createdDeckId)
@@ -145,6 +146,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
     void updateDeck_nonOwner_returns403() throws Exception {
         CreateDeckRequest update = CreateDeckRequest.builder()
                 .title("Hijacked Title")
+                .category(MedicalCategory.CARDIOLOGY)
                 .build();
 
         mockMvc.perform(put("/api/v1/decks/{deckId}", createdDeckId)

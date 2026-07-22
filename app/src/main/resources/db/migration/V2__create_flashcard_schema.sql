@@ -50,7 +50,7 @@ CREATE TABLE review_schedules (
     card_id          UUID    NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
     user_id          UUID    NOT NULL,
     ease_factor      DOUBLE PRECISION NOT NULL DEFAULT 2.5,
-    interval         INT     NOT NULL DEFAULT 0,
+    review_interval  INT     NOT NULL DEFAULT 0,
     repetitions      INT     NOT NULL DEFAULT 0,
     next_review_date DATE,
     last_reviewed_at TIMESTAMP,

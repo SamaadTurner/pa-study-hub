@@ -10,5 +10,5 @@ public abstract class StudyHubException extends RuntimeException {
         this.status = status;
     }
 
-    public HttpStatus getStatus() { return status; }
+    public HttpStatus getHttpStatus() { return status; }
 }

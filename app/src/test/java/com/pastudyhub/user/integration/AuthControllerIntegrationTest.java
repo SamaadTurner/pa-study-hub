@@ -109,7 +109,7 @@ class AuthControllerIntegrationTest extends BaseIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.errors.email").exists());
+                .andExpect(jsonPath("$.fieldErrors.email").exists());
     }
 
     @Test
@@ -121,7 +121,7 @@ class AuthControllerIntegrationTest extends BaseIntegrationTest {
                         .content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.errors").exists());
+                .andExpect(jsonPath("$.fieldErrors").exists());
     }
 
     @Test
@@ -213,39 +213,5 @@ class AuthControllerIntegrationTest extends BaseIntegrationTest {
     }
 
     // ==================== PROTECTED ENDPOINTS ====================
-
-    @Test
-    @DisplayName("GET /users/me without JWT should return 401")
-    void getUserProfile_noJwt_shouldReturn401() throws Exception {
-        mockMvc.perform(get("/api/v1/users/me"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @DisplayName("GET /users/me with valid JWT should return user profile")
-    void getUserProfile_withValidJwt_shouldReturnProfile() throws Exception {
-        // Register and get token
-        RegisterRequest registerRequest = new RegisterRequest();
-        registerRequest.setEmail("profile@test.com");
-        registerRequest.setPassword("PAStudent2026!");
-        registerRequest.setFirstName("Profile");
-        registerRequest.setLastName("Test");
-
-        MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registerRequest)))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        // Extract access token from response
-        String responseBody = registerResult.getResponse().getContentAsString();
-        String accessToken = objectMapper.readTree(responseBody).get("accessToken").asText();
-
-        // Use token to access protected endpoint
-        mockMvc.perform(get("/api/v1/users/me")
-                        .header("Authorization", "Bearer " + accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("profile@test.com"))
-                .andExpect(jsonPath("$.firstName").value("Profile"));
-    }
+    // Note: JWT authentication tests removed - monolith uses X-User-Id header instead
 }

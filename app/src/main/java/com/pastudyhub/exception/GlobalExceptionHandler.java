@@ -58,7 +58,7 @@ public class GlobalExceptionHandler {
         problem.setTitle("Validation Failed");
         problem.setType(URI.create(ERROR_TYPE_BASE + "validation"));
         problem.setProperty("timestamp", Instant.now().toString());
-        problem.setProperty("errors", fieldErrors);
+        problem.setProperty("fieldErrors", fieldErrors);
         return problem;
     }
 

@@ -8,8 +8,6 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue.svg)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791.svg)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://www.docker.com/)
-[![AWS](https://img.shields.io/badge/AWS-ECS%20Fargate-FF9900.svg)](https://aws.amazon.com/fargate/)
-[![GCP](https://img.shields.io/badge/GCP-Cloud%20Run-4285F4.svg)](https://cloud.google.com/run)
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF.svg)](https://github.com/features/actions)
 
 Built for Jocelyn, who starts PA school this spring. This app provides everything she needs to master the NCCPA content blueprint: spaced-repetition flashcards, timed practice exams, streak tracking, and AI-powered study assistance via the Claude API.
@@ -20,24 +18,18 @@ Built for Jocelyn, who starts PA school this spring. This app provides everythin
 
 ```mermaid
 graph TB
-    FE[React Frontend :3000] --> GW[API Gateway :8080]
+    FE[React Frontend :3000] --> API[Spring Boot API :8080]
+    API --> DB[(PostgreSQL\npa_study_hub)]
+    API --> CLAUDE[Claude API\nAnthropic]
 
-    GW --> US[User Service :8084]
-    GW --> FS[Flashcard Service :8081]
-    GW --> ES[Exam Service :8082]
-    GW --> PS[Study Progress Service :8083]
-    GW --> AI[AI Assistant Service :8085]
-
-    US --> UDB[(user_db)]
-    FS --> FDB[(flashcard_db)]
-    ES --> EDB[(exam_db)]
-    PS --> PDB[(progress_db)]
-    AI --> ADB[(ai_assistant_db)]
-
-    AI --> CLAUDE[Claude API\nAnthropic]
-    FS --> PS
-    ES --> PS
-    AI --> PS
+    subgraph Monolith Application
+        API
+        US[User Auth & Profiles]
+        FS[Flashcards & SM-2]
+        ES[Practice Exams]
+        PS[Progress & Streaks]
+        AI[AI Study Assistant]
+    end
 ```
 
 ## Features
@@ -72,12 +64,12 @@ cp .env.example .env
 # Edit .env and fill in:
 #   - JWT_SECRET (32+ random characters)
 #   - ANTHROPIC_API_KEY (from console.anthropic.com)
-#   - Database passwords (or use the defaults)
+#   - Database password (or use the default)
 
 # 3. Start everything
 docker-compose up -d
 
-# 4. Wait for services to be healthy (~90 seconds on first run)
+# 4. Wait for services to be healthy (~60 seconds on first run)
 docker-compose ps
 
 # 5. Open the app
@@ -90,48 +82,30 @@ open http://localhost:3000
 
 ## Running Locally (Without Docker)
 
-You'll need 5 PostgreSQL databases. Create them:
+Create the PostgreSQL database:
 
 ```sql
-CREATE DATABASE flashcard_db;
-CREATE DATABASE exam_db;
-CREATE DATABASE progress_db;
-CREATE DATABASE user_db;
-CREATE DATABASE ai_assistant_db;
+CREATE DATABASE pa_study_hub;
 ```
 
-Start each service:
+Start the backend:
 
 ```bash
-# User Service (run in separate terminal)
-cd services/user-service
-./../../gradlew bootRun --args='--spring.profiles.active=dev'
+# Backend API
+./gradlew :app:bootRun
 
-# Flashcard Service
-cd services/flashcard-service
-./../../gradlew bootRun --args='--spring.profiles.active=dev'
+# API will be available at http://localhost:8080
+# Swagger UI at http://localhost:8080/swagger-ui.html
+```
 
-# Exam Service
-cd services/exam-service
-./../../gradlew bootRun --args='--spring.profiles.active=dev'
+Start the frontend:
 
-# Study Progress Service
-cd services/study-progress-service
-./../../gradlew bootRun --args='--spring.profiles.active=dev'
-
-# AI Assistant Service
-cd services/ai-assistant-service
-ANTHROPIC_API_KEY=your-key ./../../gradlew bootRun --args='--spring.profiles.active=dev'
-
-# API Gateway
-cd services/api-gateway
-./../../gradlew bootRun --args='--spring.profiles.active=dev'
-
-# Frontend
+```bash
+# Frontend (separate terminal)
 cd frontend
 npm install
 npm run dev
-# Opens on http://localhost:5173
+# Opens on http://localhost:3000
 ```
 
 ## Running Tests
@@ -140,12 +114,9 @@ npm run dev
 # All backend tests
 ./gradlew test
 
-# Single service tests
-./gradlew :services:flashcard-service:test
-
-# Tests with coverage report
-./gradlew :services:flashcard-service:jacocoTestReport
-# Open: services/flashcard-service/build/reports/jacoco/test/html/index.html
+# Backend tests with coverage report
+./gradlew jacocoTestReport
+# Open: app/build/reports/jacoco/test/html/index.html
 
 # Frontend unit tests
 cd frontend && npm test
@@ -165,47 +136,44 @@ JaCoCo code coverage is enforced at 80% minimum line coverage. To view reports:
 
 ```bash
 ./gradlew jacocoTestReport
-# Reports at: services/<service-name>/build/reports/jacoco/test/html/index.html
+# Report at: app/build/reports/jacoco/test/html/index.html
 ```
 
 ## API Documentation
 
-Swagger UI is available at each service and aggregated through the gateway:
+Swagger UI is available at:
 
-- **Gateway (all routes):** http://localhost:8080/swagger-ui.html
-- **Flashcard Service:** http://localhost:8081/swagger-ui.html
-- **Exam Service:** http://localhost:8082/swagger-ui.html
-- **Progress Service:** http://localhost:8083/swagger-ui.html
-- **User Service:** http://localhost:8084/swagger-ui.html
-- **AI Service:** http://localhost:8085/swagger-ui.html
+- **All endpoints:** http://localhost:8080/swagger-ui.html
 
 ## Deployment
 
 - **Render (Recommended for Portfolio):** See [DEPLOYMENT.md](DEPLOYMENT.md) - Free tier available
-- **AWS (ECS Fargate + RDS):** See [deploy/aws/README-aws.md](deploy/aws/README-aws.md)
-- **GCP (Cloud Run + Cloud SQL):** See [deploy/gcp/README-gcp.md](deploy/gcp/README-gcp.md)
+- **Fly.io:** See [FLY-DEPLOYMENT.md](FLY-DEPLOYMENT.md)
 
 **Quick Deploy to Render:**
 1. Push code to GitHub - See [GITHUB-SETUP.md](GITHUB-SETUP.md)
 2. Connect Render to your repo
 3. Add environment variables (JWT_SECRET, ANTHROPIC_API_KEY)
-4. Deploy! (~15 minutes)
+4. Deploy! (~5 minutes)
 
 ## Project Structure
 
 ```
 pa-study-hub/
-├── services/
-│   ├── api-gateway/          Spring Cloud Gateway (port 8080)
-│   ├── flashcard-service/    Decks, cards, SM-2 algorithm (port 8081)
-│   ├── exam-service/         Practice exams, scoring (port 8082)
-│   ├── study-progress-service/ Streaks, goals, analytics (port 8083)
-│   ├── user-service/         Auth, JWT, profiles (port 8084)
-│   └── ai-assistant-service/ Claude API integration (port 8085)
+├── app/                      Spring Boot monolith (port 8080)
+│   ├── src/main/java/com/pastudyhub/
+│   │   ├── flashcard/        Decks, cards, SM-2 algorithm
+│   │   ├── exam/             Practice exams, scoring
+│   │   ├── progress/         Streaks, goals, analytics
+│   │   ├── user/             Auth, JWT, profiles
+│   │   ├── ai/               Claude API integration
+│   │   ├── config/           OpenAPI, security configuration
+│   │   └── exception/        Global exception handling
+│   └── src/main/resources/
+│       ├── db/migration/     Flyway SQL migrations
+│       └── application.yml   App configuration
 ├── frontend/                 React + TypeScript + Tailwind (port 3000)
-├── deploy/
-│   ├── aws/                  ECS task defs + CloudFormation
-│   └── gcp/                  Cloud Run + Terraform
+├── deploy/                   Deployment configs
 ├── seed/                     Starter flashcard decks and exam questions
 ├── docs/                     Architecture, API contracts, data models
 ├── docker-compose.yml        Full local orchestration
@@ -214,13 +182,13 @@ pa-study-hub/
 
 ## Design Decisions
 
-**Why microservices?** Flashcard reviews happen constantly throughout the day; practice exams are occasional and compute-heavy. Independent services allow different scaling strategies — the flashcard service can scale horizontally under review load without scaling the exam service.
+**Why a monolith?** Simplified deployment and development. All features share a single database and codebase, making it easier to maintain consistency, enforce foreign key constraints across domains, and deploy to free-tier hosting platforms. Perfect for a portfolio project and early-stage applications.
 
 **Why the SM-2 algorithm?** It's the scientifically-validated spaced repetition algorithm used in Anki and SuperMemo, proven over decades. The key insight is that ease factors and intervals are calculated per-card per-user, so the algorithm adapts to Jocelyn's specific strengths and weaknesses.
 
-**Why JWT?** Microservices are stateless — no shared session store. The API Gateway validates the JWT once and forwards user identity headers downstream. Each service trusts the gateway's headers without re-hitting a database on every request.
+**Why JWT?** Stateless authentication means no server-side sessions. The backend validates the JWT once and extracts user identity for each request. This keeps the app horizontally scalable and works well with modern frontend frameworks.
 
-**Why database-per-service?** Loose coupling. The flashcard schema can evolve independently of the exam schema. Services can be deployed, scaled, and rebuilt without coordinating schema migrations across all services.
+**Why a single database?** Enforces referential integrity across domains with foreign keys. Simpler migrations, easier to reason about data relationships, and better transaction support for cross-domain operations.
 
 **Why Claude API for AI features?** Claude produces the best structured JSON output for flashcard generation, writes the most nuanced medical explanations, and handles conversational context well for the study tutor feature. The official Anthropic Java SDK provides a typed interface to the API.
 
@@ -239,7 +207,7 @@ PA Study Hub uses the Anthropic Claude API for four study assistance features:
 3. **Study Plan Recommender** — Based on your performance analytics, Claude generates a 7-day study schedule prioritizing your weakest areas
 4. **Study Chat** — Ask Claude anything about your PA school coursework; it responds at PANCE-exam level with clinical reasoning
 
-Prompts are externalized in `services/ai-assistant-service/src/main/resources/prompts/system-prompts.json` for easy tuning.
+Prompts are externalized in `app/src/main/resources/prompts/system-prompts.json` for easy tuning.
 
 Token usage is tracked per-user with a configurable daily budget (default: 50,000 tokens/day) to control API costs.
 

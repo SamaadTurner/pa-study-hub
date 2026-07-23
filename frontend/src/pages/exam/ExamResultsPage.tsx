@@ -328,7 +328,7 @@ export default function ExamResultsPage() {
               >
                 {gettingExplanation ? (
                   <>
-                    <LoadingSpinner size="sm" className="mr-2" />
+                    <span className="inline-block mr-2"><LoadingSpinner size="sm" /></span>
                     Claude is analyzing...
                   </>
                 ) : (

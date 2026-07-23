@@ -198,7 +198,7 @@ export default function AiGeneratorPage() {
         >
           {generating ? (
             <>
-              <LoadingSpinner size="sm" className="mr-2" />
+              <span className="inline-block mr-2"><LoadingSpinner size="sm" /></span>
               Claude is generating flashcards...
             </>
           ) : (

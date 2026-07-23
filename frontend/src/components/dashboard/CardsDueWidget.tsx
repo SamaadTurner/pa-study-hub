@@ -8,8 +8,12 @@ interface Props {
 
 export default function CardsDueWidget({ decks }: Props) {
   const navigate = useNavigate()
-  const totalDue = decks.reduce((sum, d) => sum + d.dueCardCount, 0)
-  const deckWithMostDue = decks.reduce<Deck | null>(
+
+  // Ensure decks is an array
+  const deckList = Array.isArray(decks) ? decks : []
+
+  const totalDue = deckList.reduce((sum, d) => sum + d.dueCardCount, 0)
+  const deckWithMostDue = deckList.reduce<Deck | null>(
     (best, d) => (!best || d.dueCardCount > best.dueCardCount ? d : best),
     null
   )
@@ -47,7 +51,7 @@ export default function CardsDueWidget({ decks }: Props) {
           </Button>
         )}
       </div>
-      {deckWithMostDue && decks.filter(d => d.dueCardCount > 0).length > 1 && (
+      {deckWithMostDue && deckList.filter(d => d.dueCardCount > 0).length > 1 && (
         <p className="text-xs text-gray-500 mt-3">
           Most due: <span className="font-medium text-gray-700">{deckWithMostDue.title}</span>{' '}
           ({deckWithMostDue.dueCardCount} cards)

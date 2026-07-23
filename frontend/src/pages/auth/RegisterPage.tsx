@@ -81,11 +81,32 @@ export default function RegisterPage() {
       navigate('/dashboard', { replace: true })
     } catch (err) {
       const apiError = err as ApiError
+
+      // Handle field-level validation errors from backend
       if (apiError?.fieldErrors) {
         setErrors(apiError.fieldErrors as FieldErrors)
-      } else {
-        notify('error', apiError?.detail ?? 'Registration failed. Please try again.')
+        notify('error', 'Please fix the errors below.')
+        return
       }
+
+      // Handle duplicate email error (409 Conflict)
+      if (apiError?.status === 409 && apiError?.detail?.toLowerCase().includes('already exists')) {
+        setErrors({ email: 'An account with this email already exists. Try logging in instead.' })
+        return
+      }
+
+      // Handle password policy errors (400 Bad Request)
+      if (apiError?.status === 400 && apiError?.detail) {
+        if (apiError.detail.toLowerCase().includes('password')) {
+          setErrors({ password: apiError.detail })
+        } else {
+          notify('error', apiError.detail)
+        }
+        return
+      }
+
+      // Handle any other errors with specific message or generic fallback
+      notify('error', apiError?.detail || 'Registration failed. Please try again.')
     } finally {
       setLoading(false)
     }

@@ -3,6 +3,7 @@ package com.pastudyhub.user.config;
 import com.pastudyhub.user.security.JwtAuthenticationFilter;
 import com.pastudyhub.user.security.JwtTokenProvider;
 import com.pastudyhub.user.security.PasswordPolicy;
+import com.pastudyhub.user.security.UserIdHeaderFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,6 +37,9 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtTokenProvider);
+        UserIdHeaderFilter userIdHeaderFilter = new UserIdHeaderFilter();
+
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session ->
@@ -45,10 +49,15 @@ public class SecurityConfig {
                                 response.sendError(401, "Unauthorized"))
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // All endpoints permit all - monolith trusts X-User-Id header
-                        // In production, add authentication/authorization layer
-                        .anyRequest().permitAll()
+                        // Public endpoints (login, register)
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        // All other endpoints require authentication
+                        .anyRequest().authenticated()
                 )
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(userIdHeaderFilter, JwtAuthenticationFilter.class)
                 .build();
     }
 

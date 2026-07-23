@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getNextQuestion, submitAnswer, completeExam } from '@/api/exam'
+import { getExamSession, submitAnswer, completeExam } from '@/api/exam'
 import type { ExamQuestion } from '@/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import ProgressBar from '@/components/common/ProgressBar'
@@ -43,11 +43,19 @@ export default function ExamPage() {
     setSelectedId(null)
     setFeedback(null)
     try {
-      const resp = await getNextQuestion(sessionId)
-      setQuestion(resp.question)
-      setQNumber(resp.questionNumber)
-      setTotal(resp.totalQuestions)
-      setTimeLeft(resp.timeRemainingSeconds)
+      const session = await getExamSession(sessionId)
+      // Find next unanswered question
+      const nextQ = session.questions.find(q => !q.userAnswer)
+      if (!nextQ) {
+        // All questions answered, go to results
+        navigate(`/exam/${sessionId}/results`, { replace: true })
+        return
+      }
+      setQuestion(nextQ)
+      const answered = session.questions.filter(q => q.userAnswer).length
+      setQNumber(answered + 1)
+      setTotal(session.questionCount)
+      setTimeLeft(session.timeLimit ? session.timeLimit * 60 : null)
       questionStartRef.current = Date.now()
       setState('question')
     } catch (err) {
@@ -68,12 +76,23 @@ export default function ExamPage() {
     setSubmitting(true)
     const timeSpent = Math.round((Date.now() - questionStartRef.current) / 1000)
     try {
-      const result = await submitAnswer(sessionId, {
-        questionId: question.id,
+      const updatedSession = await submitAnswer(sessionId, question.id, {
         selectedOptionId: selectedId,
         timeSpentSeconds: timeSpent,
       })
-      setFeedback(result)
+      // Extract feedback from the updated question
+      const answeredQ = updatedSession.questions.find(q => q.id === question.id)
+      if (answeredQ?.userAnswer && answeredQ.correctOptionId) {
+        setFeedback({
+          isCorrect: answeredQ.userAnswer.isCorrect,
+          correctOptionId: answeredQ.correctOptionId,
+          explanation: '', // Backend doesn't return this in answer response
+          runningScore: {
+            correct: updatedSession.questions.filter(q => q.userAnswer?.isCorrect).length,
+            total: updatedSession.answeredCount,
+          },
+        })
+      }
       setState('answered')
     } catch (err) {
       notify('error', (err as ApiError)?.detail ?? 'Failed to submit answer')
@@ -150,12 +169,6 @@ export default function ExamPage() {
           <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
             {getCategoryLabel(question.category)}
           </span>
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium
-            ${question.difficulty === 'EASY'   ? 'bg-green-100 text-green-700' :
-              question.difficulty === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
-                                                 'bg-red-100 text-red-700'}`}>
-            {question.difficulty}
-          </span>
         </div>
         <div className="flex items-center gap-2">
           {timeRemaining !== null && timeRemaining > 0 && (
@@ -176,10 +189,16 @@ export default function ExamPage() {
 
       <ProgressBar value={progressPct} size="sm" color="primary" />
 
-      {/* Question stem */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
+      {/* Question */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+        {question.clinicalVignette && (
+          <div className="text-sm text-gray-700 leading-relaxed bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+            <p className="font-semibold text-blue-900 mb-2">Clinical Vignette:</p>
+            <p>{question.clinicalVignette}</p>
+          </div>
+        )}
         <p className="text-gray-900 text-base leading-relaxed font-medium">
-          {question.stem}
+          {question.questionText}
         </p>
       </div>
 

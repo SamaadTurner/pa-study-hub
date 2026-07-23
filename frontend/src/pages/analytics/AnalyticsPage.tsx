@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAnalytics, getActivityHistory } from '@/api/progress'
+import { getDashboard } from '@/api/progress'
 import type { ProgressDashboard, DailyProgressPoint } from '@/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import { getCategoryLabel, CATEGORY_HEX_COLORS } from '@/utils/categoryColors'
@@ -175,10 +175,10 @@ export default function AnalyticsPage() {
   const [loading, setLoading]       = useState(true)
 
   useEffect(() => {
-    Promise.all([getAnalytics(), getActivityHistory(30)])
-      .then(([dash, act]) => {
+    getDashboard()
+      .then(dash => {
         setDashboard(dash)
-        setActivity(act)
+        setActivity(dash.last30DaysActivity || [])
       })
       .finally(() => setLoading(false))
   }, [])

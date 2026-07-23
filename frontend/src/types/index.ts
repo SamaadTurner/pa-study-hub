@@ -92,35 +92,39 @@ export interface AnswerOption {
 
 export interface ExamQuestion {
   id: string
-  stem: string
+  clinicalVignette: string
+  questionText: string
   category: string
-  difficulty: DifficultyLevel
   options: AnswerOption[]
+  correctOptionId?: string
+  userAnswer?: {
+    selectedOptionId: string
+    isCorrect: boolean
+  }
 }
 
 export interface ExamSession {
   id: string
+  categoryFilter: string | null
   questionCount: number
-  timeLimitMinutes: number
-  categoryFilter?: string
-  difficultyFilter?: DifficultyLevel
+  answeredCount: number
+  timeLimit: number | null
   status: ExamStatus
-  questions: ExamQuestion[]
   startedAt: string
-  completedAt?: string
+  questions: ExamQuestion[]
 }
 
 export interface ExamResult {
   sessionId: string
-  rawScore: number
+  score: number
+  percentageScore: number
   totalQuestions: number
-  scorePercent: number
-  performanceBand: PerformanceBand
-  categoryBreakdown: Record<string, number>
-  avgTimePerQuestionSeconds: number
+  correctCount: number
   incorrectCount: number
-  durationSeconds: number
+  categoryBreakdown: Record<string, number>
   completedAt: string
+  timeTaken: number
+  performanceMessage: string
 }
 
 export interface ExamHistorySummary {

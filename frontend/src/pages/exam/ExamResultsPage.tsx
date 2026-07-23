@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getExamResults } from '@/api/exam'
+import { getExamResult } from '@/api/exam'
 import { explainAnswer } from '@/api/ai'
 import type { ExamResult, ApiError } from '@/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
@@ -49,7 +49,7 @@ export default function ExamResultsPage() {
 
   useEffect(() => {
     if (!sessionId) return
-    getExamResults(sessionId)
+    getExamResult(sessionId)
       .then(setResult)
       .catch((err: ApiError) => setError(err?.detail ?? 'Failed to load results'))
       .finally(() => setLoading(false))
@@ -109,7 +109,11 @@ export default function ExamResultsPage() {
     )
   }
 
-  const band = BAND_STYLES[result.performanceBand] ?? DEFAULT_BAND
+  // Determine performance band from score
+  const performanceBand = result.percentageScore >= 90 ? 'EXCELLENT' :
+                          result.percentageScore >= 75 ? 'PASS' :
+                          result.percentageScore >= 60 ? 'NEAR_PASS' : 'FAIL'
+  const band = BAND_STYLES[performanceBand] ?? DEFAULT_BAND
 
   const chartData = Object.entries(result.categoryBreakdown)
     .map(([cat, pct]) => ({
@@ -124,25 +128,28 @@ export default function ExamResultsPage() {
 
       {/* ── Score hero ────────────────────────────────────────────────── */}
       <div className={`rounded-2xl border p-8 text-center ${band.bg} ${band.border}`}>
-        <p className={`text-7xl font-bold mb-2 ${band.text}`}>{result.scorePercent}%</p>
+        <p className={`text-7xl font-bold mb-2 ${band.text}`}>{result.percentageScore}%</p>
         <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold
           border ${band.border} ${band.text} mb-6`}>
           {band.label}
         </span>
+        {result.performanceMessage && (
+          <p className="text-sm text-gray-700 mb-4">{result.performanceMessage}</p>
+        )}
         <div className="flex items-center justify-center gap-8 text-sm">
           <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">{result.rawScore}/{result.totalQuestions}</p>
+            <p className="text-2xl font-bold text-gray-900">{result.score}/{result.totalQuestions}</p>
             <p className="text-xs text-gray-500 mt-0.5">Correct</p>
           </div>
           <div className="w-px h-10 bg-current opacity-20" />
           <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">{formatDuration(result.durationSeconds)}</p>
+            <p className="text-2xl font-bold text-gray-900">{formatDuration(result.timeTaken)}</p>
             <p className="text-xs text-gray-500 mt-0.5">Total time</p>
           </div>
           <div className="w-px h-10 bg-current opacity-20" />
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">
-              {formatDuration(result.avgTimePerQuestionSeconds)}
+              {formatDuration(Math.round(result.timeTaken / result.totalQuestions))}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">Avg / question</p>
           </div>
@@ -190,11 +197,7 @@ export default function ExamResultsPage() {
           <p className="text-xs text-gray-500 mt-1">Incorrect answers</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-5 text-center">
-          <p className="text-3xl font-bold text-gray-900">
-            {result.totalQuestions > 0
-              ? Math.round(result.rawScore / result.totalQuestions * 100)
-              : 0}%
-          </p>
+          <p className="text-3xl font-bold text-gray-900">{result.percentageScore}%</p>
           <p className="text-xs text-gray-500 mt-1">Accuracy</p>
         </div>
       </div>

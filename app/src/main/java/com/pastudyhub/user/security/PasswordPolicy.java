@@ -1,6 +1,7 @@
 package com.pastudyhub.user.security;
 
 import lombok.Getter;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +30,7 @@ import java.util.List;
  * <p>This class is a pure domain object — no Spring dependency, fully unit-testable
  * in isolation without any Spring context.
  */
+@Component
 public class PasswordPolicy {
 
     private static final int MIN_LENGTH = 8;

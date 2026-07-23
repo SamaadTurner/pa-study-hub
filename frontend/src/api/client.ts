@@ -34,7 +34,8 @@ apiClient.interceptors.response.use(
       if (refreshToken) {
         originalRequest._retry = true
         try {
-          const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken })
+          // Backend returns: { accessToken, refreshToken, user }
+          const { data } = await axios.post<{ accessToken: string; refreshToken: string }>(`${BASE_URL}/auth/refresh`, { refreshToken })
           localStorage.setItem(TOKEN_KEY, data.accessToken)
           localStorage.setItem(REFRESH_KEY, data.refreshToken)
           originalRequest.headers.Authorization = `Bearer ${data.accessToken}`

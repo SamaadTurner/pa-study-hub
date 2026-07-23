@@ -46,11 +46,22 @@ export default function LoginPage() {
       navigate(from, { replace: true })
     } catch (err) {
       const apiError = err as ApiError
+
+      // Handle field-level validation errors
       if (apiError?.fieldErrors) {
         setErrors(apiError.fieldErrors as FieldErrors)
-      } else {
-        notify('error', apiError?.detail ?? 'Invalid email or password.')
+        notify('error', 'Please fix the errors below.')
+        return
       }
+
+      // Handle 401 Unauthorized - show error on password field for better UX
+      if (apiError?.status === 401) {
+        setErrors({ password: 'Invalid email or password. Please try again.' })
+        return
+      }
+
+      // Handle any other errors
+      notify('error', apiError?.detail || 'Login failed. Please try again.')
     } finally {
       setLoading(false)
     }

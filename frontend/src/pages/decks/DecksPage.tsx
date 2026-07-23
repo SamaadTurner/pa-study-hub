@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useDecks } from '@/hooks/useDecks'
 import type { Deck } from '@/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
@@ -12,6 +12,7 @@ import { useNotification } from '@/contexts/NotificationContext'
 import type { ApiError } from '@/types'
 
 export default function DecksPage() {
+  const navigate = useNavigate()
   const { decks, loading, error, createDeck, deleteDeck, updateDeck } = useDecks()
   const { notify } = useNotification()
   const [searchParams, setSearchParams] = useSearchParams()

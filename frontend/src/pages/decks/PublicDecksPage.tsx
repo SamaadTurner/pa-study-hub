@@ -6,7 +6,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner'
 import EmptyState from '@/components/common/EmptyState'
 import CategoryFilter from '@/components/flashcards/CategoryFilter'
 import Button from '@/components/common/Button'
-import Badge from '@/components/common/Badge'
+import Badge, { CATEGORY_BADGE_VARIANT } from '@/components/common/Badge'
 import { useNotification } from '@/contexts/NotificationContext'
 import { getCategoryLabel } from '@/utils/categoryColors'
 
@@ -155,7 +155,9 @@ function PublicDeckCard({ deck, onClone, isCloning }: PublicDeckCardProps) {
         <h3 className="font-semibold text-gray-900 text-base leading-tight">
           {deck.title}
         </h3>
-        <Badge category={deck.category} />
+        <Badge variant={CATEGORY_BADGE_VARIANT[deck.category] || 'gray'}>
+          {getCategoryLabel(deck.category)}
+        </Badge>
       </div>
 
       {deck.description && (

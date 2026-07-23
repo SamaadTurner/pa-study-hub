@@ -186,7 +186,7 @@ export default function AiStudyPlanPage() {
           >
             {generating ? (
               <>
-                <LoadingSpinner size="sm" className="mr-2" />
+                <span className="inline-block mr-2"><LoadingSpinner size="sm" /></span>
                 Claude is creating your study plan...
               </>
             ) : (

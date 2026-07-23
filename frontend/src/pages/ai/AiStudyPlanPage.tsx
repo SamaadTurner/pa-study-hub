@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getStudyPlan } from '@/api/ai'
-import { getAnalytics } from '@/api/progress'
+import { getDashboard } from '@/api/progress'
 import type { StudyPlanResponse, ApiError } from '@/types'
 import Button from '@/components/common/Button'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
@@ -24,15 +24,15 @@ export default function AiStudyPlanPage() {
 
   async function loadWeakCategories() {
     try {
-      const analytics = await getAnalytics()
+      const dashboard = await getDashboard()
       // Get categories with accuracy < 70%, sorted by accuracy ascending
-      const weak = Object.entries(analytics.categoryAccuracy)
-        .filter(([_, accuracy]) => accuracy < 70)
-        .sort((a, b) => a[1] - b[1])
+      const weak = Object.entries(dashboard.categoryAccuracy)
+        .filter(([_, accuracy]: [string, unknown]) => (accuracy as number) < 70)
+        .sort((a, b) => (a[1] as number) - (b[1] as number))
         .map(([category]) => category)
         .slice(0, 5) // Top 5 weakest
 
-      setWeakCategories(weak.length > 0 ? weak : Object.keys(analytics.categoryAccuracy).slice(0, 3))
+      setWeakCategories(weak.length > 0 ? weak : Object.keys(dashboard.categoryAccuracy).slice(0, 3))
     } catch (err) {
       // If analytics not available, use default categories
       setWeakCategories(['CARDIOLOGY', 'PHARMACOLOGY', 'ANATOMY'])

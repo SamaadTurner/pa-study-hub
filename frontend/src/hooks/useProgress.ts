@@ -33,9 +33,9 @@ export function useTodayProgress() {
   const [error, setError]       = useState<string | null>(null)
 
   useEffect(() => {
-    progressApi.getTodayProgress()
+    progressApi.getGoalProgress()
       .then(setProgress)
-      .catch(err => setError((err as ApiError)?.detail ?? 'Failed to load today\'s progress'))
+      .catch((err: ApiError) => setError(err?.detail ?? 'Failed to load today\'s progress'))
       .finally(() => setLoading(false))
   }, [])
 

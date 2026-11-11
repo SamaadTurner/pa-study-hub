@@ -212,6 +212,5 @@ class AuthControllerIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    // ==================== PROTECTED ENDPOINTS ====================
-    // Note: JWT authentication tests removed - monolith uses X-User-Id header instead
+    // Tests for endpoints that need a token are in ProtectedEndpointsIntegrationTest
 }

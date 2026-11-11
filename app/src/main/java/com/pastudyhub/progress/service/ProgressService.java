@@ -27,7 +27,7 @@ public class ProgressService {
     private final DailyGoalRepository dailyGoalRepository;
 
     /**
-     * Logs an activity event. Called by other services (fire-and-forget POST).
+     * Saves one activity event. Called from the flashcard code when a card is reviewed.
      */
     @Transactional
     public void logActivity(LogActivityRequest request) {

@@ -7,14 +7,12 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
 /**
  * REST controller for study progress analytics and goal tracking.
- * Also exposes the internal /log endpoint used by flashcard-service and exam-service.
  */
 @RestController
 @RequestMapping("/api/v1/progress")
@@ -25,16 +23,8 @@ public class ProgressController {
 
     private final ProgressService progressService;
 
-    /**
-     * Internal endpoint called by other services to log study activity.
-     * Not exposed through the API Gateway to end users.
-     */
-    @PostMapping("/log")
-    @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Internal: log a study activity event (called by other services)")
-    public void logActivity(@Valid @RequestBody LogActivityRequest request) {
-        progressService.logActivity(request);
-    }
+    // There is no endpoint for logging activity. It is recorded by the app itself when
+    // a user reviews a card, so a client can't post made-up activity for another user.
 
     @GetMapping("/dashboard")
     @Operation(summary = "Get the full progress dashboard for the current user")

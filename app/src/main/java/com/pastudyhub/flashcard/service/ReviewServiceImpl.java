@@ -12,13 +12,14 @@ import com.pastudyhub.flashcard.model.Card;
 import com.pastudyhub.flashcard.model.ReviewSchedule;
 import com.pastudyhub.flashcard.repository.CardRepository;
 import com.pastudyhub.flashcard.repository.ReviewScheduleRepository;
+import com.pastudyhub.progress.dto.LogActivityRequest;
+import com.pastudyhub.progress.model.ActivityType;
+import com.pastudyhub.progress.service.ProgressService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -37,10 +38,7 @@ public class ReviewServiceImpl {
     private final CardRepository cardRepository;
     private final ReviewScheduleRepository reviewScheduleRepository;
     private final CardMapper cardMapper;
-    private final WebClient progressServiceClient;
-
-    @Value("${progress.service.url:http://study-progress-service:8083}")
-    private String progressServiceUrl;
+    private final ProgressService progressService;
 
     /**
      * Get cards due for review in a deck (max 20, most overdue first).
@@ -59,7 +57,7 @@ public class ReviewServiceImpl {
 
     /**
      * Submit a review for a card. Runs the SM-2 algorithm, updates the schedule,
-     * and fires an activity log to the study-progress-service.
+     * and records the review so it counts toward the user's streak and daily goal.
      */
     @Transactional
     public ReviewResponse submitReview(UUID cardId, UUID userId, ReviewRequest request) {
@@ -91,9 +89,7 @@ public class ReviewServiceImpl {
 
         reviewScheduleRepository.save(schedule);
 
-        // Fire-and-forget: log the activity to study-progress-service
-        // We don't block on this — review should succeed even if progress service is down
-        logActivityAsync(userId, card.getDeck().getCategory().name(), request.getQuality());
+        logReviewActivity(userId, card.getDeck().getCategory().name(), request.getQuality());
 
         log.debug("Review submitted: cardId={}, userId={}, quality={}, nextReview={}",
                 cardId, userId, request.getQuality(), result.nextReviewDate());
@@ -126,30 +122,27 @@ public class ReviewServiceImpl {
     }
 
     /**
-     * Asynchronously logs the review activity to study-progress-service.
-     * This is fire-and-forget — errors are logged but don't fail the review.
+     * Records one reviewed card in the activity log.
+     *
+     * <p>This used to be an HTTP call to a separate progress service. Everything is one
+     * app now, so that call went to a host that no longer exists and nothing was ever
+     * saved. Calling the service directly also means the review and the activity are
+     * saved in the same transaction, so one can't be saved without the other.
      */
-    private void logActivityAsync(UUID userId, String category, int quality) {
-        try {
-            progressServiceClient.post()
-                    .uri("/api/v1/progress/log")
-                    .bodyValue(java.util.Map.of(
-                            "userId", userId.toString(),
-                            "activityType", "FLASHCARD_REVIEW",
-                            "category", category,
-                            "durationMinutes", 0,
-                            "cardsReviewed", 1,
-                            "correctCount", quality >= 3 ? 1 : 0,
-                            "totalCount", 1
-                    ))
-                    .retrieve()
-                    .bodyToMono(Void.class)
-                    .subscribe(
-                            null,
-                            err -> log.warn("Failed to log activity to progress service: {}", err.getMessage())
-                    );
-        } catch (Exception e) {
-            log.warn("Could not contact progress service: {}", e.getMessage());
-        }
+    private void logReviewActivity(UUID userId, String category, int quality) {
+        // A quality of 3 or higher means the user got the card right
+        int correct = quality >= 3 ? 1 : 0;
+
+        LogActivityRequest activity = LogActivityRequest.builder()
+                .userId(userId)
+                .activityType(ActivityType.FLASHCARD_REVIEW)
+                .category(category)
+                .durationMinutes(0)
+                .cardsReviewed(1)
+                .correctCount(correct)
+                .totalCount(1)
+                .build();
+
+        progressService.logActivity(activity);
     }
 }

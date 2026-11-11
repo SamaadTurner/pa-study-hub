@@ -50,7 +50,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         MvcResult result = mockMvc.perform(post("/api/v1/decks")
-                        .header("X-User-Id", USER_A.toString())
+                        .header("Authorization", bearerToken(USER_A))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andDo(res -> System.out.println("Status: " + res.getResponse().getStatus()))
@@ -78,7 +78,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         mockMvc.perform(post("/api/v1/decks")
-                        .header("X-User-Id", USER_A.toString())
+                        .header("Authorization", bearerToken(USER_A))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -95,7 +95,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         mockMvc.perform(post("/api/v1/decks")
-                        .header("X-User-Id", USER_A.toString())
+                        .header("Authorization", bearerToken(USER_A))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -108,7 +108,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
     @DisplayName("GET /decks/{deckId}: 200 OK for existing deck")
     void getDeck_returns200() throws Exception {
         mockMvc.perform(get("/api/v1/decks/{deckId}", createdDeckId)
-                        .header("X-User-Id", USER_A.toString()))
+                        .header("Authorization", bearerToken(USER_A)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(createdDeckId))
                 .andExpect(jsonPath("$.title").value("Cardiology Essentials"));
@@ -119,7 +119,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
     @DisplayName("GET /decks/{deckId}: 404 Not Found for non-existent deck")
     void getDeck_notFound_returns404() throws Exception {
         mockMvc.perform(get("/api/v1/decks/{deckId}", UUID.randomUUID())
-                        .header("X-User-Id", USER_A.toString()))
+                        .header("Authorization", bearerToken(USER_A)))
                 .andExpect(status().isNotFound());
     }
 
@@ -135,7 +135,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         mockMvc.perform(put("/api/v1/decks/{deckId}", createdDeckId)
-                        .header("X-User-Id", USER_A.toString())
+                        .header("Authorization", bearerToken(USER_A))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(update)))
                 .andExpect(status().isOk())
@@ -152,7 +152,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         mockMvc.perform(put("/api/v1/decks/{deckId}", createdDeckId)
-                        .header("X-User-Id", USER_B.toString())
+                        .header("Authorization", bearerToken(USER_B))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(update)))
                 .andExpect(status().isForbidden());
@@ -165,7 +165,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
     @DisplayName("DELETE /decks/{deckId}: 403 Forbidden when non-owner tries to delete")
     void deleteDeck_nonOwner_returns403() throws Exception {
         mockMvc.perform(delete("/api/v1/decks/{deckId}", createdDeckId)
-                        .header("X-User-Id", USER_B.toString()))
+                        .header("Authorization", bearerToken(USER_B)))
                 .andExpect(status().isForbidden());
     }
 
@@ -174,7 +174,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
     @DisplayName("DELETE /decks/{deckId}: 204 No Content for owner")
     void deleteDeck_owner_returns204() throws Exception {
         mockMvc.perform(delete("/api/v1/decks/{deckId}", createdDeckId)
-                        .header("X-User-Id", USER_A.toString()))
+                        .header("Authorization", bearerToken(USER_A)))
                 .andExpect(status().isNoContent());
     }
 
@@ -183,7 +183,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
     @DisplayName("GET /decks/{deckId}: 404 after soft delete")
     void getDeck_afterSoftDelete_returns404() throws Exception {
         mockMvc.perform(get("/api/v1/decks/{deckId}", createdDeckId)
-                        .header("X-User-Id", USER_A.toString()))
+                        .header("Authorization", bearerToken(USER_A)))
                 .andExpect(status().isNotFound());
     }
 
@@ -194,6 +194,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
     @DisplayName("GET /decks/public: 200 OK — returns page (may be empty)")
     void getPublicDecks_returns200() throws Exception {
         mockMvc.perform(get("/api/v1/decks/public")
+                        .header("Authorization", bearerToken(USER_B))
                         .param("page", "0")
                         .param("size", "10"))
                 .andExpect(status().isOk())

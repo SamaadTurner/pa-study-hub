@@ -71,7 +71,7 @@ class ProgressControllerIntegrationTest extends BaseIntegrationTest {
     @DisplayName("GET /progress/dashboard: 200 OK with streak and category data")
     void getDashboard_returns200() throws Exception {
         mockMvc.perform(get("/api/v1/progress/dashboard")
-                        .header("X-User-Id", USER.toString()))
+                        .header("Authorization", bearerToken(USER)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.currentStreak").isNumber())
                 .andExpect(jsonPath("$.longestStreak").isNumber())
@@ -91,7 +91,7 @@ class ProgressControllerIntegrationTest extends BaseIntegrationTest {
     void getGoalProgress_defaultGoal_returns200() throws Exception {
         UUID newUser = UUID.randomUUID();
         mockMvc.perform(get("/api/v1/progress/goal")
-                        .header("X-User-Id", newUser.toString()))
+                        .header("Authorization", bearerToken(newUser)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.targetCardsPerDay").value(20))
                 .andExpect(jsonPath("$.targetMinutesPerDay").value(30))
@@ -108,7 +108,7 @@ class ProgressControllerIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         mockMvc.perform(put("/api/v1/progress/goal")
-                        .header("X-User-Id", USER.toString())
+                        .header("Authorization", bearerToken(USER))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -126,7 +126,7 @@ class ProgressControllerIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         mockMvc.perform(put("/api/v1/progress/goal")
-                        .header("X-User-Id", USER.toString())
+                        .header("Authorization", bearerToken(USER))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());

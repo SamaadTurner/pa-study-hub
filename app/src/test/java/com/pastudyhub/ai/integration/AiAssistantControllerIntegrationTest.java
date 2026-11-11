@@ -71,7 +71,7 @@ class AiAssistantControllerIntegrationTest extends BaseIntegrationTest {
                 "Hypertension Management", "CARDIOLOGY", 2);
 
         mockMvc.perform(post("/api/v1/ai/flashcards")
-                        .header("X-User-Id", USER_ID)
+                        .header("Authorization", bearerToken(USER_ID))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -91,7 +91,7 @@ class AiAssistantControllerIntegrationTest extends BaseIntegrationTest {
         GenerateFlashcardsRequest request = new GenerateFlashcardsRequest("", "CARDIOLOGY", 5);
 
         mockMvc.perform(post("/api/v1/ai/flashcards")
-                        .header("X-User-Id", USER_ID)
+                        .header("Authorization", bearerToken(USER_ID))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -105,7 +105,7 @@ class AiAssistantControllerIntegrationTest extends BaseIntegrationTest {
         GenerateFlashcardsRequest request = new GenerateFlashcardsRequest("Diabetes", "ENDOCRINE", 25);
 
         mockMvc.perform(post("/api/v1/ai/flashcards")
-                        .header("X-User-Id", USER_ID)
+                        .header("Authorization", bearerToken(USER_ID))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -132,7 +132,7 @@ class AiAssistantControllerIntegrationTest extends BaseIntegrationTest {
         );
 
         mockMvc.perform(post("/api/v1/ai/explain")
-                        .header("X-User-Id", USER_ID)
+                        .header("Authorization", bearerToken(USER_ID))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -148,7 +148,7 @@ class AiAssistantControllerIntegrationTest extends BaseIntegrationTest {
         ExplainAnswerRequest request = new ExplainAnswerRequest("", "A", "B", "explanation");
 
         mockMvc.perform(post("/api/v1/ai/explain")
-                        .header("X-User-Id", USER_ID)
+                        .header("Authorization", bearerToken(USER_ID))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -170,7 +170,7 @@ class AiAssistantControllerIntegrationTest extends BaseIntegrationTest {
                 List.of("Cardiology", "Pulmonology"), 30, 60);
 
         mockMvc.perform(post("/api/v1/ai/study-plan")
-                        .header("X-User-Id", USER_ID)
+                        .header("Authorization", bearerToken(USER_ID))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -186,7 +186,7 @@ class AiAssistantControllerIntegrationTest extends BaseIntegrationTest {
         StudyPlanRequest request = new StudyPlanRequest(List.of(), 30, 60);
 
         mockMvc.perform(post("/api/v1/ai/study-plan")
-                        .header("X-User-Id", USER_ID)
+                        .header("Authorization", bearerToken(USER_ID))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -207,7 +207,7 @@ class AiAssistantControllerIntegrationTest extends BaseIntegrationTest {
         ChatRequest request = new ChatRequest("What is atrial fibrillation?", null);
 
         mockMvc.perform(post("/api/v1/ai/chat")
-                        .header("X-User-Id", USER_ID)
+                        .header("Authorization", bearerToken(USER_ID))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -224,7 +224,7 @@ class AiAssistantControllerIntegrationTest extends BaseIntegrationTest {
         ChatRequest request = new ChatRequest("", null);
 
         mockMvc.perform(post("/api/v1/ai/chat")
-                        .header("X-User-Id", USER_ID)
+                        .header("Authorization", bearerToken(USER_ID))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())

@@ -74,7 +74,7 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         MvcResult result = mockMvc.perform(post("/api/v1/exams")
-                        .header("X-User-Id", USER.toString())
+                        .header("Authorization", bearerToken(USER))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -97,7 +97,7 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         mockMvc.perform(post("/api/v1/exams")
-                        .header("X-User-Id", USER.toString())
+                        .header("Authorization", bearerToken(USER))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnprocessableEntity());
@@ -110,7 +110,7 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
         StartExamRequest request = StartExamRequest.builder().questionCount(0).build();
 
         mockMvc.perform(post("/api/v1/exams")
-                        .header("X-User-Id", USER.toString())
+                        .header("Authorization", bearerToken(USER))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -123,7 +123,7 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
     @DisplayName("GET /exams/{sessionId}: 200 OK for in-progress session")
     void getExamSession_returns200() throws Exception {
         mockMvc.perform(get("/api/v1/exams/{sessionId}", sessionId)
-                        .header("X-User-Id", USER.toString()))
+                        .header("Authorization", bearerToken(USER)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(sessionId))
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
@@ -134,7 +134,7 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
     @DisplayName("GET /exams/{sessionId}: 404 for non-existent session")
     void getExamSession_notFound_returns404() throws Exception {
         mockMvc.perform(get("/api/v1/exams/{sessionId}", UUID.randomUUID())
-                        .header("X-User-Id", USER.toString()))
+                        .header("Authorization", bearerToken(USER)))
                 .andExpect(status().isNotFound());
     }
 
@@ -151,7 +151,7 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
 
         mockMvc.perform(post("/api/v1/exams/{sessionId}/questions/{questionId}/answer",
                         sessionId, questionId)
-                        .header("X-User-Id", USER.toString())
+                        .header("Authorization", bearerToken(USER))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -165,7 +165,7 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
     @DisplayName("POST /complete: 200 OK with score results and answer details")
     void completeExam_returns200WithResults() throws Exception {
         mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
-                        .header("X-User-Id", USER.toString()))
+                        .header("Authorization", bearerToken(USER)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sessionId").value(sessionId))
                 .andExpect(jsonPath("$.rawScore").isNumber())
@@ -180,7 +180,7 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
     @DisplayName("POST /complete: 409 Conflict when exam already completed")
     void completeExam_alreadyCompleted_returns409() throws Exception {
         mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
-                        .header("X-User-Id", USER.toString()))
+                        .header("Authorization", bearerToken(USER)))
                 .andExpect(status().isConflict());
     }
 
@@ -191,7 +191,7 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
     @DisplayName("GET /exams/history: 200 OK with paginated exam history")
     void getExamHistory_returns200() throws Exception {
         mockMvc.perform(get("/api/v1/exams/history")
-                        .header("X-User-Id", USER.toString())
+                        .header("Authorization", bearerToken(USER))
                         .param("page", "0")
                         .param("size", "10"))
                 .andExpect(status().isOk())

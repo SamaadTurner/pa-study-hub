@@ -18,9 +18,6 @@ import ExamPage         from '@/pages/exam/ExamPage'
 import ExamResultsPage  from '@/pages/exam/ExamResultsPage'
 import ExamHistoryPage  from '@/pages/exam/ExamHistoryPage'
 import AnalyticsPage    from '@/pages/analytics/AnalyticsPage'
-import AiChatPage       from '@/pages/ai/AiChatPage'
-import AiGeneratorPage  from '@/pages/ai/AiGeneratorPage'
-import AiStudyPlanPage  from '@/pages/ai/AiStudyPlanPage'
 
 export default function App() {
   return (
@@ -50,9 +47,6 @@ export default function App() {
                   <Route path="/exam/:sessionId"                      element={<ExamPage />} />
                   <Route path="/exam/:sessionId/results"              element={<ExamResultsPage />} />
                   <Route path="/analytics"                            element={<AnalyticsPage />} />
-                  <Route path="/ai"                                   element={<AiChatPage />} />
-                  <Route path="/ai/generate"                          element={<AiGeneratorPage />} />
-                  <Route path="/ai/study-plan"                        element={<AiStudyPlanPage />} />
                 </Route>
               </Route>
 

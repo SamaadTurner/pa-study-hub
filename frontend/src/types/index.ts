@@ -172,59 +172,6 @@ export interface UpdateGoalRequest {
   targetMinutesPerDay: number
 }
 
-// ---- AI --------------------------------------------------------------------
-
-export interface GenerateFlashcardsRequest {
-  topic: string
-  category: string
-  count: number
-}
-
-export interface GeneratedFlashcard {
-  front: string
-  back: string
-  hint?: string
-  tags: string[]
-}
-
-export interface GenerateFlashcardsResponse {
-  topic: string
-  category: string
-  requestedCount: number
-  generatedCount: number
-  flashcards: GeneratedFlashcard[]
-}
-
-export interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-}
-
-export interface ChatRequest {
-  message: string
-  sessionId?: string
-}
-
-export interface ChatResponse {
-  sessionId: string
-  userMessage: string
-  assistantReply: string
-  turnNumber: number
-}
-
-export interface StudyPlanRequest {
-  weakCategories: string[]
-  daysUntilExam: number
-  dailyMinutes: number
-}
-
-export interface StudyPlanResponse {
-  weakCategories: string[]
-  daysUntilExam: number
-  dailyMinutes: number
-  studyPlan: string
-}
-
 // ---- Common ----------------------------------------------------------------
 
 export interface ApiError {

@@ -1,13 +1,6 @@
 import { useState } from 'react'
 import type { ReviewCard } from '@/types'
 
-// The review endpoint returns front/hint/tags, but we also display back after flip.
-// The backend sends back as part of the review card response even though the type
-// definition omits it to prevent cheating. We cast to access it safely.
-interface ReviewCardWithBack extends ReviewCard {
-  back?: string
-}
-
 interface Props {
   card: ReviewCard
   isFlipped: boolean
@@ -16,7 +9,6 @@ interface Props {
 
 export default function FlashcardViewer({ card, isFlipped, onFlip }: Props) {
   const [showHint, setShowHint] = useState(false)
-  const cardWithBack = card as ReviewCardWithBack
 
   return (
     <div className="w-full max-w-2xl mx-auto select-none">
@@ -81,7 +73,7 @@ export default function FlashcardViewer({ card, isFlipped, onFlip }: Props) {
             <p className="text-xs font-semibold text-primary-400 uppercase tracking-widest mb-4">
               Answer
             </p>
-            <p className="text-lg text-gray-900 leading-relaxed whitespace-pre-wrap">{cardWithBack.back ?? ''}</p>
+            <p className="text-lg text-gray-900 leading-relaxed whitespace-pre-wrap">{card.back ?? ''}</p>
 
             {card.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 justify-center mt-4">

@@ -13,8 +13,9 @@ import java.util.UUID;
 /**
  * Base class for integration tests that require a full Spring context and database.
  *
- * <p>Uses H2 in-memory database configured in application-test.yml for fast,
- * isolated tests that don't require Docker/Testcontainers.
+ * <p>By default this uses the H2 in-memory database from application-test.yml, so
+ * the tests are fast and need nothing installed. With TEST_DATABASE=postgres the
+ * same tests run against a real PostgreSQL database (see TestProfileResolver).
  *
  * <p>All integration test classes should extend this class to inherit the
  * common test configuration.

@@ -12,7 +12,6 @@ object Versions {
     const val springBoot = "3.2.2"
     const val springCloud = "2023.0.0"
     const val jjwt = "0.12.3"
-    const val testcontainers = "1.19.4"
     const val openApi = "2.3.0"
     const val mapstruct = "1.5.5.Final"
     const val wiremock = "3.3.1"
@@ -59,9 +58,6 @@ subprojects {
         // Testing
         "testImplementation"("org.springframework.boot:spring-boot-starter-test")
         "testImplementation"("org.springframework.security:spring-security-test")
-        "testImplementation"("org.testcontainers:junit-jupiter:${Versions.testcontainers}")
-        "testImplementation"("org.testcontainers:postgresql:${Versions.testcontainers}")
-        "testImplementation"("org.testcontainers:testcontainers:${Versions.testcontainers}")
     }
 
     configurations.all {

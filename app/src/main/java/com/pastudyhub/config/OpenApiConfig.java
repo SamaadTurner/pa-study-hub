@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Configuration;
     info = @Info(
         title = "PA Study Hub API",
         version = "1.0.0",
-        description = "Unified API for PA Study Hub: flashcards, exams, progress tracking, AI assistance, and user management.",
+        description = "Unified API for PA Study Hub: flashcards, exams, progress tracking, and user management.",
         contact = @Contact(name = "Samaad Turner", url = "https://github.com/SamaadTurner/pa-study-hub")
     ),
     servers = {

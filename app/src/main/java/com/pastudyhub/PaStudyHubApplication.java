@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * PA Study Hub - Consolidated Monolith Application
  *
  * Spaced-repetition study platform for PA school students.
- * Combines flashcards, practice exams, progress tracking, and AI study assistance.
+ * Combines flashcards, practice exams, and progress tracking.
  */
 @SpringBootApplication
 public class PaStudyHubApplication {

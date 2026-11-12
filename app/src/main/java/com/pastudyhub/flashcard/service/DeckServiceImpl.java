@@ -65,7 +65,9 @@ public class DeckServiceImpl implements DeckService {
     @Transactional
     public DeckResponse createDeck(CreateDeckRequest request, UUID userId) {
         Deck deck = deckMapper.toEntity(request, userId);
-        Deck saved = deckRepository.save(deck);
+        // saveAndFlush so the created/updated dates are filled in before the response
+        // is built. With a plain save they are still null at this point.
+        Deck saved = deckRepository.saveAndFlush(deck);
         log.info("Deck created: id={}, userId={}, title={}", saved.getId(), userId, saved.getTitle());
         return deckMapper.toResponse(saved, 0, 0);
     }
@@ -83,8 +85,9 @@ public class DeckServiceImpl implements DeckService {
         if (request.getTitle() != null) deck.setTitle(request.getTitle().trim());
         if (request.getDescription() != null) deck.setDescription(request.getDescription());
         if (request.getCategory() != null) deck.setCategory(request.getCategory());
+        deck.setPublic(request.isPublic());
 
-        Deck saved = deckRepository.save(deck);
+        Deck saved = deckRepository.saveAndFlush(deck);
         int cardCount = cardRepository.countByDeckIdAndNotDeleted(deckId);
         int cardsToReview = countCardsToReview(deckId, userId);
         return deckMapper.toResponse(saved, cardCount, cardsToReview);
@@ -135,7 +138,7 @@ public class DeckServiceImpl implements DeckService {
                 .isPublic(false)
                 .isDeleted(false)
                 .build();
-        Deck savedClone = deckRepository.save(clone);
+        Deck savedClone = deckRepository.saveAndFlush(clone);
 
         // Clone all cards from the source deck
         List<UUID> sourceCardIds = cardRepository.findCardIdsByDeckId(sourceDeckId);

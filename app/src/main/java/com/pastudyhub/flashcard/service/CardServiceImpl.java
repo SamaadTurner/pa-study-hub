@@ -58,7 +58,8 @@ public class CardServiceImpl {
         }
 
         Card card = cardMapper.toEntity(request, deck);
-        Card saved = cardRepository.save(card);
+        // saveAndFlush so createdAt is filled in before the response is built
+        Card saved = cardRepository.saveAndFlush(card);
         log.info("Card created: id={}, deckId={}", saved.getId(), deckId);
         return cardMapper.toResponse(saved, null);
     }

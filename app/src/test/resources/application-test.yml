@@ -33,7 +33,6 @@ logging:
     com.pastudyhub: INFO
     org.springframework.web: WARN
     org.hibernate: WARN
-    org.testcontainers: WARN
 
 # JWT Configuration for tests
 jwt:

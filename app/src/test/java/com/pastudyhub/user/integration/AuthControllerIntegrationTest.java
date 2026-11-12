@@ -20,8 +20,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Integration tests for AuthController.
- *
- * <p>Uses Testcontainers PostgreSQL via BaseIntegrationTest for full database compatibility.
  */
 @DisplayName("AuthController Integration Tests")
 class AuthControllerIntegrationTest extends BaseIntegrationTest {

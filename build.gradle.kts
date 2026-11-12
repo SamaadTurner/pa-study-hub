@@ -14,7 +14,6 @@ object Versions {
     const val jjwt = "0.12.3"
     const val testcontainers = "1.19.4"
     const val openApi = "2.3.0"
-    const val anthropic = "1.+"
     const val mapstruct = "1.5.5.Final"
     const val wiremock = "3.3.1"
 }

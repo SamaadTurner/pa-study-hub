@@ -40,14 +40,3 @@ jwt:
   secret: test-jwt-secret-key-must-be-at-least-32-characters-long-for-hs256
   access-token-expiry-ms: 900000
   refresh-token-expiry-days: 7
-
-# Anthropic API (mocked in tests)
-anthropic:
-  api-key: test-api-key
-  model: claude-sonnet-4-20250514
-  max-tokens: 4096
-
-# AI Rate Limiting (lenient for tests)
-ai:
-  daily-token-budget-per-user: 1000000
-  rate-limit-requests-per-minute: 1000

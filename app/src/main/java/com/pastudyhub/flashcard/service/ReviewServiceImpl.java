@@ -7,10 +7,13 @@ import com.pastudyhub.flashcard.engine.ReviewResult;
 import com.pastudyhub.flashcard.engine.SpacedRepetitionEngine;
 import com.pastudyhub.flashcard.exception.CardNotFoundException;
 import com.pastudyhub.flashcard.exception.DeckNotFoundException;
+import com.pastudyhub.flashcard.exception.UnauthorizedDeckAccessException;
 import com.pastudyhub.flashcard.mapper.CardMapper;
 import com.pastudyhub.flashcard.model.Card;
+import com.pastudyhub.flashcard.model.Deck;
 import com.pastudyhub.flashcard.model.ReviewSchedule;
 import com.pastudyhub.flashcard.repository.CardRepository;
+import com.pastudyhub.flashcard.repository.DeckRepository;
 import com.pastudyhub.flashcard.repository.ReviewScheduleRepository;
 import com.pastudyhub.progress.dto.LogActivityRequest;
 import com.pastudyhub.progress.model.ActivityType;
@@ -24,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,24 +39,51 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ReviewServiceImpl {
 
+    // Most cards handed out for one review session
+    private static final int MAX_CARDS_PER_SESSION = 20;
+
     private final CardRepository cardRepository;
+    private final DeckRepository deckRepository;
     private final ReviewScheduleRepository reviewScheduleRepository;
     private final CardMapper cardMapper;
     private final ProgressService progressService;
 
     /**
-     * Get cards due for review in a deck (max 20, most overdue first).
+     * Get the cards to study in a deck right now (max 20).
+     *
+     * <p>Cards that are due come first, most overdue first. If there is room left,
+     * cards the user has never reviewed are added, oldest first. Without the second
+     * part a brand new deck would never have anything to review, because a card only
+     * gets a schedule after its first review.
      */
     @Transactional(readOnly = true)
     public List<CardResponse> getCardsForReview(UUID deckId, UUID userId) {
-        List<ReviewSchedule> dueSchedules = reviewScheduleRepository.findDueForReview(
-                deckId, userId, LocalDate.now(), PageRequest.of(0, 20));
+        Deck deck = deckRepository.findByIdAndNotDeleted(deckId)
+                .orElseThrow(() -> new DeckNotFoundException(deckId));
 
-        // Also find cards that have NEVER been reviewed (no ReviewSchedule yet)
-        // Get all card IDs in the deck and find those without a schedule for this user
-        return dueSchedules.stream()
-                .map(schedule -> cardMapper.toResponse(schedule.getCard(), schedule))
-                .toList();
+        // You can study your own decks and public ones, but not someone else's private deck
+        if (!deck.isPublic() && !deck.getUserId().equals(userId)) {
+            throw new UnauthorizedDeckAccessException();
+        }
+
+        List<CardResponse> cards = new ArrayList<>();
+
+        List<ReviewSchedule> dueSchedules = reviewScheduleRepository.findDueForReview(
+                deckId, userId, LocalDate.now(), PageRequest.of(0, MAX_CARDS_PER_SESSION));
+        for (ReviewSchedule schedule : dueSchedules) {
+            cards.add(cardMapper.toResponse(schedule.getCard(), schedule));
+        }
+
+        int roomLeft = MAX_CARDS_PER_SESSION - cards.size();
+        if (roomLeft > 0) {
+            List<Card> newCards = cardRepository.findNeverReviewed(deckId, userId, PageRequest.of(0, roomLeft));
+            for (Card card : newCards) {
+                // No schedule yet, so the response has no review info
+                cards.add(cardMapper.toResponse(card, null));
+            }
+        }
+
+        return cards;
     }
 
     /**

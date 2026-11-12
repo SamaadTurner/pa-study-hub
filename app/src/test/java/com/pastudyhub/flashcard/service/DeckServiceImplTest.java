@@ -90,7 +90,7 @@ class DeckServiceImplTest {
                 .build();
 
         when(deckMapper.toEntity(request, userId)).thenReturn(deck);
-        when(deckRepository.save(deck)).thenReturn(deck);
+        when(deckRepository.saveAndFlush(deck)).thenReturn(deck);
         when(deckMapper.toResponse(deck, 0, 0)).thenReturn(deckResponse);
 
         DeckResponse result = deckService.createDeck(request, userId);
@@ -100,7 +100,7 @@ class DeckServiceImplTest {
         assertThat(result.getCardCount()).isEqualTo(0);
         assertThat(result.getCardsToReview()).isEqualTo(0);
 
-        verify(deckRepository).save(deck);
+        verify(deckRepository).saveAndFlush(deck);
     }
 
     // ---- getDeck -----------------------------------------------------------
@@ -140,7 +140,7 @@ class DeckServiceImplTest {
                 .build();
 
         when(deckRepository.findByIdAndNotDeleted(deckId)).thenReturn(Optional.of(deck));
-        when(deckRepository.save(deck)).thenReturn(deck);
+        when(deckRepository.saveAndFlush(deck)).thenReturn(deck);
         when(cardRepository.countByDeckIdAndNotDeleted(deckId)).thenReturn(3);
         when(reviewScheduleRepository.countDueForReview(eq(deckId), eq(userId), any())).thenReturn(1);
 
@@ -155,7 +155,7 @@ class DeckServiceImplTest {
         DeckResponse result = deckService.updateDeck(deckId, request, userId);
 
         assertThat(result.getTitle()).isEqualTo("Updated Title");
-        verify(deckRepository).save(deck);
+        verify(deckRepository).saveAndFlush(deck);
     }
 
     @Test
@@ -167,7 +167,7 @@ class DeckServiceImplTest {
         assertThatThrownBy(() -> deckService.updateDeck(deckId, new CreateDeckRequest(), differentUserId))
                 .isInstanceOf(UnauthorizedDeckAccessException.class);
 
-        verify(deckRepository, never()).save(any());
+        verify(deckRepository, never()).saveAndFlush(any());
     }
 
     // ---- deleteDeck --------------------------------------------------------

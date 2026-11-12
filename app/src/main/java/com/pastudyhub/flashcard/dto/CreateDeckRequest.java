@@ -1,5 +1,6 @@
 package com.pastudyhub.flashcard.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.pastudyhub.flashcard.model.MedicalCategory;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -26,6 +27,10 @@ public class CreateDeckRequest {
     @NotNull(message = "Category is required")
     private MedicalCategory category;
 
+    // Read from "isPublic" in the request body. Without the annotation the field
+    // would only be filled from a property called "public", so the checkbox in the
+    // deck form was ignored and every deck was saved as private.
+    @JsonProperty("isPublic")
     @Builder.Default
     private boolean isPublic = false;
 }

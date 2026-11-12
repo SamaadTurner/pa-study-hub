@@ -62,8 +62,8 @@ public class ReviewServiceImpl {
                 .orElseThrow(() -> new DeckNotFoundException(deckId));
 
         // You can study your own decks and public ones, but not someone else's private deck
-        if (!deck.isPublic() && !deck.getUserId().equals(userId)) {
-            throw new UnauthorizedDeckAccessException();
+        if (!deck.canBeViewedBy(userId)) {
+            throw new UnauthorizedDeckAccessException("You do not have permission to view this deck");
         }
 
         List<CardResponse> cards = new ArrayList<>();
@@ -94,6 +94,11 @@ public class ReviewServiceImpl {
     public ReviewResponse submitReview(UUID cardId, UUID userId, ReviewRequest request) {
         Card card = cardRepository.findByIdAndNotDeleted(cardId)
                 .orElseThrow(() -> new CardNotFoundException(cardId));
+
+        // Same rule as reading the deck: no reviewing cards from someone else's private deck
+        if (!card.getDeck().canBeViewedBy(userId)) {
+            throw new UnauthorizedDeckAccessException("You do not have permission to view this deck");
+        }
 
         // Find or create the review schedule for this user+card combination
         ReviewSchedule schedule = reviewScheduleRepository

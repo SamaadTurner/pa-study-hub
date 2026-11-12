@@ -56,6 +56,8 @@ public class DeckServiceImpl implements DeckService {
     public DeckResponse getDeck(UUID deckId, UUID userId) {
         Deck deck = deckRepository.findByIdAndNotDeleted(deckId)
                 .orElseThrow(() -> new DeckNotFoundException(deckId));
+        checkCanView(deck, userId);
+
         int cardCount = cardRepository.countByDeckIdAndNotDeleted(deckId);
         int cardsToReview = countCardsToReview(deckId, userId);
         return deckMapper.toResponse(deck, cardCount, cardsToReview);
@@ -125,9 +127,7 @@ public class DeckServiceImpl implements DeckService {
         Deck source = deckRepository.findByIdAndNotDeleted(sourceDeckId)
                 .orElseThrow(() -> new DeckNotFoundException(sourceDeckId));
 
-        if (!source.isPublic() && !source.getUserId().equals(userId)) {
-            throw new UnauthorizedDeckAccessException();
-        }
+        checkCanView(source, userId);
 
         // Create a new deck for this user
         Deck clone = Deck.builder()
@@ -166,8 +166,9 @@ public class DeckServiceImpl implements DeckService {
     @Override
     @Transactional(readOnly = true)
     public DeckStatsResponse getDeckStats(UUID deckId, UUID userId) {
-        deckRepository.findByIdAndNotDeleted(deckId)
+        Deck deck = deckRepository.findByIdAndNotDeleted(deckId)
                 .orElseThrow(() -> new DeckNotFoundException(deckId));
+        checkCanView(deck, userId);
 
         int totalCards = cardRepository.countByDeckIdAndNotDeleted(deckId);
         int cardsDueToday = countCardsToReview(deckId, userId);
@@ -180,6 +181,14 @@ public class DeckServiceImpl implements DeckService {
                 .cardsMastered(cardsMastered)
                 .averageEaseFactor(avgEaseFactor != null ? avgEaseFactor : 2.5)
                 .build();
+    }
+
+    // A private deck can only be opened by its owner. Before this check anyone who was
+    // logged in and had the deck's ID could read it.
+    private void checkCanView(Deck deck, UUID userId) {
+        if (!deck.canBeViewedBy(userId)) {
+            throw new UnauthorizedDeckAccessException("You do not have permission to view this deck");
+        }
     }
 
     // Cards to study today: the ones that are due plus the ones never reviewed.

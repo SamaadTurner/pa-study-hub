@@ -73,4 +73,12 @@ public class Deck {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    /**
+     * Who is allowed to look at this deck and its cards: the owner always,
+     * and everyone else only when the deck is public.
+     */
+    public boolean canBeViewedBy(UUID viewerId) {
+        return isPublic || userId.equals(viewerId);
+    }
 }

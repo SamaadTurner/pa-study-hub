@@ -107,6 +107,10 @@ npm run dev
 # All backend tests
 ./gradlew test
 
+# Same tests against a real PostgreSQL database, with the schema built by the
+# Flyway migrations. The database gets wiped, so point it at an empty one.
+TEST_DATABASE=postgres \nTEST_DB_URL=jdbc:postgresql://localhost:5432/pa_study_hub_test \nTEST_DB_USERNAME=postgres TEST_DB_PASSWORD=postgres \n./gradlew :app:test
+
 # Backend tests with coverage report
 ./gradlew jacocoTestReport
 # Open: app/build/reports/jacoco/test/html/index.html

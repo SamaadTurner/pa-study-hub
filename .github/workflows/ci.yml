@@ -52,10 +52,22 @@ jobs:
         env:
           JWT_SECRET: test-jwt-secret-for-ci-must-be-at-least-32-chars
 
-      - name: Run backend tests
+      - name: Run backend tests (H2)
         run: ./gradlew :app:test --no-daemon
         env:
           JWT_SECRET: test-jwt-secret-for-ci-must-be-at-least-32-chars
+
+      # Same tests again, this time against the postgres service above, with the
+      # schema built by the Flyway migrations. cleanTest makes Gradle run them
+      # again instead of reusing the H2 result.
+      - name: Run backend tests (PostgreSQL)
+        run: ./gradlew :app:cleanTest :app:test --no-daemon
+        env:
+          JWT_SECRET: test-jwt-secret-for-ci-must-be-at-least-32-chars
+          TEST_DATABASE: postgres
+          TEST_DB_URL: jdbc:postgresql://localhost:5432/test_db
+          TEST_DB_USERNAME: test_user
+          TEST_DB_PASSWORD: test_pass
 
       - name: Upload test reports
         if: failure()

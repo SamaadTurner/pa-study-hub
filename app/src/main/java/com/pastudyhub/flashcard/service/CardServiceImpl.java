@@ -37,8 +37,13 @@ public class CardServiceImpl {
 
     @Transactional(readOnly = true)
     public Page<CardResponse> getCardsForDeck(UUID deckId, UUID userId, int page, int size) {
-        deckRepository.findByIdAndNotDeleted(deckId)
+        Deck deck = deckRepository.findByIdAndNotDeleted(deckId)
                 .orElseThrow(() -> new DeckNotFoundException(deckId));
+
+        // The cards of a private deck are only for its owner
+        if (!deck.canBeViewedBy(userId)) {
+            throw new UnauthorizedDeckAccessException("You do not have permission to view this deck");
+        }
 
         return cardRepository.findByDeckIdAndNotDeleted(deckId, PageRequest.of(page, size))
                 .map(card -> {

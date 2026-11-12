@@ -21,7 +21,7 @@ import java.util.UUID;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
+@ActiveProfiles(resolver = TestProfileResolver.class)
 public abstract class BaseIntegrationTest {
 
     @Autowired

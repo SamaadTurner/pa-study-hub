@@ -1,0 +1,25 @@
+# Extra settings for running the integration tests against a real PostgreSQL
+# database instead of H2. Turned on by setting TEST_DATABASE=postgres
+# (see TestProfileResolver). These override application-test.yml.
+#
+# With this profile the schema comes from the Flyway migrations, the same way it
+# does in production, and Hibernate only checks that the entities match it.
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${TEST_DB_URL:jdbc:postgresql://localhost:5432/pa_study_hub_test}
+    username: ${TEST_DB_USERNAME:postgres}
+    password: ${TEST_DB_PASSWORD:postgres}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # Lets PostgresTestConfig wipe the test database before each run
+    clean-disabled: false

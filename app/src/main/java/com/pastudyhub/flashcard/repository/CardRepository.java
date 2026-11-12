@@ -39,6 +39,25 @@ public interface CardRepository extends JpaRepository<Card, UUID> {
     int countByDeckIdAndNotDeleted(@Param("deckId") UUID deckId);
 
     /**
+     * Find cards in a deck that this user has never reviewed, oldest first.
+     * A card only gets a review schedule after its first review, so "never reviewed"
+     * means there is no schedule row for this user and card.
+     *
+     * <p>Safe: parameterized JPQL.
+     */
+    @Query("SELECT c FROM Card c WHERE c.deck.id = :deckId AND c.isDeleted = false " +
+           "AND NOT EXISTS (SELECT rs.id FROM ReviewSchedule rs WHERE rs.card = c AND rs.userId = :userId) " +
+           "ORDER BY c.createdAt ASC")
+    List<Card> findNeverReviewed(@Param("deckId") UUID deckId, @Param("userId") UUID userId, Pageable pageable);
+
+    /**
+     * Count cards in a deck that this user has never reviewed.
+     */
+    @Query("SELECT COUNT(c) FROM Card c WHERE c.deck.id = :deckId AND c.isDeleted = false " +
+           "AND NOT EXISTS (SELECT rs.id FROM ReviewSchedule rs WHERE rs.card = c AND rs.userId = :userId)")
+    int countNeverReviewed(@Param("deckId") UUID deckId, @Param("userId") UUID userId);
+
+    /**
      * Find all card IDs in a deck (used for batch operations like deck cloning).
      *
      * <p>Safe: parameterized JPQL.

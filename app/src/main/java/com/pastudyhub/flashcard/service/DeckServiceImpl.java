@@ -46,8 +46,7 @@ public class DeckServiceImpl implements DeckService {
         return deckRepository.findByUserIdAndNotDeleted(userId, category, pageable)
                 .map(deck -> {
                     int cardCount = cardRepository.countByDeckIdAndNotDeleted(deck.getId());
-                    int cardsToReview = reviewScheduleRepository.countDueForReview(
-                            deck.getId(), userId, LocalDate.now());
+                    int cardsToReview = countCardsToReview(deck.getId(), userId);
                     return deckMapper.toResponse(deck, cardCount, cardsToReview);
                 });
     }
@@ -58,7 +57,7 @@ public class DeckServiceImpl implements DeckService {
         Deck deck = deckRepository.findByIdAndNotDeleted(deckId)
                 .orElseThrow(() -> new DeckNotFoundException(deckId));
         int cardCount = cardRepository.countByDeckIdAndNotDeleted(deckId);
-        int cardsToReview = reviewScheduleRepository.countDueForReview(deckId, userId, LocalDate.now());
+        int cardsToReview = countCardsToReview(deckId, userId);
         return deckMapper.toResponse(deck, cardCount, cardsToReview);
     }
 
@@ -87,7 +86,7 @@ public class DeckServiceImpl implements DeckService {
 
         Deck saved = deckRepository.save(deck);
         int cardCount = cardRepository.countByDeckIdAndNotDeleted(deckId);
-        int cardsToReview = reviewScheduleRepository.countDueForReview(deckId, userId, LocalDate.now());
+        int cardsToReview = countCardsToReview(deckId, userId);
         return deckMapper.toResponse(saved, cardCount, cardsToReview);
     }
 
@@ -157,7 +156,8 @@ public class DeckServiceImpl implements DeckService {
 
         int cardCount = cardRepository.countByDeckIdAndNotDeleted(savedClone.getId());
         log.info("Deck cloned: sourceId={}, cloneId={}, userId={}", sourceDeckId, savedClone.getId(), userId);
-        return deckMapper.toResponse(savedClone, cardCount, 0);
+        // Every card in a fresh copy is new to this user, so all of them are ready to study
+        return deckMapper.toResponse(savedClone, cardCount, cardCount);
     }
 
     @Override
@@ -167,7 +167,7 @@ public class DeckServiceImpl implements DeckService {
                 .orElseThrow(() -> new DeckNotFoundException(deckId));
 
         int totalCards = cardRepository.countByDeckIdAndNotDeleted(deckId);
-        int cardsDueToday = reviewScheduleRepository.countDueForReview(deckId, userId, LocalDate.now());
+        int cardsDueToday = countCardsToReview(deckId, userId);
         int cardsMastered = reviewScheduleRepository.countMastered(deckId, userId);
         Double avgEaseFactor = reviewScheduleRepository.findAverageEaseFactorForDeck(deckId, userId);
 
@@ -177,5 +177,13 @@ public class DeckServiceImpl implements DeckService {
                 .cardsMastered(cardsMastered)
                 .averageEaseFactor(avgEaseFactor != null ? avgEaseFactor : 2.5)
                 .build();
+    }
+
+    // Cards to study today: the ones that are due plus the ones never reviewed.
+    // This has to match what ReviewServiceImpl.getCardsForReview hands out.
+    private int countCardsToReview(UUID deckId, UUID userId) {
+        int due = reviewScheduleRepository.countDueForReview(deckId, userId, LocalDate.now());
+        int neverReviewed = cardRepository.countNeverReviewed(deckId, userId);
+        return due + neverReviewed;
     }
 }

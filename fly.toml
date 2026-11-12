@@ -1,7 +1,0 @@
-# PA Study Hub - Fly.io Deployment Configuration
-# This is the main configuration file
-# Individual services will be deployed separately
-
-# Note: Fly.io supports multi-service deployments
-# Each service gets its own fly.toml in its directory
-# See deploy/fly/ for individual service configs

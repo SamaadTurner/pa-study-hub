@@ -30,13 +30,6 @@ const ACTIONS: QuickAction[] = [
     description: 'Add your own flashcards',
     color: 'hover:bg-green-50 hover:border-green-300',
   },
-  {
-    label: 'AI Tutor',
-    icon: '✨',
-    path: '/ai',
-    description: 'Chat or generate cards',
-    color: 'hover:bg-yellow-50 hover:border-yellow-300',
-  },
 ]
 
 export default function QuickActions() {
@@ -45,7 +38,7 @@ export default function QuickActions() {
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-5">
       <h3 className="text-sm font-semibold text-gray-700 mb-3">Quick Actions</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {ACTIONS.map(action => (
           <button
             key={action.path}

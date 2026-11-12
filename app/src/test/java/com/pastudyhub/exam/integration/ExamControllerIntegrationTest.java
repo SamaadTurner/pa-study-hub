@@ -34,6 +34,8 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
     private static String questionId;
     private static String correctOptionId;
 
+    // H2 starts with no questions, so the test adds one. On PostgreSQL the migrations
+    // already put practice questions in the table and nothing is added here.
     @BeforeEach
     void seedQuestions() {
         if (questionRepository.count() == 0) {
@@ -55,10 +57,7 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
                     .question(q).text("Klebsiella pneumoniae").isCorrect(false).orderIndex(3).build();
 
             q.getAnswerOptions().addAll(java.util.List.of(correct, wrong1, wrong2, wrong3));
-            Question saved = questionRepository.save(q);
-            questionId = saved.getId().toString();
-            correctOptionId = saved.getAnswerOptions().stream()
-                    .filter(AnswerOption::isCorrect).findFirst().get().getId().toString();
+            questionRepository.save(q);
         }
     }
 
@@ -84,8 +83,19 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.questions[0].explanation").doesNotExist())
                 .andReturn();
 
-        sessionId = objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+        var session = objectMapper.readTree(result.getResponse().getContentAsString());
+        sessionId = session.get("id").asText();
         assertThat(sessionId).isNotBlank();
+
+        // Remember which question the exam picked and what its right answer is.
+        // The exam picks at random, so the tests can't assume it is the one seeded above.
+        questionId = session.get("questions").get(0).get("id").asText();
+        correctOptionId = answerOptionRepository.findByQuestionId(UUID.fromString(questionId)).stream()
+                .filter(AnswerOption::isCorrect)
+                .findFirst()
+                .orElseThrow()
+                .getId()
+                .toString();
     }
 
     @Test
@@ -168,8 +178,8 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
                         .header("Authorization", bearerToken(USER)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sessionId").value(sessionId))
-                .andExpect(jsonPath("$.rawScore").isNumber())
-                .andExpect(jsonPath("$.scorePercent").isNumber())
+                .andExpect(jsonPath("$.rawScore").value(1))
+                .andExpect(jsonPath("$.scorePercent").value(100.0))
                 .andExpect(jsonPath("$.performanceBand").isString())
                 .andExpect(jsonPath("$.answerDetails").isArray())
                 .andExpect(jsonPath("$.answerDetails[0].explanation").isString());

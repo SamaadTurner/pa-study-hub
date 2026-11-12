@@ -59,6 +59,7 @@ export interface ReviewCard {
   id: string
   deckId: string
   front: string
+  back: string
   hint?: string
   tags: string[]
 }

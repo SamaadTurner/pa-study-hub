@@ -19,7 +19,7 @@ export default function StreakWidget({ currentStreak, longestStreak, totalStudyD
         </div>
         <div className="text-right">
           <p className="text-xs text-gray-500">Best</p>
-          <p className="text-lg font-semibold text-orange-600">{longestStreak} days</p>
+          <p className="text-lg font-semibold text-orange-600">{longestStreak} {longestStreak === 1 ? 'day' : 'days'}</p>
         </div>
       </div>
       <div className="mt-3 pt-3 border-t border-orange-200">

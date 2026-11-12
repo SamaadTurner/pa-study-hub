@@ -154,6 +154,8 @@ export async function getDueCards(deckId: string): Promise<ReviewCard[]> {
     id: card.id,
     deckId: card.deckId,
     front: card.front,
+    // the answer, shown when the card is flipped
+    back: card.back,
     hint: card.hint,
     tags: card.tags || []
   }))

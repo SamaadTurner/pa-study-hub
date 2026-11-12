@@ -83,7 +83,7 @@ public class ScoringEngine {
     }
 
     /**
-     * Returns IDs of questions answered incorrectly, for AI explanation feature.
+     * Returns IDs of questions answered incorrectly.
      */
     public List<java.util.UUID> getIncorrectQuestionIds() {
         return answers.stream()

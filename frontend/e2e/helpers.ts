@@ -72,14 +72,53 @@ export async function openDeck(page: Page, title: string) {
 }
 
 // Adds a card to the deck that is open right now
-export async function addCard(page: Page, front: string, back: string) {
+export async function addCard(page: Page, front: string, back: string, hint?: string) {
   await page.getByRole('button', { name: /Add a Card|\+ Add Card/ }).first().click()
   await expect(page).toHaveURL(/\/cards\/new$/)
 
   await page.getByPlaceholder('What are the classic symptoms of left-sided heart failure?').fill(front)
   await page.getByPlaceholder(/^Dyspnea, orthopnea/).fill(back)
+  if (hint) {
+    await page.getByPlaceholder(/^Think about what happens/).fill(hint)
+  }
   await page.getByRole('button', { name: 'Save Card' }).click()
 
   await expect(page).toHaveURL(/\/decks\/[0-9a-f-]{36}$/)
   await expect(page.getByText(front)).toBeVisible()
+}
+
+// Makes a deck with the given cards and leaves the browser on the deck's page
+export async function createDeckWithCards(
+  page: Page,
+  title: string,
+  cards: { front: string; back: string; hint?: string }[],
+) {
+  await createDeck(page, title)
+  await openDeck(page, title)
+  for (const card of cards) {
+    await addCard(page, card.front, card.back, card.hint)
+  }
+}
+
+export interface ExamChoices {
+  // The category's name as shown on the setup page, for example 'Cardiology'
+  category: string
+  questions: 5 | 10 | 20 | 30
+  timeLimit?: '15 min' | '30 min' | '60 min'
+}
+
+// Fills in the exam setup page, starts the exam and waits for the first question.
+// The starter question bank only has questions for Cardiology, Pharmacology and
+// Pulmonology (10 each), so the tests stick to those.
+export async function startExam(page: Page, choices: ExamChoices) {
+  await page.goto('/exam')
+  await page.getByLabel(choices.category, { exact: true }).check()
+  await page.getByRole('button', { name: String(choices.questions), exact: true }).click()
+  if (choices.timeLimit) {
+    await page.getByRole('button', { name: choices.timeLimit }).click()
+  }
+  await page.getByRole('button', { name: /Start Exam/ }).click()
+
+  await expect(page).toHaveURL(/\/exam\/[0-9a-f-]{36}$/)
+  await expect(page.getByText(`Question 1 / ${choices.questions}`)).toBeVisible()
 }

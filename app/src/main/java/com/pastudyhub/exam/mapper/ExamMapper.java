@@ -76,8 +76,28 @@ public class ExamMapper {
                 .build();
     }
 
-    public ExamAnswerDetailResponse toAnswerDetail(ExamAnswer answer) {
-        Question q = answer.getQuestion();
+    /**
+     * One question of a finished exam with the right answer shown.
+     *
+     * @param answer the user's answer to this question, or null if they never answered it
+     */
+    public ExamAnswerDetailResponse toAnswerDetail(Question q, ExamAnswer answer) {
+        if (answer == null) {
+            // Not answered: nothing was picked, and it counts as wrong
+            return ExamAnswerDetailResponse.builder()
+                    .questionId(q.getId())
+                    .stem(q.getStem())
+                    .clinicalVignette(q.getClinicalVignette())
+                    .answerOptions(q.getAnswerOptions().stream()
+                            .map(opt -> toAnswerOptionResponse(opt, true))
+                            .toList())
+                    .selectedOptionId(null)
+                    .isCorrect(false)
+                    .explanation(q.getExplanation())
+                    .timeSpentSeconds(null)
+                    .build();
+        }
+
         return ExamAnswerDetailResponse.builder()
                 .questionId(q.getId())
                 .stem(q.getStem())
@@ -93,8 +113,13 @@ public class ExamMapper {
     }
 
     public ExamResultResponse toResultResponse(ExamSession session, ScoreResult scoreResult,
-                                                List<ExamAnswer> answers) {
+                                                List<Question> questions, List<ExamAnswer> answers) {
         PerformanceBand band = scoreResult.performanceBand();
+
+        Map<UUID, ExamAnswer> answerByQuestion = new HashMap<>();
+        for (ExamAnswer answer : answers) {
+            answerByQuestion.put(answer.getQuestion().getId(), answer);
+        }
         return ExamResultResponse.builder()
                 .sessionId(session.getId())
                 .rawScore(scoreResult.rawScore())
@@ -106,8 +131,9 @@ public class ExamMapper {
                 .avgTimePerQuestionSeconds(scoreResult.avgTimePerQuestionSeconds())
                 .durationSeconds(session.getDurationSeconds())
                 .completedAt(session.getCompletedAt())
-                .answerDetails(answers.stream()
-                        .map(this::toAnswerDetail)
+                // One entry per question of the exam, in exam order, answered or not
+                .answerDetails(questions.stream()
+                        .map(q -> toAnswerDetail(q, answerByQuestion.get(q.getId())))
                         .toList())
                 .build();
     }

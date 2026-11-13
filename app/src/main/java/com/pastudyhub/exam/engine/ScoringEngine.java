@@ -1,63 +1,100 @@
 package com.pastudyhub.exam.engine;
 
 import com.pastudyhub.exam.model.ExamAnswer;
-import com.pastudyhub.exam.model.ExamSession;
-import com.pastudyhub.exam.model.QuestionCategory;
+import com.pastudyhub.exam.model.Question;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.UUID;
 
 /**
- * Calculates exam scores from a completed set of exam answers.
+ * Calculates the score of an exam from its questions and the answers that were given.
+ *
+ * <p>The score is out of every question in the exam, not just the answered ones. A
+ * question with no answer counts as wrong. The engine used to look only at the
+ * answers, so skipping the hard questions gave a better percentage, and an exam with
+ * no answers at all could not be scored.
  *
  * <p>This is a pure domain object — no Spring dependencies, fully testable
  * with plain JUnit without a Spring context.
  */
 public class ScoringEngine {
 
+    private final List<Question> questions;
     private final List<ExamAnswer> answers;
 
-    public ScoringEngine(List<ExamAnswer> answers) {
-        if (answers == null || answers.isEmpty()) {
-            throw new IllegalArgumentException("Cannot score an exam with no answers");
+    // IDs of the questions that have a correct answer
+    private final Set<UUID> correctQuestionIds = new HashSet<>();
+
+    /**
+     * @param questions every question of the exam
+     * @param answers   the answers the user gave; may be empty, and may be fewer than the questions
+     */
+    public ScoringEngine(List<Question> questions, List<ExamAnswer> answers) {
+        if (questions == null || answers == null) {
+            throw new IllegalArgumentException("Questions and answers are both required to score an exam");
         }
+        this.questions = questions;
         this.answers = answers;
+
+        for (ExamAnswer answer : answers) {
+            if (answer.isCorrect()) {
+                correctQuestionIds.add(answer.getQuestion().getId());
+            }
+        }
     }
 
     /**
      * Calculates the total number of correct answers.
      */
     public int calculateRawScore() {
-        return (int) answers.stream().filter(ExamAnswer::isCorrect).count();
+        int correct = 0;
+        for (Question question : questions) {
+            if (correctQuestionIds.contains(question.getId())) {
+                correct++;
+            }
+        }
+        return correct;
     }
 
     /**
-     * Calculates score as a percentage (0.0–100.0), rounded to 1 decimal.
+     * Calculates score as a percentage (0.0–100.0) of all questions, rounded to 1 decimal.
      */
     public double calculateScorePercent() {
-        if (answers.isEmpty()) return 0.0;
-        double percent = (double) calculateRawScore() / answers.size() * 100.0;
+        if (questions.isEmpty()) return 0.0;
+        double percent = (double) calculateRawScore() / questions.size() * 100.0;
         return Math.round(percent * 10.0) / 10.0;
     }
 
     /**
      * Returns a map of category -> percentage correct for that category.
-     * Only includes categories that appear in the answer set.
+     * Every category that has a question in the exam is included, also when
+     * none of its questions were answered (that category is then 0%).
      */
     public Map<String, Double> calculateCategoryBreakdown() {
-        Map<QuestionCategory, List<ExamAnswer>> byCategory = answers.stream()
-                .collect(Collectors.groupingBy(a -> a.getQuestion().getCategory()));
+        // TreeMap so the categories always come out in the same (alphabetical) order
+        Map<String, Integer> totalByCategory = new TreeMap<>();
+        Map<String, Integer> correctByCategory = new TreeMap<>();
 
-        return byCategory.entrySet().stream()
-                .collect(Collectors.toMap(
-                        e -> e.getKey().name(),
-                        e -> {
-                            long correct = e.getValue().stream().filter(ExamAnswer::isCorrect).count();
-                            double pct = (double) correct / e.getValue().size() * 100.0;
-                            return Math.round(pct * 10.0) / 10.0;
-                        }
-                ));
+        for (Question question : questions) {
+            String category = question.getCategory().name();
+            totalByCategory.merge(category, 1, Integer::sum);
+            if (correctQuestionIds.contains(question.getId())) {
+                correctByCategory.merge(category, 1, Integer::sum);
+            }
+        }
+
+        Map<String, Double> breakdown = new TreeMap<>();
+        for (Map.Entry<String, Integer> entry : totalByCategory.entrySet()) {
+            int correct = correctByCategory.getOrDefault(entry.getKey(), 0);
+            double pct = (double) correct / entry.getValue() * 100.0;
+            breakdown.put(entry.getKey(), Math.round(pct * 10.0) / 10.0);
+        }
+        return breakdown;
     }
 
     /**
@@ -72,7 +109,8 @@ public class ScoringEngine {
     }
 
     /**
-     * Calculates the average time spent per question in seconds.
+     * Calculates the average time spent per answered question in seconds.
+     * Questions without an answer have no time, so they are left out.
      */
     public double calculateAvgTimePerQuestion() {
         return answers.stream()
@@ -83,13 +121,16 @@ public class ScoringEngine {
     }
 
     /**
-     * Returns IDs of questions answered incorrectly.
+     * Returns IDs of the questions that were answered wrong or not answered at all.
      */
-    public List<java.util.UUID> getIncorrectQuestionIds() {
-        return answers.stream()
-                .filter(a -> !a.isCorrect())
-                .map(a -> a.getQuestion().getId())
-                .collect(Collectors.toList());
+    public List<UUID> getIncorrectQuestionIds() {
+        List<UUID> incorrect = new ArrayList<>();
+        for (Question question : questions) {
+            if (!correctQuestionIds.contains(question.getId())) {
+                incorrect.add(question.getId());
+            }
+        }
+        return incorrect;
     }
 
     /**
@@ -98,7 +139,7 @@ public class ScoringEngine {
     public ScoreResult calculate() {
         return new ScoreResult(
                 calculateRawScore(),
-                answers.size(),
+                questions.size(),
                 calculateScorePercent(),
                 calculateCategoryBreakdown(),
                 getPerformanceBand(),

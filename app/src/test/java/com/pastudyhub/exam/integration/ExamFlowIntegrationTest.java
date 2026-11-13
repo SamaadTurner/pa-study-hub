@@ -273,6 +273,202 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
         assertThat(loadExam(owner, started.get("id").asText()).get("answeredCount").asInt()).isZero();
     }
 
+    // ---- finishing and results ---------------------------------------------
+
+    @Test
+    @DisplayName("An exam can be finished without answering anything and scores 0")
+    void completeWithNoAnswers_scoresZero() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 3);
+
+        // This used to be a 500 error, which is what happened when the timer ran out
+        // before the first answer
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", started.get("id").asText())
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rawScore").value(0))
+                .andExpect(jsonPath("$.totalQuestions").value(3))
+                .andExpect(jsonPath("$.scorePercent").value(0.0))
+                .andExpect(jsonPath("$.performanceBand").value("NEEDS_IMPROVEMENT"))
+                .andExpect(jsonPath("$.answerDetails", hasSize(3)))
+                .andExpect(jsonPath("$.answerDetails[0].selectedOptionId").doesNotExist())
+                .andExpect(jsonPath("$.answerDetails[0].isCorrect").value(false))
+                // the results do show the right answer and the explanation
+                .andExpect(jsonPath("$.answerDetails[0].answerOptions[0].isCorrect").value(true))
+                .andExpect(jsonPath("$.answerDetails[0].explanation").isString());
+    }
+
+    @Test
+    @DisplayName("Questions left unanswered count as wrong")
+    void unansweredQuestions_countAsWrong() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 4);
+        String sessionId = started.get("id").asText();
+        JsonNode questions = started.get("questions");
+
+        // Two right, one wrong, and the last one is never answered
+        answer(user, sessionId, questions.get(0).get("id").asText(), correctOptionOf(questions.get(0)))
+                .andExpect(status().isOk());
+        answer(user, sessionId, questions.get(1).get("id").asText(), correctOptionOf(questions.get(1)))
+                .andExpect(status().isOk());
+        answer(user, sessionId, questions.get(2).get("id").asText(), wrongOptionOf(questions.get(2)))
+                .andExpect(status().isOk());
+
+        // 2 out of 4. Before, the unanswered question was left out and this was 2 out of 3.
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rawScore").value(2))
+                .andExpect(jsonPath("$.totalQuestions").value(4))
+                .andExpect(jsonPath("$.scorePercent").value(50.0))
+                .andExpect(jsonPath("$.categoryBreakdown.DERMATOLOGY").value(50.0))
+                // every question is listed, in the order of the exam
+                .andExpect(jsonPath("$.answerDetails", hasSize(4)))
+                .andExpect(jsonPath("$.answerDetails[0].questionId").value(questions.get(0).get("id").asText()))
+                .andExpect(jsonPath("$.answerDetails[3].questionId").value(questions.get(3).get("id").asText()))
+                .andExpect(jsonPath("$.answerDetails[0].isCorrect").value(true))
+                .andExpect(jsonPath("$.answerDetails[1].isCorrect").value(true))
+                .andExpect(jsonPath("$.answerDetails[2].isCorrect").value(false))
+                .andExpect(jsonPath("$.answerDetails[2].selectedOptionId").isString())
+                .andExpect(jsonPath("$.answerDetails[3].isCorrect").value(false))
+                .andExpect(jsonPath("$.answerDetails[3].selectedOptionId").doesNotExist())
+                // the field is called isCorrect, not "correct"
+                .andExpect(jsonPath("$.answerDetails[0].correct").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("Answering everything right scores 100%")
+    void allRight_scores100() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 2);
+        String sessionId = started.get("id").asText();
+
+        for (JsonNode question : started.get("questions")) {
+            answer(user, sessionId, question.get("id").asText(), correctOptionOf(question))
+                    .andExpect(status().isOk());
+        }
+
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rawScore").value(2))
+                .andExpect(jsonPath("$.scorePercent").value(100.0))
+                .andExpect(jsonPath("$.performanceBand").value("EXCELLENT"))
+                .andExpect(jsonPath("$.avgTimePerQuestionSeconds").value(20.0));
+    }
+
+    @Test
+    @DisplayName("The results of a finished exam can be loaded again later")
+    void results_canBeLoadedAgain() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 2);
+        String sessionId = started.get("id").asText();
+        JsonNode first = started.get("questions").get(0);
+        answer(user, sessionId, first.get("id").asText(), correctOptionOf(first)).andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/exams/{sessionId}/result", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sessionId").value(sessionId))
+                .andExpect(jsonPath("$.rawScore").value(1))
+                .andExpect(jsonPath("$.totalQuestions").value(2))
+                .andExpect(jsonPath("$.scorePercent").value(50.0))
+                .andExpect(jsonPath("$.completedAt").isString())
+                .andExpect(jsonPath("$.answerDetails", hasSize(2)));
+
+        // and it is in the history with the same score
+        mockMvc.perform(get("/api/v1/exams/history")
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].id").value(sessionId))
+                .andExpect(jsonPath("$.content[0].status").value("COMPLETED"))
+                .andExpect(jsonPath("$.content[0].score").value(1))
+                .andExpect(jsonPath("$.content[0].scorePercent").value(50.0));
+    }
+
+    @Test
+    @DisplayName("An exam that is still running has no results yet")
+    void resultOfRunningExam_returns409() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 1);
+
+        mockMvc.perform(get("/api/v1/exams/{sessionId}/result", started.get("id").asText())
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("An abandoned exam has no results and can't be finished afterwards")
+    void abandonedExam_hasNoResults() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 2);
+        String sessionId = started.get("id").asText();
+
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/abandon", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isNoContent());
+
+        // Asking for results used to be a 500 error here
+        mockMvc.perform(get("/api/v1/exams/{sessionId}/result", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("A finished exam can't be answered or finished a second time")
+    void finishedExam_isClosed() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 1);
+        String sessionId = started.get("id").asText();
+        JsonNode question = started.get("questions").get(0);
+
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isOk());
+
+        // Trying to slip in the right answer after seeing the results
+        answer(user, sessionId, question.get("id").asText(), correctOptionOf(question))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(get("/api/v1/exams/{sessionId}/result", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(jsonPath("$.rawScore").value(0));
+    }
+
+    @Test
+    @DisplayName("Another user can't finish someone else's exam or see its results")
+    void otherUser_cantFinishOrSeeResults() throws Exception {
+        UUID owner = UUID.randomUUID();
+        UUID otherUser = UUID.randomUUID();
+        JsonNode started = startExam(owner, 1);
+        String sessionId = started.get("id").asText();
+
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
+                        .header("Authorization", bearerToken(otherUser)))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
+                        .header("Authorization", bearerToken(owner)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/exams/{sessionId}/result", sessionId)
+                        .header("Authorization", bearerToken(otherUser)))
+                .andExpect(status().isNotFound());
+    }
+
     // ---- helpers -----------------------------------------------------------
 
     // The same body the exam setup page sends, limited to the questions added above

@@ -40,20 +40,104 @@ class ScoringEngineTest {
         return a;
     }
 
+    private Question question(QuestionCategory category) {
+        return Question.builder()
+                .id(UUID.randomUUID())
+                .category(category)
+                .difficulty(DifficultyLevel.MEDIUM)
+                .stem("Test question")
+                .explanation("Test explanation")
+                .isActive(true)
+                .build();
+    }
+
+    // An exam where every question was answered: the questions are the answered ones
+    private ScoringEngine engineFor(List<ExamAnswer> answers) {
+        List<Question> questions = new ArrayList<>();
+        for (ExamAnswer answer : answers) {
+            questions.add(answer.getQuestion());
+        }
+        return new ScoringEngine(questions, answers);
+    }
+
     // ---- Constructor -------------------------------------------------------
 
     @Test
-    @DisplayName("Constructor throws for null answers")
-    void constructor_nullAnswers_throws() {
-        assertThatThrownBy(() -> new ScoringEngine(null))
+    @DisplayName("Constructor throws for null questions or null answers")
+    void constructor_nulls_throw() {
+        assertThatThrownBy(() -> new ScoringEngine(null, new ArrayList<>()))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new ScoringEngine(new ArrayList<>(), null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    // ---- Unanswered questions ----------------------------------------------
+
     @Test
-    @DisplayName("Constructor throws for empty answers")
-    void constructor_emptyAnswers_throws() {
-        assertThatThrownBy(() -> new ScoringEngine(new ArrayList<>()))
-                .isInstanceOf(IllegalArgumentException.class);
+    @DisplayName("An exam with no answers scores 0 instead of failing")
+    void noAnswers_scoresZero() {
+        List<Question> questions = List.of(
+                question(QuestionCategory.CARDIOLOGY),
+                question(QuestionCategory.CARDIOLOGY),
+                question(QuestionCategory.PULMONOLOGY)
+        );
+
+        ScoreResult result = new ScoringEngine(questions, new ArrayList<>()).calculate();
+
+        assertThat(result.rawScore()).isEqualTo(0);
+        assertThat(result.totalQuestions()).isEqualTo(3);
+        assertThat(result.scorePercent()).isEqualTo(0.0);
+        assertThat(result.performanceBand()).isEqualTo(PerformanceBand.NEEDS_IMPROVEMENT);
+        assertThat(result.avgTimePerQuestionSeconds()).isEqualTo(0.0);
+        assertThat(result.incorrectQuestionIds()).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("Unanswered questions count as wrong in the score")
+    void unanswered_countAsWrong() {
+        ExamAnswer right = answer(QuestionCategory.CARDIOLOGY, true);
+        ExamAnswer alsoRight = answer(QuestionCategory.CARDIOLOGY, true);
+        Question skipped = question(QuestionCategory.CARDIOLOGY);
+        Question alsoSkipped = question(QuestionCategory.CARDIOLOGY);
+
+        List<Question> questions = List.of(
+                right.getQuestion(), alsoRight.getQuestion(), skipped, alsoSkipped);
+
+        ScoreResult result = new ScoringEngine(questions, List.of(right, alsoRight)).calculate();
+
+        // 2 right out of 4 questions, not 2 out of the 2 that were answered
+        assertThat(result.rawScore()).isEqualTo(2);
+        assertThat(result.totalQuestions()).isEqualTo(4);
+        assertThat(result.scorePercent()).isEqualTo(50.0);
+        assertThat(result.incorrectCount()).isEqualTo(2);
+        assertThat(result.incorrectQuestionIds())
+                .containsExactlyInAnyOrder(skipped.getId(), alsoSkipped.getId());
+    }
+
+    @Test
+    @DisplayName("A category where nothing was answered shows up as 0%")
+    void unansweredCategory_isZeroPercent() {
+        ExamAnswer cardioRight = answer(QuestionCategory.CARDIOLOGY, true);
+        Question pulmSkipped = question(QuestionCategory.PULMONOLOGY);
+
+        Map<String, Double> breakdown = new ScoringEngine(
+                List.of(cardioRight.getQuestion(), pulmSkipped), List.of(cardioRight))
+                .calculateCategoryBreakdown();
+
+        assertThat(breakdown.get("CARDIOLOGY")).isEqualTo(100.0);
+        assertThat(breakdown.get("PULMONOLOGY")).isEqualTo(0.0);
+    }
+
+    @Test
+    @DisplayName("Average time only uses the questions that were answered")
+    void avgTime_ignoresUnanswered() {
+        ExamAnswer answered = answerWithTime(QuestionCategory.CARDIOLOGY, true, 40);
+        Question skipped = question(QuestionCategory.CARDIOLOGY);
+
+        double avg = new ScoringEngine(List.of(answered.getQuestion(), skipped), List.of(answered))
+                .calculateAvgTimePerQuestion();
+
+        assertThat(avg).isEqualTo(40.0);
     }
 
     // ---- calculateRawScore -------------------------------------------------
@@ -66,7 +150,7 @@ class ScoringEngineTest {
                 answer(QuestionCategory.CARDIOLOGY, true),
                 answer(QuestionCategory.CARDIOLOGY, true)
         );
-        assertThat(new ScoringEngine(answers).calculateRawScore()).isEqualTo(3);
+        assertThat(engineFor(answers).calculateRawScore()).isEqualTo(3);
     }
 
     @Test
@@ -76,7 +160,7 @@ class ScoringEngineTest {
                 answer(QuestionCategory.CARDIOLOGY, false),
                 answer(QuestionCategory.CARDIOLOGY, false)
         );
-        assertThat(new ScoringEngine(answers).calculateRawScore()).isEqualTo(0);
+        assertThat(engineFor(answers).calculateRawScore()).isEqualTo(0);
     }
 
     @Test
@@ -89,7 +173,7 @@ class ScoringEngineTest {
                 answer(QuestionCategory.CARDIOLOGY, false),
                 answer(QuestionCategory.CARDIOLOGY, true)
         );
-        assertThat(new ScoringEngine(answers).calculateRawScore()).isEqualTo(3);
+        assertThat(engineFor(answers).calculateRawScore()).isEqualTo(3);
     }
 
     // ---- calculateScorePercent ---------------------------------------------
@@ -101,7 +185,7 @@ class ScoringEngineTest {
                 answer(QuestionCategory.CARDIOLOGY, true),
                 answer(QuestionCategory.CARDIOLOGY, true)
         );
-        assertThat(new ScoringEngine(answers).calculateScorePercent()).isEqualTo(100.0);
+        assertThat(engineFor(answers).calculateScorePercent()).isEqualTo(100.0);
     }
 
     @Test
@@ -111,7 +195,7 @@ class ScoringEngineTest {
                 answer(QuestionCategory.CARDIOLOGY, false),
                 answer(QuestionCategory.CARDIOLOGY, false)
         );
-        assertThat(new ScoringEngine(answers).calculateScorePercent()).isEqualTo(0.0);
+        assertThat(engineFor(answers).calculateScorePercent()).isEqualTo(0.0);
     }
 
     @Test
@@ -124,7 +208,7 @@ class ScoringEngineTest {
                 answer(QuestionCategory.CARDIOLOGY, false),
                 answer(QuestionCategory.CARDIOLOGY, false)
         );
-        assertThat(new ScoringEngine(answers).calculateScorePercent()).isEqualTo(60.0);
+        assertThat(engineFor(answers).calculateScorePercent()).isEqualTo(60.0);
     }
 
     // ---- getPerformanceBand ------------------------------------------------
@@ -139,7 +223,7 @@ class ScoringEngineTest {
                 answer(QuestionCategory.CARDIOLOGY, true),
                 answer(QuestionCategory.CARDIOLOGY, false)  // 80%
         );
-        assertThat(new ScoringEngine(answers).getPerformanceBand()).isEqualTo(PerformanceBand.EXCELLENT);
+        assertThat(engineFor(answers).getPerformanceBand()).isEqualTo(PerformanceBand.EXCELLENT);
     }
 
     @Test
@@ -157,7 +241,7 @@ class ScoringEngineTest {
                 answer(QuestionCategory.CARDIOLOGY, false),
                 answer(QuestionCategory.CARDIOLOGY, false)  // 70%
         );
-        assertThat(new ScoringEngine(answers).getPerformanceBand()).isEqualTo(PerformanceBand.GOOD);
+        assertThat(engineFor(answers).getPerformanceBand()).isEqualTo(PerformanceBand.GOOD);
     }
 
     @Test
@@ -170,7 +254,7 @@ class ScoringEngineTest {
                 answer(QuestionCategory.CARDIOLOGY, false),
                 answer(QuestionCategory.CARDIOLOGY, false)  // 20%
         );
-        assertThat(new ScoringEngine(answers).getPerformanceBand()).isEqualTo(PerformanceBand.NEEDS_IMPROVEMENT);
+        assertThat(engineFor(answers).getPerformanceBand()).isEqualTo(PerformanceBand.NEEDS_IMPROVEMENT);
     }
 
     // ---- calculateCategoryBreakdown ----------------------------------------
@@ -185,7 +269,7 @@ class ScoringEngineTest {
                 answer(QuestionCategory.PHARMACOLOGY, true),
                 answer(QuestionCategory.PHARMACOLOGY, true)  // Pharmacology: 2/2 = 100%
         );
-        Map<String, Double> breakdown = new ScoringEngine(answers).calculateCategoryBreakdown();
+        Map<String, Double> breakdown = engineFor(answers).calculateCategoryBreakdown();
 
         assertThat(breakdown).containsKey("CARDIOLOGY");
         assertThat(breakdown).containsKey("PHARMACOLOGY");
@@ -203,7 +287,7 @@ class ScoringEngineTest {
                 answerWithTime(QuestionCategory.CARDIOLOGY, false, 60),
                 answerWithTime(QuestionCategory.CARDIOLOGY, true, 90)  // avg = 60s
         );
-        assertThat(new ScoringEngine(answers).calculateAvgTimePerQuestion()).isEqualTo(60.0);
+        assertThat(engineFor(answers).calculateAvgTimePerQuestion()).isEqualTo(60.0);
     }
 
     // ---- calculate (full ScoreResult) ------------------------------------
@@ -216,7 +300,7 @@ class ScoringEngineTest {
                 answer(QuestionCategory.CARDIOLOGY, false),
                 answer(QuestionCategory.CARDIOLOGY, false)
         );
-        ScoreResult result = new ScoringEngine(answers).calculate();
+        ScoreResult result = engineFor(answers).calculate();
 
         assertThat(result.rawScore()).isEqualTo(1);
         assertThat(result.totalQuestions()).isEqualTo(3);
@@ -244,7 +328,7 @@ class ScoringEngineTest {
                 ExamAnswer.builder().id(UUID.randomUUID()).question(wrong2).isCorrect(false).build()
         );
 
-        ScoreResult result = new ScoringEngine(answers).calculate();
+        ScoreResult result = engineFor(answers).calculate();
         assertThat(result.incorrectQuestionIds()).containsExactlyInAnyOrder(wrongId1, wrongId2);
         assertThat(result.incorrectQuestionIds()).doesNotContain(correctId);
     }

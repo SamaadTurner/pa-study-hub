@@ -15,8 +15,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class SubmitAnswerRequest {
 
-    @NotNull(message = "selectedOptionId is required (use null UUID to indicate skipped question)")
-    private UUID selectedOptionId;  // null = question skipped
+    // A skipped question is simply never sent, so an answer always has an option
+    @NotNull(message = "selectedOptionId is required")
+    private UUID selectedOptionId;
 
     @Min(value = 0, message = "timeSpentSeconds cannot be negative")
     private int timeSpentSeconds;

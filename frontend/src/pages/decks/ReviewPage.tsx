@@ -62,9 +62,12 @@ export default function ReviewPage() {
       const card = cards[currentIndex]
       if (!card || submitting) return
 
+      // Time from when this card appeared until it was rated
+      const timeSpentSeconds = Math.round((Date.now() - startTimeRef.current) / 1000)
+
       setSubmitting(true)
       try {
-        await submitReview(card.id, quality)
+        await submitReview(card.id, quality, timeSpentSeconds)
       } catch {
         notify('error', 'Failed to submit review. Your progress may not be saved.')
       } finally {

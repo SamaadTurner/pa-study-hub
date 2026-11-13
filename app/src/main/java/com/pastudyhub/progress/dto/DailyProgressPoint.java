@@ -15,6 +15,8 @@ import java.time.LocalDate;
 public class DailyProgressPoint {
     private LocalDate date;
     private int cardsReviewed;
+    /** Questions from practice exams finished that day. */
+    private int examQuestions;
     private int minutesStudied;
     private double accuracy;
     private boolean goalMet;

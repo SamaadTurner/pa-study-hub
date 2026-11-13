@@ -23,4 +23,11 @@ public class ReviewRequest {
     @Min(value = 1, message = "Quality must be at least 1 (Again)")
     @Max(value = 5, message = "Quality must be at most 5 (Easy)")
     private Integer quality;
+
+    /**
+     * How long the user spent on the card, in seconds. Optional, so a review
+     * without it is still accepted and just counts as no time.
+     */
+    @Min(value = 0, message = "Time spent can't be negative")
+    private Integer timeSpentSeconds;
 }

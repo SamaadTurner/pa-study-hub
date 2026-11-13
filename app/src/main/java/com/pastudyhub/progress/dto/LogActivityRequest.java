@@ -27,7 +27,7 @@ public class LogActivityRequest {
     private String category;
 
     @Min(0)
-    private int durationMinutes;
+    private int durationSeconds;
 
     @Min(0)
     private int cardsReviewed;

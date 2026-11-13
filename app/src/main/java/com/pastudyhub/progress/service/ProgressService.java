@@ -35,7 +35,7 @@ public class ProgressService {
                 .userId(request.getUserId())
                 .activityType(request.getActivityType())
                 .category(request.getCategory())
-                .durationMinutes(request.getDurationMinutes())
+                .durationSeconds(request.getDurationSeconds())
                 .cardsReviewed(request.getCardsReviewed())
                 .correctCount(request.getCorrectCount())
                 .totalCount(request.getTotalCount())
@@ -105,7 +105,8 @@ public class ProgressService {
     private GoalProgressResponse buildTodayGoal(UUID userId, DailyGoal goal) {
         LocalDate today = LocalDate.now();
         int cardsToday = orZero(activityLogRepository.sumTotalCountForDate(userId, today));
-        int minutesToday = orZero(activityLogRepository.sumDurationMinutesForDate(userId, today));
+        // Time is saved in seconds. Only full minutes count toward the goal.
+        int minutesToday = orZero(activityLogRepository.sumDurationSecondsForDate(userId, today)) / 60;
 
         double cardPct = goal.getTargetCardsPerDay() > 0
                 ? Math.min(100.0, (double) cardsToday / goal.getTargetCardsPerDay() * 100)
@@ -141,7 +142,7 @@ public class ProgressService {
             List<ActivityLog> dayLogs = logsByDate.getOrDefault(date, List.of());
 
             int cards = dayLogs.stream().mapToInt(ActivityLog::getTotalCount).sum();
-            int minutes = dayLogs.stream().mapToInt(ActivityLog::getDurationMinutes).sum();
+            int minutes = dayLogs.stream().mapToInt(ActivityLog::getDurationSeconds).sum() / 60;
             int correct = dayLogs.stream().mapToInt(ActivityLog::getCorrectCount).sum();
             double accuracy = cards > 0 ? Math.round((double) correct / cards * 1000.0) / 10.0 : 0.0;
             boolean goalMet = cards >= goal.getTargetCardsPerDay() || minutes >= goal.getTargetMinutesPerDay();

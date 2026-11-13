@@ -56,10 +56,12 @@ public class PerformanceAnalyzer {
     }
 
     /**
-     * Returns total study time in minutes.
+     * Returns total study time in whole minutes. The logs hold seconds, so they
+     * are added up first and only then turned into minutes.
      */
     public int totalStudyMinutes() {
-        return logs.stream().mapToInt(ActivityLog::getDurationMinutes).sum();
+        int totalSeconds = logs.stream().mapToInt(ActivityLog::getDurationSeconds).sum();
+        return totalSeconds / 60;
     }
 
     /**

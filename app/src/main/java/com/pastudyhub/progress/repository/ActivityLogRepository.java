@@ -30,9 +30,9 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, UUID> 
            "WHERE a.userId = :userId AND a.activityDate = :date")
     Integer sumTotalCountForDate(@Param("userId") UUID userId, @Param("date") LocalDate date);
 
-    @Query("SELECT SUM(a.durationMinutes) FROM ActivityLog a " +
+    @Query("SELECT SUM(a.durationSeconds) FROM ActivityLog a " +
            "WHERE a.userId = :userId AND a.activityDate = :date")
-    Integer sumDurationMinutesForDate(@Param("userId") UUID userId, @Param("date") LocalDate date);
+    Integer sumDurationSecondsForDate(@Param("userId") UUID userId, @Param("date") LocalDate date);
 
     List<ActivityLog> findByUserIdAndActivityType(UUID userId, ActivityType activityType);
 }

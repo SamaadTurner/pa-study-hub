@@ -40,10 +40,13 @@ public class ActivityLog {
     @Column(nullable = false, length = 50)
     private String category;
 
-    /** Duration of the study session in minutes (0 for quick reviews). */
+    /**
+     * Time spent, in seconds. Kept in seconds because a single flashcard takes
+     * less than a minute, and whole minutes would round every review down to 0.
+     */
     @Column(nullable = false)
     @Builder.Default
-    private int durationMinutes = 0;
+    private int durationSeconds = 0;
 
     /** For flashcard reviews: total cards reviewed. */
     @Column(nullable = false)

@@ -5,6 +5,7 @@ import com.pastudyhub.exam.engine.QuestionRandomizer;
 import com.pastudyhub.exam.engine.ScoreResult;
 import com.pastudyhub.exam.engine.ScoringEngine;
 import com.pastudyhub.exam.exception.ExamAlreadyCompletedException;
+import com.pastudyhub.exam.exception.ExamNotCompletedException;
 import com.pastudyhub.exam.exception.ExamSessionNotFoundException;
 import com.pastudyhub.exam.exception.InsufficientQuestionsException;
 import com.pastudyhub.exam.exception.InvalidExamAnswerException;
@@ -141,8 +142,11 @@ public class ExamServiceImpl implements ExamService {
             throw new ExamAlreadyCompletedException(sessionId);
         }
 
+        // Score against every question of the exam. Unanswered ones count as wrong,
+        // and an exam can be finished without any answers (for example when time runs out).
+        List<Question> questions = findQuestionsOfExam(sessionId);
         List<ExamAnswer> answers = examAnswerRepository.findByExamSessionId(sessionId);
-        ScoringEngine engine = new ScoringEngine(answers);
+        ScoringEngine engine = new ScoringEngine(questions, answers);
         ScoreResult result = engine.calculate();
 
         session.setStatus(ExamStatus.COMPLETED);
@@ -154,10 +158,10 @@ public class ExamServiceImpl implements ExamService {
 
         examSessionRepository.save(session);
 
-        log.info("Exam completed: sessionId={}, userId={}, score={}/{}  ({:.1f}%)",
+        log.info("Exam completed: sessionId={}, userId={}, score={}/{} ({}%)",
                 sessionId, userId, result.rawScore(), result.totalQuestions(), result.scorePercent());
 
-        return examMapper.toResultResponse(session, result, answers);
+        return examMapper.toResultResponse(session, result, questions, answers);
     }
 
     @Override
@@ -175,13 +179,15 @@ public class ExamServiceImpl implements ExamService {
     @Transactional(readOnly = true)
     public ExamResultResponse getExamResult(UUID sessionId, UUID userId) {
         ExamSession session = findSessionForUser(sessionId, userId);
-        if (session.getStatus() == ExamStatus.IN_PROGRESS) {
-            throw new ExamAlreadyCompletedException(sessionId);
+        // Only a finished exam has results. One that is still running or was abandoned does not.
+        if (session.getStatus() != ExamStatus.COMPLETED) {
+            throw new ExamNotCompletedException(sessionId);
         }
+        List<Question> questions = findQuestionsOfExam(sessionId);
         List<ExamAnswer> answers = examAnswerRepository.findByExamSessionId(sessionId);
-        ScoringEngine engine = new ScoringEngine(answers);
+        ScoringEngine engine = new ScoringEngine(questions, answers);
         ScoreResult result = engine.calculate();
-        return examMapper.toResultResponse(session, result, answers);
+        return examMapper.toResultResponse(session, result, questions, answers);
     }
 
     @Override

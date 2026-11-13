@@ -6,6 +6,8 @@ import com.pastudyhub.exam.engine.ScoreResult;
 import com.pastudyhub.exam.model.*;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +75,20 @@ public class ExamMapper {
                         })
                         .toList())
                 .answeredCount(pickedOptionByQuestion.size())
+                .timeRemainingSeconds(secondsRemaining(session))
                 .build();
+    }
+
+    // The page used to restart its countdown from the full time limit every time it
+    // loaded, so the limit never really ran out. The server knows when the exam
+    // started, so it says how much time is left.
+    private Integer secondsRemaining(ExamSession session) {
+        if (session.getTimeLimitMinutes() <= 0 || session.getStatus() != ExamStatus.IN_PROGRESS) {
+            return null;
+        }
+        long secondsUsed = ChronoUnit.SECONDS.between(session.getStartedAt(), LocalDateTime.now());
+        long secondsLeft = session.getTimeLimitMinutes() * 60L - secondsUsed;
+        return (int) Math.max(0, secondsLeft);
     }
 
     /**

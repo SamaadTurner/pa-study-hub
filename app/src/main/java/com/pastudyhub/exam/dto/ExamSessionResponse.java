@@ -30,4 +30,10 @@ public class ExamSessionResponse {
     private List<QuestionResponse> questions;
     /** Progress: how many answered so far */
     private int answeredCount;
+
+    /**
+     * Seconds left on the clock, worked out on the server from the start time.
+     * Null when the exam has no time limit or is no longer running.
+     */
+    private Integer timeRemainingSeconds;
 }

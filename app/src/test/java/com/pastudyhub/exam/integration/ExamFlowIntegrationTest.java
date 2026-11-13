@@ -186,6 +186,93 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    // ---- answers that don't fit the exam ------------------------------------
+
+    @Test
+    @DisplayName("A question that is not in the exam can't be answered")
+    void answerQuestionFromOutsideTheExam_returns400() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 2);
+        String sessionId = started.get("id").asText();
+
+        // Two of the four dermatology questions were picked, so find one that was not
+        List<String> picked = questionIds(started);
+        Question outside = questionRepository.findByCategoryAndIsActiveTrue(QuestionCategory.DERMATOLOGY).stream()
+                .filter(question -> !picked.contains(question.getId().toString()))
+                .findFirst()
+                .orElseThrow();
+        String itsRightOption = answerOptionRepository.findByQuestionId(outside.getId()).stream()
+                .filter(AnswerOption::isCorrect)
+                .findFirst()
+                .orElseThrow()
+                .getId()
+                .toString();
+
+        answer(user, sessionId, outside.getId().toString(), itsRightOption)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("That question is not part of this exam"));
+
+        assertThat(loadExam(user, sessionId).get("answeredCount").asInt()).isZero();
+    }
+
+    @Test
+    @DisplayName("An option from a different question is rejected")
+    void answerWithOptionOfAnotherQuestion_returns400() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 2);
+        String sessionId = started.get("id").asText();
+        JsonNode first = started.get("questions").get(0);
+        JsonNode second = started.get("questions").get(1);
+
+        // The right option of question two, sent as the answer to question one.
+        // This used to be saved and counted as a correct answer.
+        answer(user, sessionId, first.get("id").asText(), correctOptionOf(second))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("That answer option does not belong to this question"));
+
+        assertThat(loadExam(user, sessionId).get("answeredCount").asInt()).isZero();
+    }
+
+    @Test
+    @DisplayName("An option that doesn't exist is rejected")
+    void answerWithUnknownOption_returns400() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 1);
+        String questionId = started.get("questions").get(0).get("id").asText();
+
+        answer(user, started.get("id").asText(), questionId, UUID.randomUUID().toString())
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("An answer without an option is rejected")
+    void answerWithoutOption_returns400() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 1);
+        String questionId = started.get("questions").get(0).get("id").asText();
+
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/questions/{questionId}/answer",
+                        started.get("id").asText(), questionId)
+                        .header("Authorization", bearerToken(user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"timeSpentSeconds\": 5}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Another user can't answer in someone else's exam")
+    void otherUser_cantAnswer() throws Exception {
+        UUID owner = UUID.randomUUID();
+        UUID otherUser = UUID.randomUUID();
+        JsonNode started = startExam(owner, 1);
+        JsonNode question = started.get("questions").get(0);
+
+        answer(otherUser, started.get("id").asText(), question.get("id").asText(), correctOptionOf(question))
+                .andExpect(status().isNotFound());
+
+        assertThat(loadExam(owner, started.get("id").asText()).get("answeredCount").asInt()).isZero();
+    }
+
     // ---- helpers -----------------------------------------------------------
 
     // The same body the exam setup page sends, limited to the questions added above

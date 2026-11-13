@@ -7,6 +7,7 @@ import com.pastudyhub.exam.engine.ScoringEngine;
 import com.pastudyhub.exam.exception.ExamAlreadyCompletedException;
 import com.pastudyhub.exam.exception.ExamSessionNotFoundException;
 import com.pastudyhub.exam.exception.InsufficientQuestionsException;
+import com.pastudyhub.exam.exception.InvalidExamAnswerException;
 import com.pastudyhub.exam.mapper.ExamMapper;
 import com.pastudyhub.exam.model.*;
 import com.pastudyhub.exam.repository.AnswerOptionRepository;
@@ -100,17 +101,20 @@ public class ExamServiceImpl implements ExamService {
             throw new ExamAlreadyCompletedException(sessionId);
         }
 
-        Question question = questionRepository.findById(questionId)
-                .orElseThrow(() -> new ExamSessionNotFoundException(questionId));
+        // The question has to be one of the questions picked for this exam
+        ExamQuestion examQuestion = examQuestionRepository
+                .findByExamSessionIdAndQuestionId(sessionId, questionId)
+                .orElseThrow(() -> new InvalidExamAnswerException("That question is not part of this exam"));
+        Question question = examQuestion.getQuestion();
 
-        AnswerOption selectedOption = null;
-        boolean correct = false;
-
-        if (request.getSelectedOptionId() != null) {
-            selectedOption = answerOptionRepository.findById(request.getSelectedOptionId())
-                    .orElseThrow(() -> new ExamSessionNotFoundException(request.getSelectedOptionId()));
-            correct = selectedOption.isCorrect();
+        // The option has to be one of that question's own options. Without this check
+        // the right option of any other question could be sent and would count as correct.
+        AnswerOption selectedOption = answerOptionRepository.findById(request.getSelectedOptionId())
+                .orElseThrow(() -> new InvalidExamAnswerException("That answer option does not exist"));
+        if (!selectedOption.getQuestion().getId().equals(questionId)) {
+            throw new InvalidExamAnswerException("That answer option does not belong to this question");
         }
+        boolean correct = selectedOption.isCorrect();
 
         // Upsert — allow re-answering a question during the same session
         ExamAnswer answer = examAnswerRepository

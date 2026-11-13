@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getExamSession, submitAnswer, completeExam } from '@/api/exam'
-import type { ExamQuestion } from '@/types'
+import { getExamSession, submitAnswer, completeExam, abandonExam } from '@/api/exam'
+import type { ExamSession, ApiError } from '@/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import ProgressBar from '@/components/common/ProgressBar'
 import AnswerOptions from '@/components/exams/AnswerOptions'
@@ -9,153 +9,181 @@ import ExamTimer from '@/components/exams/ExamTimer'
 import Button from '@/components/common/Button'
 import { useNotification } from '@/contexts/NotificationContext'
 import { getCategoryLabel } from '@/utils/categoryColors'
-import type { ApiError } from '@/types'
 
-interface AnswerFeedback {
-  isCorrect: boolean
-  correctOptionId: string
-  explanation: string
-  runningScore: { correct: number; total: number }
-}
+type PageState = 'loading' | 'ready' | 'finishing' | 'error'
 
-type ExamState = 'loading' | 'question' | 'answered' | 'submitting_next' | 'done' | 'error'
-
+// The exam works like the real thing: you answer the questions without being told
+// whether you were right, and the answers and explanations come on the results page.
 export default function ExamPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate      = useNavigate()
   const { notify }    = useNotification()
 
-  const [state, setState]             = useState<ExamState>('loading')
-  const [question, setQuestion]       = useState<ExamQuestion | null>(null)
-  const [questionNumber, setQNumber]  = useState(1)
-  const [totalQuestions, setTotal]    = useState(0)
-  const [timeRemaining, setTimeLeft]  = useState<number | null>(null)
-  const [selectedId, setSelectedId]   = useState<string | null>(null)
-  const [feedback, setFeedback]       = useState<AnswerFeedback | null>(null)
-  const [submitting, setSubmitting]   = useState(false)
-  const [timerExpired, setTimerExpired] = useState(false)
+  const [state, setState]               = useState<PageState>('loading')
+  const [session, setSession]           = useState<ExamSession | null>(null)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  // The option picked for each question: questionId -> optionId
+  const [picks, setPicks]               = useState<Record<string, string>>({})
+  // Picks the server already has, so an unchanged answer is not sent again
+  const [savedPicks, setSavedPicks]     = useState<Record<string, string>>({})
+  const [saving, setSaving]             = useState(false)
 
   const questionStartRef = useRef<number>(Date.now())
+  const timeUpHandledRef = useRef(false)
 
-  const loadNextQuestion = useCallback(async () => {
+  // Load the exam once. The questions are kept in state after that.
+  useEffect(() => {
     if (!sessionId) return
-    setState('loading')
-    setSelectedId(null)
-    setFeedback(null)
-    try {
-      const session = await getExamSession(sessionId)
-      // Find next unanswered question
-      const nextQ = session.questions.find(q => !q.userAnswer)
-      if (!nextQ) {
-        // All questions answered, go to results
-        navigate(`/exam/${sessionId}/results`, { replace: true })
-        return
-      }
-      setQuestion(nextQ)
-      const answered = session.questions.filter(q => q.userAnswer).length
-      setQNumber(answered + 1)
-      setTotal(session.questionCount)
-      setTimeLeft(session.timeLimit ? session.timeLimit * 60 : null)
-      questionStartRef.current = Date.now()
-      setState('question')
-    } catch (err) {
-      const apiErr = err as ApiError
-      // If no more questions, navigate to results
-      if (apiErr?.status === 404 || apiErr?.detail?.includes('complete')) {
-        navigate(`/exam/${sessionId}/results`, { replace: true })
-      } else {
-        setState('error')
-      }
-    }
+
+    getExamSession(sessionId)
+      .then(data => {
+        if (data.status === 'COMPLETED') {
+          navigate(`/exam/${sessionId}/results`, { replace: true })
+          return
+        }
+        if (data.status === 'ABANDONED') {
+          navigate('/exam', { replace: true })
+          return
+        }
+
+        // The time ran out while the page was closed: score it with what was answered
+        if (data.timeRemainingSeconds === 0) {
+          completeExam(sessionId)
+            .catch(() => { /* the results page shows the error if this failed */ })
+            .finally(() => navigate(`/exam/${sessionId}/results`, { replace: true }))
+          return
+        }
+
+        const alreadyPicked: Record<string, string> = {}
+        for (const question of data.questions) {
+          if (question.selectedOptionId) {
+            alreadyPicked[question.id] = question.selectedOptionId
+          }
+        }
+
+        // Coming back to an exam: continue at the first question without an answer
+        const firstUnanswered = data.questions.findIndex(q => !q.selectedOptionId)
+
+        setSession(data)
+        setPicks(alreadyPicked)
+        setSavedPicks(alreadyPicked)
+        setCurrentIndex(firstUnanswered === -1 ? data.questions.length - 1 : firstUnanswered)
+        setState('ready')
+      })
+      .catch(() => setState('error'))
   }, [sessionId, navigate])
 
-  useEffect(() => { loadNextQuestion() }, [loadNextQuestion])
+  // Restart the per-question clock whenever a different question is shown
+  useEffect(() => {
+    questionStartRef.current = Date.now()
+  }, [currentIndex])
 
-  async function handleSubmitAnswer() {
-    if (!selectedId || !question || !sessionId || submitting) return
-    setSubmitting(true)
-    const timeSpent = Math.round((Date.now() - questionStartRef.current) / 1000)
+  // Sends the pick for the current question, unless the server already has it.
+  // Returns false if saving failed, so the caller can stay on the question.
+  async function saveCurrentAnswer(): Promise<boolean> {
+    if (!session || !sessionId) return false
+    const question = session.questions[currentIndex]
+    const picked = picks[question.id]
+
+    if (!picked || picked === savedPicks[question.id]) {
+      return true
+    }
+
+    setSaving(true)
     try {
-      const updatedSession = await submitAnswer(sessionId, question.id, {
-        selectedOptionId: selectedId,
-        timeSpentSeconds: timeSpent,
+      await submitAnswer(sessionId, question.id, {
+        selectedOptionId: picked,
+        timeSpentSeconds: Math.round((Date.now() - questionStartRef.current) / 1000),
       })
-      // Extract feedback from the updated question
-      const answeredQ = updatedSession.questions.find(q => q.id === question.id)
-      if (answeredQ?.userAnswer && answeredQ.correctOptionId) {
-        setFeedback({
-          isCorrect: answeredQ.userAnswer.isCorrect,
-          correctOptionId: answeredQ.correctOptionId,
-          explanation: '', // Backend doesn't return this in answer response
-          runningScore: {
-            correct: updatedSession.questions.filter(q => q.userAnswer?.isCorrect).length,
-            total: updatedSession.answeredCount,
-          },
-        })
-      }
-      setState('answered')
+      setSavedPicks(prev => ({ ...prev, [question.id]: picked }))
+      return true
     } catch (err) {
-      notify('error', (err as ApiError)?.detail ?? 'Failed to submit answer')
+      notify('error', (err as ApiError)?.detail ?? 'Failed to save your answer')
+      return false
     } finally {
-      setSubmitting(false)
+      setSaving(false)
     }
   }
 
-  async function handleNext() {
+  async function goToQuestion(index: number) {
+    const saved = await saveCurrentAnswer()
+    if (saved) setCurrentIndex(index)
+  }
+
+  async function finishExam() {
     if (!sessionId) return
-    // Check if this was the last question
-    if (questionNumber >= totalQuestions) {
-      setState('submitting_next')
-      try {
-        await completeExam(sessionId)
-      } catch { /* already completed is fine */ }
+    setState('finishing')
+    try {
+      await completeExam(sessionId)
       navigate(`/exam/${sessionId}/results`, { replace: true })
-    } else {
-      loadNextQuestion()
+    } catch (err) {
+      notify('error', (err as ApiError)?.detail ?? 'Failed to finish the exam')
+      setState('ready')
     }
   }
 
-  async function handleTimerExpire() {
-    if (!sessionId || timerExpired) return
-    setTimerExpired(true)
-    notify('warning', "Time's up! Submitting your exam...")
-    try {
-      await completeExam(sessionId)
-    } catch { /* ignore */ }
-    navigate(`/exam/${sessionId}/results`, { replace: true })
+  async function handleFinish() {
+    if (!session) return
+    const saved = await saveCurrentAnswer()
+    if (!saved) return
+
+    const unanswered = session.questions.filter(q => !picks[q.id]).length
+    if (unanswered > 0) {
+      const ok = window.confirm(
+        `You have ${unanswered} unanswered ${unanswered === 1 ? 'question' : 'questions'}. ` +
+        'Unanswered questions count as wrong. Finish anyway?'
+      )
+      if (!ok) return
+    }
+    await finishExam()
   }
 
-  async function handleAbandon() {
+  async function handleTimeUp() {
+    // The timer can fire more than once, only finish the exam the first time
+    if (timeUpHandledRef.current) return
+    timeUpHandledRef.current = true
+
+    notify('warning', "Time's up! Submitting your exam...")
+    await saveCurrentAnswer()
+    await finishExam()
+  }
+
+  async function handleExit() {
     if (!sessionId) return
+    const ok = window.confirm('Leave this exam? It will be abandoned and will not be scored.')
+    if (!ok) return
+
     try {
-      await completeExam(sessionId)
-    } catch { /* ignore */ }
+      await abandonExam(sessionId)
+    } catch {
+      // Leaving anyway. The exam just stays in the history as in progress.
+    }
     navigate('/exam')
   }
 
-  const progressPct = totalQuestions > 0
-    ? Math.round(((questionNumber - 1) / totalQuestions) * 100)
-    : 0
-
-  if (state === 'loading' || state === 'submitting_next') {
+  if (state === 'loading' || state === 'finishing') {
     return (
       <div className="flex items-center justify-center py-24">
-        <LoadingSpinner message={state === 'submitting_next' ? 'Submitting exam...' : 'Loading question...'} size="lg" />
+        <LoadingSpinner message={state === 'finishing' ? 'Submitting exam...' : 'Loading exam...'} size="lg" />
       </div>
     )
   }
 
-  if (state === 'error') {
+  if (state === 'error' || !session || session.questions.length === 0) {
     return (
       <div className="max-w-xl mx-auto text-center py-16">
         <p className="text-5xl mb-4">⚠️</p>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">This exam could not be loaded</h2>
         <Button onClick={() => navigate('/exam')}>Back to Exam Setup</Button>
       </div>
     )
   }
 
-  if (!question) return null
+  const question       = session.questions[currentIndex]
+  const totalQuestions = session.questions.length
+  const answeredCount  = session.questions.filter(q => picks[q.id]).length
+  const isLastQuestion = currentIndex === totalQuestions - 1
+  const progressPct    = Math.round((answeredCount / totalQuestions) * 100)
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -163,7 +191,7 @@ export default function ExamPage() {
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-gray-700">
-            Question <span className="text-gray-900 font-bold">{questionNumber}</span>
+            Question <span className="text-gray-900 font-bold">{currentIndex + 1}</span>
             <span className="text-gray-400"> / {totalQuestions}</span>
           </span>
           <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
@@ -171,15 +199,14 @@ export default function ExamPage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {timeRemaining !== null && timeRemaining > 0 && (
+          {session.timeRemainingSeconds !== null && (
             <ExamTimer
-              initialSeconds={timeRemaining}
-              onExpire={handleTimerExpire}
-              paused={state === 'answered'}
+              initialSeconds={session.timeRemainingSeconds}
+              onExpire={handleTimeUp}
             />
           )}
           <button
-            onClick={handleAbandon}
+            onClick={handleExit}
             className="text-xs text-gray-400 hover:text-gray-600 transition-colors px-2 py-1"
           >
             Exit
@@ -187,7 +214,12 @@ export default function ExamPage() {
         </div>
       </div>
 
-      <ProgressBar value={progressPct} size="sm" color="primary" />
+      <div>
+        <ProgressBar value={progressPct} size="sm" color="primary" />
+        <p className="text-xs text-gray-400 mt-1">
+          {answeredCount} of {totalQuestions} answered
+        </p>
+      </div>
 
       {/* Question */}
       <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
@@ -198,55 +230,35 @@ export default function ExamPage() {
           </div>
         )}
         <p className="text-gray-900 text-base leading-relaxed font-medium">
-          {question.questionText}
+          {question.stem}
         </p>
       </div>
 
-      {/* Answer options */}
+      {/* Answer options. correctId stays null, the right answer is only shown in the results. */}
       <AnswerOptions
-        options={question.options}
-        selectedId={selectedId}
-        correctId={feedback?.correctOptionId ?? null}
-        onSelect={id => {
-          if (state === 'question') setSelectedId(id)
-        }}
-        disabled={state === 'answered' || submitting}
+        options={question.answerOptions}
+        selectedId={picks[question.id] ?? null}
+        correctId={null}
+        onSelect={optionId => setPicks(prev => ({ ...prev, [question.id]: optionId }))}
+        disabled={saving}
       />
-
-      {/* Explanation (shown after answering) */}
-      {feedback && (
-        <div className={`rounded-xl border p-5 ${
-          feedback.isCorrect
-            ? 'bg-green-50 border-green-200'
-            : 'bg-red-50 border-red-200'
-        }`}>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg">{feedback.isCorrect ? '✅' : '❌'}</span>
-            <span className={`text-sm font-semibold ${feedback.isCorrect ? 'text-green-800' : 'text-red-800'}`}>
-              {feedback.isCorrect ? 'Correct!' : 'Incorrect'}
-            </span>
-            <span className="ml-auto text-xs text-gray-500">
-              Score: {feedback.runningScore.correct}/{feedback.runningScore.total}
-            </span>
-          </div>
-          <p className="text-sm text-gray-700 leading-relaxed">{feedback.explanation}</p>
-        </div>
-      )}
 
       {/* Action buttons */}
       <div className="flex items-center justify-between">
-        {state === 'question' ? (
-          <Button
-            onClick={handleSubmitAnswer}
-            loading={submitting}
-            disabled={!selectedId}
-            className="ml-auto"
-          >
-            Submit Answer
+        <Button
+          variant="secondary"
+          onClick={() => goToQuestion(currentIndex - 1)}
+          disabled={currentIndex === 0 || saving}
+        >
+          ← Previous
+        </Button>
+        {isLastQuestion ? (
+          <Button onClick={handleFinish} loading={saving}>
+            Finish Exam
           </Button>
         ) : (
-          <Button onClick={handleNext} className="ml-auto">
-            {questionNumber >= totalQuestions ? 'View Results →' : 'Next Question →'}
+          <Button onClick={() => goToQuestion(currentIndex + 1)} loading={saving}>
+            {picks[question.id] ? 'Next Question →' : 'Skip →'}
           </Button>
         )}
       </div>

@@ -85,23 +85,21 @@ export interface StartExamRequest {
   difficultyFilter?: DifficultyLevel
 }
 
+// The exam types below use the same field names as the backend's JSON.
+
 export interface AnswerOption {
   id: string
   text: string
-  isCorrect?: boolean  // only present after exam completion
+  isCorrect?: boolean | null  // only sent with the results, never during the exam
 }
 
 export interface ExamQuestion {
   id: string
-  clinicalVignette: string
-  questionText: string
+  stem: string
+  clinicalVignette: string | null
   category: string
-  options: AnswerOption[]
-  correctOptionId?: string
-  userAnswer?: {
-    selectedOptionId: string
-    isCorrect: boolean
-  }
+  answerOptions: AnswerOption[]
+  selectedOptionId: string | null  // the option picked so far, if any
 }
 
 export interface ExamSession {
@@ -109,33 +107,52 @@ export interface ExamSession {
   categoryFilter: string | null
   questionCount: number
   answeredCount: number
-  timeLimit: number | null
+  timeLimitMinutes: number             // 0 means no time limit
+  timeRemainingSeconds: number | null  // null when there is no time limit
   status: ExamStatus
   startedAt: string
   questions: ExamQuestion[]
 }
 
-export interface ExamResult {
-  sessionId: string
-  score: number
-  percentageScore: number
-  totalQuestions: number
-  correctCount: number
-  incorrectCount: number
-  categoryBreakdown: Record<string, number>
-  completedAt: string
-  timeTaken: number
-  performanceMessage: string
+// One question on the results page, with the right answer and explanation
+export interface ExamAnswerDetail {
+  questionId: string
+  stem: string
+  clinicalVignette: string | null
+  answerOptions: AnswerOption[]
+  selectedOptionId: string | null  // null when the question was not answered
+  isCorrect: boolean
+  explanation: string
+  timeSpentSeconds: number | null
 }
 
-export interface ExamHistorySummary {
+export interface ExamResult {
   sessionId: string
-  questionCount: number
+  rawScore: number
+  totalQuestions: number
   scorePercent: number
   performanceBand: PerformanceBand
-  categoryFilter?: string
+  performanceMessage: string
+  categoryBreakdown: Record<string, number>
+  avgTimePerQuestionSeconds: number
   durationSeconds: number
   completedAt: string
+  answerDetails: ExamAnswerDetail[]
+}
+
+// The history also lists exams that were abandoned or are still in progress.
+// Those have no score yet, so the score fields can be null.
+export interface ExamHistorySummary {
+  id: string
+  status: ExamStatus
+  questionCount: number
+  score: number | null
+  scorePercent: number | null
+  performanceBand: PerformanceBand | null
+  categoryFilter: string | null
+  startedAt: string
+  completedAt: string | null
+  durationSeconds: number | null
 }
 
 // ---- Progress / Dashboard --------------------------------------------------
@@ -143,6 +160,7 @@ export interface ExamHistorySummary {
 export interface DailyProgressPoint {
   date: string
   cardsReviewed: number
+  examQuestions: number
   accuracy: number
   studyMinutes: number
   goalMet: boolean

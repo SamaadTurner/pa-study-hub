@@ -6,52 +6,23 @@ import type {
   StartExamRequest,
 } from '@/types'
 
+// The types in '@/types' use the same field names as the backend's JSON, so the
+// responses are returned as they are. This file used to map them to a second set
+// of names that the backend never sent, which is why the exam pages showed nothing.
+
 interface SubmitAnswerRequest {
   selectedOptionId: string
   timeSpentSeconds: number
 }
 
-// Response from backend when starting/getting exam session
-interface ExamSessionResponse {
-  id: string
-  categoryFilter: string | null
-  questionCount: number
-  answeredCount: number
-  timeLimit: number | null
-  status: 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED'
-  startedAt: string
-  questions: Array<{
-    id: string
-    clinicalVignette: string
-    questionText: string
-    options: Array<{ id: string; text: string }>
-    category: string
-    correctOptionId?: string
-    userAnswer?: { selectedOptionId: string; isCorrect: boolean }
-  }>
-}
-
-// Response from backend when getting exam results
-interface ExamResultResponse {
-  sessionId: string
-  score: number
-  percentageScore: number
-  totalQuestions: number
-  correctCount: number
-  categoryBreakdown: Record<string, number>
-  completedAt: string
-  timeTaken: number
-  performanceMessage?: string
-}
-
 export async function startExam(req: StartExamRequest): Promise<ExamSession> {
-  const { data } = await apiClient.post<ExamSessionResponse>('/exams', req)
-  return mapExamSessionResponse(data)
+  const { data } = await apiClient.post<ExamSession>('/exams', req)
+  return data
 }
 
 export async function getExamSession(sessionId: string): Promise<ExamSession> {
-  const { data } = await apiClient.get<ExamSessionResponse>(`/exams/${sessionId}`)
-  return mapExamSessionResponse(data)
+  const { data } = await apiClient.get<ExamSession>(`/exams/${sessionId}`)
+  return data
 }
 
 export async function submitAnswer(
@@ -59,21 +30,21 @@ export async function submitAnswer(
   questionId: string,
   req: SubmitAnswerRequest
 ): Promise<ExamSession> {
-  const { data } = await apiClient.post<ExamSessionResponse>(
+  const { data } = await apiClient.post<ExamSession>(
     `/exams/${sessionId}/questions/${questionId}/answer`,
     req
   )
-  return mapExamSessionResponse(data)
+  return data
 }
 
 export async function completeExam(sessionId: string): Promise<ExamResult> {
-  const { data } = await apiClient.post<ExamResultResponse>(`/exams/${sessionId}/complete`)
-  return mapExamResultResponse(data)
+  const { data } = await apiClient.post<ExamResult>(`/exams/${sessionId}/complete`)
+  return data
 }
 
 export async function getExamResult(sessionId: string): Promise<ExamResult> {
-  const { data } = await apiClient.get<ExamResultResponse>(`/exams/${sessionId}/result`)
-  return mapExamResultResponse(data)
+  const { data } = await apiClient.get<ExamResult>(`/exams/${sessionId}/result`)
+  return data
 }
 
 export async function abandonExam(sessionId: string): Promise<void> {
@@ -84,43 +55,5 @@ export async function getExamHistory(page = 0, size = 20): Promise<ExamHistorySu
   const { data } = await apiClient.get<{ content: ExamHistorySummary[] }>(
     `/exams/history?page=${page}&size=${size}`
   )
-  return data.content || data
-}
-
-// Helper function to map backend response to frontend type
-function mapExamSessionResponse(response: ExamSessionResponse): ExamSession {
-  return {
-    id: response.id,
-    categoryFilter: response.categoryFilter,
-    questionCount: response.questionCount,
-    answeredCount: response.answeredCount,
-    timeLimit: response.timeLimit,
-    status: response.status,
-    startedAt: response.startedAt,
-    questions: response.questions.map(q => ({
-      id: q.id,
-      clinicalVignette: q.clinicalVignette,
-      questionText: q.questionText,
-      options: q.options,
-      category: q.category,
-      correctOptionId: q.correctOptionId,
-      userAnswer: q.userAnswer,
-    })),
-  }
-}
-
-// Helper function to map backend result response to frontend type
-function mapExamResultResponse(response: ExamResultResponse): ExamResult {
-  return {
-    sessionId: response.sessionId,
-    score: response.score,
-    percentageScore: response.percentageScore,
-    totalQuestions: response.totalQuestions,
-    correctCount: response.correctCount,
-    incorrectCount: response.totalQuestions - response.correctCount,
-    categoryBreakdown: response.categoryBreakdown,
-    completedAt: response.completedAt,
-    timeTaken: response.timeTaken,
-    performanceMessage: response.performanceMessage || '',
-  }
+  return data.content
 }

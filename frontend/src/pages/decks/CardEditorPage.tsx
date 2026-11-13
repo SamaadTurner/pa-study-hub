@@ -35,8 +35,15 @@ export default function CardEditorPage() {
   // Load existing card data when editing
   useEffect(() => {
     if (!isEditing || !deckId) return
+
+    // React can run this effect twice (it does in development), which means two
+    // requests. Only the latest one may fill the form. Without this, the second
+    // answer could arrive after the user had started typing and put the old text back.
+    let ignore = false
+
     getCards(deckId)
       .then(cards => {
+        if (ignore) return
         const card = cards.find((c: Card) => c.id === cardId)
         if (card) {
           setForm({
@@ -47,8 +54,15 @@ export default function CardEditorPage() {
           })
         }
       })
-      .catch(() => notify('error', 'Failed to load card'))
-      .finally(() => setLoading(false))
+      .catch(() => {
+        if (!ignore) notify('error', 'Failed to load card')
+      })
+      .finally(() => {
+        // The form stays hidden until the request that counts has finished
+        if (!ignore) setLoading(false)
+      })
+
+    return () => { ignore = true }
   }, [isEditing, deckId, cardId, notify])
 
   function validate(): boolean {

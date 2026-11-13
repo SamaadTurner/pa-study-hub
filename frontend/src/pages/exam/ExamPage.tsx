@@ -35,8 +35,14 @@ export default function ExamPage() {
   useEffect(() => {
     if (!sessionId) return
 
+    // React can run this effect twice (it does in development). Only the latest
+    // request may set up the page, so a late second answer can't undo a pick the
+    // user already made.
+    let ignore = false
+
     getExamSession(sessionId)
       .then(data => {
+        if (ignore) return
         if (data.status === 'COMPLETED') {
           navigate(`/exam/${sessionId}/results`, { replace: true })
           return
@@ -70,7 +76,11 @@ export default function ExamPage() {
         setCurrentIndex(firstUnanswered === -1 ? data.questions.length - 1 : firstUnanswered)
         setState('ready')
       })
-      .catch(() => setState('error'))
+      .catch(() => {
+        if (!ignore) setState('error')
+      })
+
+    return () => { ignore = true }
   }, [sessionId, navigate])
 
   // Restart the per-question clock whenever a different question is shown

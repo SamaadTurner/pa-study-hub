@@ -11,18 +11,32 @@ import { getCategoryLabel } from '@/utils/categoryColors'
 type SortKey = 'completedAt' | 'scorePercent' | 'questionCount' | 'durationSeconds'
 type SortDir = 'asc' | 'desc'
 
+// Same band names the backend sends
 const BAND_COLORS: Record<string, string> = {
-  EXCELLENT: 'bg-emerald-100 text-emerald-700',
-  PASS:      'bg-green-100 text-green-700',
-  NEAR_PASS: 'bg-yellow-100 text-yellow-700',
-  FAIL:      'bg-red-100 text-red-700',
+  EXCELLENT:         'bg-emerald-100 text-emerald-700',
+  GOOD:              'bg-green-100 text-green-700',
+  PASSING:           'bg-yellow-100 text-yellow-700',
+  NEEDS_IMPROVEMENT: 'bg-red-100 text-red-700',
 }
 
 const BAND_LABELS: Record<string, string> = {
-  EXCELLENT: 'Excellent',
-  PASS:      'Pass',
-  NEAR_PASS: 'Near Pass',
-  FAIL:      'Fail',
+  EXCELLENT:         'Excellent',
+  GOOD:              'Good',
+  PASSING:           'Borderline',
+  NEEDS_IMPROVEMENT: 'Needs improvement',
+}
+
+// An exam that was never finished has no completed date, so its start date is shown
+function examDate(exam: ExamHistorySummary): string {
+  return exam.completedAt ?? exam.startedAt
+}
+
+// Number to sort a row by. Exams without a score or duration go last.
+function sortValue(exam: ExamHistorySummary, key: SortKey): number {
+  if (key === 'completedAt')     return new Date(examDate(exam)).getTime()
+  if (key === 'scorePercent')    return exam.scorePercent ?? -1
+  if (key === 'durationSeconds') return exam.durationSeconds ?? -1
+  return exam.questionCount
 }
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
@@ -56,16 +70,21 @@ export default function ExamHistoryPage() {
   }
 
   const sorted = [...history].sort((a, b) => {
-    let av: number | string = a[sortKey] ?? ''
-    let bv: number | string = b[sortKey] ?? ''
-    if (sortKey === 'completedAt') {
-      av = new Date(a.completedAt).getTime()
-      bv = new Date(b.completedAt).getTime()
-    }
+    const av = sortValue(a, sortKey)
+    const bv = sortValue(b, sortKey)
     if (av < bv) return sortDir === 'asc' ? -1 : 1
     if (av > bv) return sortDir === 'asc' ? 1 : -1
     return 0
   })
+
+  const completedCount = history.filter(exam => exam.status === 'COMPLETED').length
+
+  // A finished exam opens its results, one in progress can be continued,
+  // and an abandoned one has nothing to open.
+  function openExam(exam: ExamHistorySummary) {
+    if (exam.status === 'COMPLETED')   navigate(`/exam/${exam.id}/results`)
+    if (exam.status === 'IN_PROGRESS') navigate(`/exam/${exam.id}`)
+  }
 
   if (loading) {
     return (
@@ -93,7 +112,7 @@ export default function ExamHistoryPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Exam History</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {history.length} {history.length === 1 ? 'exam' : 'exams'} completed
+            {completedCount} {completedCount === 1 ? 'exam' : 'exams'} completed
           </p>
         </div>
         <Button onClick={() => navigate('/exam')}>New Exam →</Button>
@@ -139,17 +158,27 @@ export default function ExamHistoryPage() {
 
           {/* Rows */}
           {sorted.map(exam => {
-            const bandClass = BAND_COLORS[exam.performanceBand] ?? 'bg-gray-100 text-gray-600'
-            const bandLabel = BAND_LABELS[exam.performanceBand] ?? exam.performanceBand
+            // The band column shows the status instead when the exam has no score
+            let bandClass = 'bg-gray-100 text-gray-600'
+            let bandLabel = 'Abandoned'
+            if (exam.status === 'IN_PROGRESS') {
+              bandClass = 'bg-blue-100 text-blue-700'
+              bandLabel = 'In progress'
+            } else if (exam.status === 'COMPLETED' && exam.performanceBand) {
+              bandClass = BAND_COLORS[exam.performanceBand] ?? bandClass
+              bandLabel = BAND_LABELS[exam.performanceBand] ?? exam.performanceBand
+            }
             return (
               <button
-                key={exam.sessionId}
-                onClick={() => navigate(`/exam/${exam.sessionId}/results`)}
+                key={exam.id}
+                onClick={() => openExam(exam)}
+                disabled={exam.status === 'ABANDONED'}
                 className="w-full grid grid-cols-5 gap-4 px-5 py-4 border-b border-gray-100
-                  last:border-0 hover:bg-gray-50 transition-colors text-left"
+                  last:border-0 hover:bg-gray-50 transition-colors text-left
+                  disabled:hover:bg-white disabled:cursor-default"
               >
                 <div className="col-span-1">
-                  <p className="text-sm font-medium text-gray-900">{formatDate(exam.completedAt)}</p>
+                  <p className="text-sm font-medium text-gray-900">{formatDate(examDate(exam))}</p>
                   {exam.categoryFilter && (
                     <p className="text-xs text-gray-400 mt-0.5">
                       {getCategoryLabel(exam.categoryFilter)}
@@ -157,10 +186,12 @@ export default function ExamHistoryPage() {
                   )}
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-bold text-gray-900">{exam.scorePercent}%</span>
+                  <span className="text-sm font-bold text-gray-900">
+                    {exam.scorePercent !== null ? `${exam.scorePercent}%` : '—'}
+                  </span>
                 </div>
                 <div className="flex justify-center">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${bandClass}`}>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${bandClass}`}>
                     {bandLabel}
                   </span>
                 </div>
@@ -168,7 +199,9 @@ export default function ExamHistoryPage() {
                   <span className="text-sm text-gray-700">{exam.questionCount}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm text-gray-700">{formatDuration(exam.durationSeconds)}</span>
+                  <span className="text-sm text-gray-700">
+                    {exam.durationSeconds !== null ? formatDuration(exam.durationSeconds) : '—'}
+                  </span>
                 </div>
               </button>
             )

@@ -7,7 +7,7 @@ interface Props {
 
 export default function RecentActivity({ activity }: Props) {
   const recent = [...activity]
-    .filter(a => a.cardsReviewed > 0 || a.studyMinutes > 0)
+    .filter(a => a.cardsReviewed > 0 || a.examQuestions > 0 || a.studyMinutes > 0)
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 5)
 
@@ -33,6 +33,9 @@ export default function RecentActivity({ activity }: Props) {
             <div className="flex items-center gap-3 text-xs text-gray-500">
               {day.cardsReviewed > 0 && (
                 <span>🃏 {day.cardsReviewed} cards</span>
+              )}
+              {day.examQuestions > 0 && (
+                <span>📝 {day.examQuestions} exam questions</span>
               )}
               {day.studyMinutes > 0 && (
                 <span>⏱ {day.studyMinutes}m</span>

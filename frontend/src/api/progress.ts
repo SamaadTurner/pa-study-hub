@@ -16,6 +16,7 @@ interface GoalProgressResponse {
 interface DailyProgressPointResponse {
   date: string
   cardsReviewed: number
+  examQuestions: number
   minutesStudied: number            // Backend uses "minutesStudied" instead of "studyMinutes"
   accuracy: number
   goalMet: boolean
@@ -50,6 +51,7 @@ function mapDailyProgressPoint(response: DailyProgressPointResponse): DailyProgr
   return {
     date: response.date,
     cardsReviewed: response.cardsReviewed,
+    examQuestions: response.examQuestions,
     accuracy: response.accuracy,
     studyMinutes: response.minutesStudied,                // Map field name
     goalMet: response.goalMet

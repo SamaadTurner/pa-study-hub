@@ -8,7 +8,7 @@ interface Props {
   disabled?: boolean
 }
 
-const OPTION_LETTERS = ['A', 'B', 'C', 'D']
+const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E']
 
 function getOptionStyle(
   option: AnswerOption,

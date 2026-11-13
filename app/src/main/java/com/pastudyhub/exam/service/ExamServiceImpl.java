@@ -11,6 +11,7 @@ import com.pastudyhub.exam.mapper.ExamMapper;
 import com.pastudyhub.exam.model.*;
 import com.pastudyhub.exam.repository.AnswerOptionRepository;
 import com.pastudyhub.exam.repository.ExamAnswerRepository;
+import com.pastudyhub.exam.repository.ExamQuestionRepository;
 import com.pastudyhub.exam.repository.ExamSessionRepository;
 import com.pastudyhub.exam.repository.QuestionRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,6 +35,7 @@ public class ExamServiceImpl implements ExamService {
     private final QuestionRepository questionRepository;
     private final ExamSessionRepository examSessionRepository;
     private final ExamAnswerRepository examAnswerRepository;
+    private final ExamQuestionRepository examQuestionRepository;
     private final AnswerOptionRepository answerOptionRepository;
     private final ExamMapper examMapper;
 
@@ -60,25 +63,31 @@ public class ExamServiceImpl implements ExamService {
                 .status(ExamStatus.IN_PROGRESS)
                 .build();
 
-        ExamSession saved = examSessionRepository.save(session);
+        // saveAndFlush so the start time is filled in before the response is built
+        ExamSession saved = examSessionRepository.saveAndFlush(session);
+
+        // Save the picked questions in order. Without this the exam could not be
+        // loaded again, because nothing else records which questions were picked.
+        List<ExamQuestion> examQuestions = new ArrayList<>();
+        for (int i = 0; i < selected.size(); i++) {
+            examQuestions.add(ExamQuestion.builder()
+                    .examSession(saved)
+                    .question(selected.get(i))
+                    .orderIndex(i)
+                    .build());
+        }
+        examQuestionRepository.saveAll(examQuestions);
+
         log.info("Exam started: sessionId={}, userId={}, questionCount={}", saved.getId(), userId, selected.size());
 
-        return examMapper.toSessionResponse(saved, selected, 0);
+        return examMapper.toSessionResponse(saved, selected, List.of());
     }
 
     @Override
     @Transactional(readOnly = true)
     public ExamSessionResponse getExamSession(UUID sessionId, UUID userId) {
         ExamSession session = findSessionForUser(sessionId, userId);
-
-        // Rebuild the question list from existing answers + ordering
-        List<ExamAnswer> answers = examAnswerRepository.findByExamSessionId(sessionId);
-        List<Question> questions = answers.stream()
-                .map(ExamAnswer::getQuestion)
-                .distinct()
-                .toList();
-
-        return examMapper.toSessionResponse(session, questions, answers.size());
+        return buildSessionResponse(session);
     }
 
     @Override
@@ -114,12 +123,9 @@ public class ExamServiceImpl implements ExamService {
         answer.setSelectedOption(selectedOption);
         answer.setCorrect(correct);
         answer.setTimeSpentSeconds(request.getTimeSpentSeconds());
-        examAnswerRepository.save(answer);
+        examAnswerRepository.saveAndFlush(answer);
 
-        List<ExamAnswer> allAnswers = examAnswerRepository.findByExamSessionId(sessionId);
-        List<Question> questions = allAnswers.stream().map(ExamAnswer::getQuestion).distinct().toList();
-
-        return examMapper.toSessionResponse(session, questions, allAnswers.size());
+        return buildSessionResponse(session);
     }
 
     @Override
@@ -179,6 +185,22 @@ public class ExamServiceImpl implements ExamService {
     public Page<ExamHistorySummary> getExamHistory(UUID userId, int page, int size) {
         return examSessionRepository.findByUserIdOrderByStartedAtDesc(userId, PageRequest.of(page, size))
                 .map(examMapper::toHistorySummary);
+    }
+
+    // The questions that were picked for this exam, first question first
+    private List<Question> findQuestionsOfExam(UUID sessionId) {
+        List<Question> questions = new ArrayList<>();
+        for (ExamQuestion examQuestion : examQuestionRepository.findBySessionInOrder(sessionId)) {
+            questions.add(examQuestion.getQuestion());
+        }
+        return questions;
+    }
+
+    // All questions of the exam plus whatever the user has answered so far
+    private ExamSessionResponse buildSessionResponse(ExamSession session) {
+        List<Question> questions = findQuestionsOfExam(session.getId());
+        List<ExamAnswer> answers = examAnswerRepository.findByExamSessionId(session.getId());
+        return examMapper.toSessionResponse(session, questions, answers);
     }
 
     private ExamSession findSessionForUser(UUID sessionId, UUID userId) {

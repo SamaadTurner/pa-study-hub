@@ -23,4 +23,7 @@ public class QuestionResponse {
     private List<AnswerOptionResponse> answerOptions;
     /** Only populated after exam is completed. */
     private String explanation;
+
+    /** The option the user picked for this question so far, or null if not answered yet. */
+    private UUID selectedOptionId;
 }

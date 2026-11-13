@@ -161,7 +161,16 @@ export async function getDueCards(deckId: string): Promise<ReviewCard[]> {
   }))
 }
 
-export async function submitReview(cardId: string, quality: number): Promise<ReviewResult> {
-  const { data } = await apiClient.post<ReviewResponse>(`/cards/${cardId}/review`, { quality })
+// timeSpentSeconds is how long the card was on screen. The backend adds it to
+// today's study time, which is what the daily minutes goal is measured against.
+export async function submitReview(
+  cardId: string,
+  quality: number,
+  timeSpentSeconds: number
+): Promise<ReviewResult> {
+  const { data } = await apiClient.post<ReviewResponse>(`/cards/${cardId}/review`, {
+    quality,
+    timeSpentSeconds,
+  })
   return mapReviewResult(data, cardId, quality)
 }

@@ -42,6 +42,10 @@ public class ReviewServiceImpl {
     // Most cards handed out for one review session
     private static final int MAX_CARDS_PER_SESSION = 20;
 
+    // Most study time one card can add (5 minutes). The time comes from the browser,
+    // so a card left open over lunch should not count as an hour of studying.
+    private static final int MAX_SECONDS_PER_CARD = 300;
+
     private final CardRepository cardRepository;
     private final DeckRepository deckRepository;
     private final ReviewScheduleRepository reviewScheduleRepository;
@@ -125,7 +129,8 @@ public class ReviewServiceImpl {
 
         reviewScheduleRepository.save(schedule);
 
-        logReviewActivity(userId, card.getDeck().getCategory().name(), request.getQuality());
+        logReviewActivity(userId, card.getDeck().getCategory().name(), request.getQuality(),
+                secondsToCount(request.getTimeSpentSeconds()));
 
         log.debug("Review submitted: cardId={}, userId={}, quality={}, nextReview={}",
                 cardId, userId, request.getQuality(), result.nextReviewDate());
@@ -140,6 +145,14 @@ public class ReviewServiceImpl {
                 .repetitions(result.newRepetitions())
                 .message(message)
                 .build();
+    }
+
+    // The time is optional in the request, and anything over the cap is cut down to it
+    private int secondsToCount(Integer timeSpentSeconds) {
+        if (timeSpentSeconds == null) {
+            return 0;
+        }
+        return Math.min(timeSpentSeconds, MAX_SECONDS_PER_CARD);
     }
 
     private String buildReviewMessage(ReviewResult result) {
@@ -165,7 +178,7 @@ public class ReviewServiceImpl {
      * saved. Calling the service directly also means the review and the activity are
      * saved in the same transaction, so one can't be saved without the other.
      */
-    private void logReviewActivity(UUID userId, String category, int quality) {
+    private void logReviewActivity(UUID userId, String category, int quality, int secondsSpent) {
         // A quality of 3 or higher means the user got the card right
         int correct = quality >= 3 ? 1 : 0;
 
@@ -173,7 +186,7 @@ public class ReviewServiceImpl {
                 .userId(userId)
                 .activityType(ActivityType.FLASHCARD_REVIEW)
                 .category(category)
-                .durationMinutes(0)
+                .durationSeconds(secondsSpent)
                 .cardsReviewed(1)
                 .correctCount(correct)
                 .totalCount(1)

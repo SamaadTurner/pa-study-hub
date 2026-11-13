@@ -60,6 +60,22 @@ class MigrationsIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("Study time is stored in seconds, the old minutes column is gone")
+    void studyTimeColumnIsInSeconds() {
+        Integer secondsColumn = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns "
+                        + "WHERE table_name = 'activity_logs' AND column_name = 'duration_seconds'",
+                Integer.class);
+        Integer minutesColumn = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns "
+                        + "WHERE table_name = 'activity_logs' AND column_name = 'duration_minutes'",
+                Integer.class);
+
+        assertThat(secondsColumn).isEqualTo(1);
+        assertThat(minutesColumn).isZero();
+    }
+
+    @Test
     @DisplayName("The migrations load the starter practice questions with their answers")
     void starterQuestionsAreLoaded() {
         Integer questions = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM questions", Integer.class);

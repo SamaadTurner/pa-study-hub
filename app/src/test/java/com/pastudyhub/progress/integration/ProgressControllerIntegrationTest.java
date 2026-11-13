@@ -164,7 +164,7 @@ class ProgressControllerIntegrationTest extends BaseIntegrationTest {
                 .userId(userId)
                 .activityType(ActivityType.FLASHCARD_REVIEW)
                 .category(category)
-                .durationMinutes(0)
+                .durationSeconds(0)
                 .cardsReviewed(total)
                 .correctCount(correct)
                 .totalCount(total)

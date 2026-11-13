@@ -22,10 +22,12 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+    // Only the unit tests in src. The Playwright tests in e2e/ have their own runner.
+    include: ['src/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      exclude: ['node_modules/', 'src/test/', 'cypress/'],
+      exclude: ['node_modules/', 'src/test/', 'e2e/'],
     },
   },
 })

@@ -26,9 +26,10 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, UUID> 
     List<LocalDate> findDistinctStudyDatesSince(@Param("userId") UUID userId,
                                                  @Param("since") LocalDate since);
 
-    @Query("SELECT SUM(a.totalCount) FROM ActivityLog a " +
+    // Flashcards only. Exam questions are in totalCount but not in cardsReviewed.
+    @Query("SELECT SUM(a.cardsReviewed) FROM ActivityLog a " +
            "WHERE a.userId = :userId AND a.activityDate = :date")
-    Integer sumTotalCountForDate(@Param("userId") UUID userId, @Param("date") LocalDate date);
+    Integer sumCardsReviewedForDate(@Param("userId") UUID userId, @Param("date") LocalDate date);
 
     @Query("SELECT SUM(a.durationSeconds) FROM ActivityLog a " +
            "WHERE a.userId = :userId AND a.activityDate = :date")

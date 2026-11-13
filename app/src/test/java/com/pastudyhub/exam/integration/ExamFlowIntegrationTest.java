@@ -469,6 +469,135 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    // ---- time limit ---------------------------------------------------------
+
+    @Test
+    @DisplayName("A timed exam says how many seconds are left")
+    void timedExam_hasTimeRemaining() throws Exception {
+        UUID user = UUID.randomUUID();
+
+        MvcResult result = mockMvc.perform(post("/api/v1/exams")
+                        .header("Authorization", bearerToken(user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"questionCount\": 2, \"categoryFilter\": \"DERMATOLOGY\", \"timeLimitMinutes\": 10}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.timeLimitMinutes").value(10))
+                .andReturn();
+        JsonNode started = objectMapper.readTree(result.getResponse().getContentAsString());
+
+        // Just started, so close to the full 10 minutes but never more
+        assertThat(started.get("timeRemainingSeconds").asInt()).isBetween(590, 600);
+
+        // Loading it again continues the same clock instead of starting over
+        JsonNode loaded = loadExam(user, started.get("id").asText());
+        assertThat(loaded.get("timeRemainingSeconds").asInt())
+                .isBetween(580, started.get("timeRemainingSeconds").asInt());
+    }
+
+    @Test
+    @DisplayName("An exam without a time limit has no time remaining")
+    void untimedExam_hasNoTimeRemaining() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 1);
+
+        assertThat(started.get("timeLimitMinutes").asInt()).isZero();
+        assertThat(started.hasNonNull("timeRemainingSeconds")).isFalse();
+    }
+
+    // ---- exams and the dashboard --------------------------------------------
+
+    @Test
+    @DisplayName("A finished exam counts toward the streak, accuracy and study time")
+    void finishedExam_showsOnDashboard() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 2);
+        String sessionId = started.get("id").asText();
+        JsonNode first = started.get("questions").get(0);
+        JsonNode second = started.get("questions").get(1);
+
+        // One right and one wrong, 70 seconds each
+        answer(user, sessionId, first.get("id").asText(), correctOptionOf(first), 70).andExpect(status().isOk());
+        answer(user, sessionId, second.get("id").asText(), wrongOptionOf(second), 70).andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isOk());
+
+        // Exams used to leave nothing behind here, so a day of only exams broke the streak
+        mockMvc.perform(get("/api/v1/progress/dashboard")
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentStreak").value(1))
+                .andExpect(jsonPath("$.totalStudyDays").value(1))
+                .andExpect(jsonPath("$.overallAccuracy").value(50.0))
+                .andExpect(jsonPath("$.categoryAccuracy.DERMATOLOGY").value(50.0))
+                .andExpect(jsonPath("$.totalStudyMinutes").value(2))
+                .andExpect(jsonPath("$.last30DaysActivity[29].examQuestions").value(2))
+                .andExpect(jsonPath("$.last30DaysActivity[29].minutesStudied").value(2))
+                .andExpect(jsonPath("$.last30DaysActivity[29].accuracy").value(50.0))
+                // exam questions are not flashcards, so the card numbers stay at 0
+                .andExpect(jsonPath("$.totalCardsReviewed").value(0))
+                .andExpect(jsonPath("$.last30DaysActivity[29].cardsReviewed").value(0))
+                .andExpect(jsonPath("$.todayGoal.cardsReviewedToday").value(0))
+                .andExpect(jsonPath("$.todayGoal.minutesStudiedToday").value(2));
+    }
+
+    @Test
+    @DisplayName("An exam with no answers still counts as a study day, with every question wrong")
+    void emptyExam_countsAsStudyDay() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 3);
+
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", started.get("id").asText())
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/progress/dashboard")
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(jsonPath("$.currentStreak").value(1))
+                .andExpect(jsonPath("$.categoryAccuracy.DERMATOLOGY").value(0.0))
+                .andExpect(jsonPath("$.last30DaysActivity[29].examQuestions").value(3))
+                .andExpect(jsonPath("$.totalStudyMinutes").value(0));
+    }
+
+    @Test
+    @DisplayName("An abandoned exam does not count toward progress")
+    void abandonedExam_doesNotCount() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 2);
+        String sessionId = started.get("id").asText();
+        JsonNode first = started.get("questions").get(0);
+        answer(user, sessionId, first.get("id").asText(), correctOptionOf(first)).andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/abandon", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/progress/dashboard")
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(jsonPath("$.currentStreak").value(0))
+                .andExpect(jsonPath("$.totalStudyDays").value(0))
+                .andExpect(jsonPath("$.last30DaysActivity[29].examQuestions").value(0));
+    }
+
+    @Test
+    @DisplayName("A question left open for an hour only adds 5 minutes of study time")
+    void longQuestionTime_isCapped() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 1);
+        String sessionId = started.get("id").asText();
+        JsonNode question = started.get("questions").get(0);
+
+        answer(user, sessionId, question.get("id").asText(), correctOptionOf(question), 3600)
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/progress/goal")
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(jsonPath("$.minutesStudiedToday").value(5));
+    }
+
     // ---- helpers -----------------------------------------------------------
 
     // The same body the exam setup page sends, limited to the questions added above
@@ -498,7 +627,12 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     }
 
     private ResultActions answer(UUID user, String sessionId, String questionId, String optionId) throws Exception {
-        String body = "{\"selectedOptionId\": \"" + optionId + "\", \"timeSpentSeconds\": 20}";
+        return answer(user, sessionId, questionId, optionId, 20);
+    }
+
+    private ResultActions answer(UUID user, String sessionId, String questionId, String optionId,
+                                 int seconds) throws Exception {
+        String body = "{\"selectedOptionId\": \"" + optionId + "\", \"timeSpentSeconds\": " + seconds + "}";
 
         return mockMvc.perform(post("/api/v1/exams/{sessionId}/questions/{questionId}/answer",
                         sessionId, questionId)

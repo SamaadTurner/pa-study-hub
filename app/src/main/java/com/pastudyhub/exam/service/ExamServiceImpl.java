@@ -16,6 +16,9 @@ import com.pastudyhub.exam.repository.ExamAnswerRepository;
 import com.pastudyhub.exam.repository.ExamQuestionRepository;
 import com.pastudyhub.exam.repository.ExamSessionRepository;
 import com.pastudyhub.exam.repository.QuestionRepository;
+import com.pastudyhub.progress.dto.LogActivityRequest;
+import com.pastudyhub.progress.model.ActivityType;
+import com.pastudyhub.progress.service.ProgressService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,7 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -34,12 +39,16 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ExamServiceImpl implements ExamService {
 
+    // Most study time one exam question can add (5 minutes), the same limit as a flashcard
+    private static final int MAX_SECONDS_PER_QUESTION = 300;
+
     private final QuestionRepository questionRepository;
     private final ExamSessionRepository examSessionRepository;
     private final ExamAnswerRepository examAnswerRepository;
     private final ExamQuestionRepository examQuestionRepository;
     private final AnswerOptionRepository answerOptionRepository;
     private final ExamMapper examMapper;
+    private final ProgressService progressService;
 
     @Override
     @Transactional
@@ -158,6 +167,8 @@ public class ExamServiceImpl implements ExamService {
 
         examSessionRepository.save(session);
 
+        logExamActivity(userId, questions, answers);
+
         log.info("Exam completed: sessionId={}, userId={}, score={}/{} ({}%)",
                 sessionId, userId, result.rawScore(), result.totalQuestions(), result.scorePercent());
 
@@ -195,6 +206,53 @@ public class ExamServiceImpl implements ExamService {
     public Page<ExamHistorySummary> getExamHistory(UUID userId, int page, int size) {
         return examSessionRepository.findByUserIdOrderByStartedAtDesc(userId, PageRequest.of(page, size))
                 .map(examMapper::toHistorySummary);
+    }
+
+    /**
+     * Records a finished exam in the activity log, so it counts toward the streak,
+     * study time and accuracy on the dashboard. Exams used to leave no trace there.
+     *
+     * <p>One entry is saved per category in the exam, because the dashboard shows
+     * accuracy per category and a mixed exam covers several.
+     */
+    private void logExamActivity(UUID userId, List<Question> questions, List<ExamAnswer> answers) {
+        Set<QuestionCategory> categories = new LinkedHashSet<>();
+        for (Question question : questions) {
+            categories.add(question.getCategory());
+        }
+
+        for (QuestionCategory category : categories) {
+            int total = 0;
+            for (Question question : questions) {
+                if (question.getCategory() == category) {
+                    total++;
+                }
+            }
+
+            int correct = 0;
+            int seconds = 0;
+            for (ExamAnswer answer : answers) {
+                if (answer.getQuestion().getCategory() != category) {
+                    continue;
+                }
+                if (answer.isCorrect()) {
+                    correct++;
+                }
+                if (answer.getTimeSpentSeconds() != null) {
+                    seconds += Math.min(answer.getTimeSpentSeconds(), MAX_SECONDS_PER_QUESTION);
+                }
+            }
+
+            progressService.logActivity(LogActivityRequest.builder()
+                    .userId(userId)
+                    .activityType(ActivityType.EXAM_COMPLETED)
+                    .category(category.name())
+                    .durationSeconds(seconds)
+                    .cardsReviewed(0)
+                    .correctCount(correct)
+                    .totalCount(total)
+                    .build());
+        }
     }
 
     // The questions that were picked for this exam, first question first

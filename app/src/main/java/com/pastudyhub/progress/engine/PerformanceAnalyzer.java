@@ -49,6 +49,14 @@ public class PerformanceAnalyzer {
     }
 
     /**
+     * Returns the number of flashcards reviewed. Exam questions are not cards,
+     * so they are left out here (they still count toward accuracy).
+     */
+    public int totalCardsReviewed() {
+        return logs.stream().mapToInt(ActivityLog::getCardsReviewed).sum();
+    }
+
+    /**
      * Returns total cards/questions reviewed across all logs.
      */
     public int totalItemsReviewed() {

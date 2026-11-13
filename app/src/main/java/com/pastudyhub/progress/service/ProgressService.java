@@ -4,6 +4,7 @@ import com.pastudyhub.progress.dto.*;
 import com.pastudyhub.progress.engine.PerformanceAnalyzer;
 import com.pastudyhub.progress.engine.StreakCalculator;
 import com.pastudyhub.progress.model.ActivityLog;
+import com.pastudyhub.progress.model.ActivityType;
 import com.pastudyhub.progress.model.DailyGoal;
 import com.pastudyhub.progress.repository.ActivityLogRepository;
 import com.pastudyhub.progress.repository.DailyGoalRepository;
@@ -27,7 +28,8 @@ public class ProgressService {
     private final DailyGoalRepository dailyGoalRepository;
 
     /**
-     * Saves one activity event. Called from the flashcard code when a card is reviewed.
+     * Saves one activity event. Called from the flashcard code when a card is reviewed
+     * and from the exam code when an exam is finished.
      */
     @Transactional
     public void logActivity(LogActivityRequest request) {
@@ -68,7 +70,7 @@ public class ProgressService {
                 .longestStreak(streakCalc.calculateLongestStreak())
                 .totalStudyDays(streakCalc.totalStudyDays())
                 .totalStudyMinutes(analyzer.totalStudyMinutes())
-                .totalCardsReviewed(analyzer.totalItemsReviewed())
+                .totalCardsReviewed(analyzer.totalCardsReviewed())
                 .overallAccuracy(analyzer.overallAccuracy())
                 .weakestCategory(analyzer.weakestCategory())
                 .categoryAccuracy(analyzer.categoryAccuracy())
@@ -104,7 +106,7 @@ public class ProgressService {
 
     private GoalProgressResponse buildTodayGoal(UUID userId, DailyGoal goal) {
         LocalDate today = LocalDate.now();
-        int cardsToday = orZero(activityLogRepository.sumTotalCountForDate(userId, today));
+        int cardsToday = orZero(activityLogRepository.sumCardsReviewedForDate(userId, today));
         // Time is saved in seconds. Only full minutes count toward the goal.
         int minutesToday = orZero(activityLogRepository.sumDurationSecondsForDate(userId, today)) / 60;
 
@@ -141,15 +143,22 @@ public class ProgressService {
             LocalDate date = today.minusDays(i);
             List<ActivityLog> dayLogs = logsByDate.getOrDefault(date, List.of());
 
-            int cards = dayLogs.stream().mapToInt(ActivityLog::getTotalCount).sum();
+            // Cards and exam questions are shown separately, but accuracy is over both
+            int cards = dayLogs.stream().mapToInt(ActivityLog::getCardsReviewed).sum();
+            int examQuestions = dayLogs.stream()
+                    .filter(l -> l.getActivityType() == ActivityType.EXAM_COMPLETED)
+                    .mapToInt(ActivityLog::getTotalCount)
+                    .sum();
+            int attempted = dayLogs.stream().mapToInt(ActivityLog::getTotalCount).sum();
             int minutes = dayLogs.stream().mapToInt(ActivityLog::getDurationSeconds).sum() / 60;
             int correct = dayLogs.stream().mapToInt(ActivityLog::getCorrectCount).sum();
-            double accuracy = cards > 0 ? Math.round((double) correct / cards * 1000.0) / 10.0 : 0.0;
+            double accuracy = attempted > 0 ? Math.round((double) correct / attempted * 1000.0) / 10.0 : 0.0;
             boolean goalMet = cards >= goal.getTargetCardsPerDay() || minutes >= goal.getTargetMinutesPerDay();
 
             points.add(DailyProgressPoint.builder()
                     .date(date)
                     .cardsReviewed(cards)
+                    .examQuestions(examQuestions)
                     .minutesStudied(minutes)
                     .accuracy(accuracy)
                     .goalMet(goalMet)

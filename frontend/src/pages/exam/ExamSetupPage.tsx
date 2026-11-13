@@ -6,7 +6,10 @@ import Button from '@/components/common/Button'
 import { useNotification } from '@/contexts/NotificationContext'
 import type { ApiError } from '@/types'
 
-const QUESTION_COUNTS = [10, 20, 30, 50]
+const QUESTION_COUNTS = [5, 10, 20, 30]
+
+// Value used for the "All categories" choice
+const ALL = ''
 const TIME_LIMITS = [
   { label: 'Untimed', minutes: 0 },
   { label: '15 min', minutes: 15 },
@@ -18,37 +21,21 @@ export default function ExamSetupPage() {
   const navigate   = useNavigate()
   const { notify } = useNotification()
 
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [questionCount, setQuestionCount]           = useState(20)
+  // The backend takes one category or none (= all of them). This used to be a list
+  // of checkboxes, but picking two or more quietly gave an exam from every category.
+  const [category, setCategory]                     = useState<string>(ALL)
+  const [questionCount, setQuestionCount]           = useState(10)
   const [timeLimitMinutes, setTimeLimitMinutes]      = useState(0)
   const [customCount, setCustomCount]               = useState('')
   const [useCustomCount, setUseCustomCount]         = useState(false)
   const [loading, setLoading]                       = useState(false)
   const [error, setError]                           = useState<string | null>(null)
 
-  function toggleCategory(cat: string) {
-    setSelectedCategories(prev =>
-      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
-    )
-  }
-
-  function selectAll() {
-    setSelectedCategories([...ALL_CATEGORIES])
-  }
-
-  function clearAll() {
-    setSelectedCategories([])
-  }
-
   const effectiveCount = useCustomCount
     ? Math.min(100, Math.max(1, parseInt(customCount) || 0))
     : questionCount
 
   async function handleStart() {
-    if (selectedCategories.length === 0) {
-      setError('Select at least one category.')
-      return
-    }
     if (effectiveCount < 1) {
       setError('Enter at least 1 question.')
       return
@@ -59,7 +46,7 @@ export default function ExamSetupPage() {
       const session = await startExam({
         questionCount: effectiveCount,
         timeLimitMinutes: timeLimitMinutes || undefined,
-        categoryFilter: selectedCategories.length === 1 ? selectedCategories[0] : undefined,
+        categoryFilter: category === ALL ? undefined : category,
       })
       navigate(`/exam/${session.id}`)
     } catch (err) {
@@ -82,27 +69,11 @@ export default function ExamSetupPage() {
       {/* Categories */}
       <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">
-            Categories <span className="text-red-500">*</span>
-          </h2>
-          <div className="flex gap-3">
-            <button
-              onClick={selectAll}
-              className="text-xs text-primary-600 font-medium hover:underline"
-            >
-              Select All
-            </button>
-            <button
-              onClick={clearAll}
-              className="text-xs text-gray-400 hover:text-gray-600 font-medium"
-            >
-              Clear
-            </button>
-          </div>
+          <h2 className="text-sm font-semibold text-gray-900">Category</h2>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {ALL_CATEGORIES.map(cat => {
-            const checked = selectedCategories.includes(cat)
+          {[ALL, ...ALL_CATEGORIES].map(cat => {
+            const checked = category === cat
             return (
               <label
                 key={cat}
@@ -114,21 +85,19 @@ export default function ExamSetupPage() {
                   }`}
               >
                 <input
-                  type="checkbox"
+                  type="radio"
+                  name="category"
                   checked={checked}
-                  onChange={() => toggleCategory(cat)}
-                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  onChange={() => setCategory(cat)}
+                  className="border-gray-300 text-primary-600 focus:ring-primary-500"
                 />
-                <span className="leading-tight">{getCategoryLabel(cat)}</span>
+                <span className="leading-tight">
+                  {cat === ALL ? 'All categories' : getCategoryLabel(cat)}
+                </span>
               </label>
             )
           })}
         </div>
-        {selectedCategories.length > 0 && (
-          <p className="text-xs text-primary-700 font-medium">
-            {selectedCategories.length} of {ALL_CATEGORIES.length} categories selected
-          </p>
-        )}
       </section>
 
       {/* Question Count */}
@@ -211,11 +180,7 @@ export default function ExamSetupPage() {
           <p>
             <span className="font-medium">{effectiveCount}</span> questions ·{' '}
             <span className="font-medium">
-              {selectedCategories.length === 0
-                ? 'no categories'
-                : selectedCategories.length === ALL_CATEGORIES.length
-                ? 'all categories'
-                : `${selectedCategories.length} categories`}
+              {category === ALL ? 'all categories' : getCategoryLabel(category)}
             </span>{' '}
             · <span className="font-medium">
               {timeLimitMinutes === 0 ? 'untimed' : `${timeLimitMinutes} min`}

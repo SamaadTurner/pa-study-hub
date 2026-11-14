@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useCards } from '@/hooks/useCards'
-import { useDecks } from '@/hooks/useDecks'
-import type { Card } from '@/types'
+import { getDeck } from '@/api/decks'
+import type { Card, Deck } from '@/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import EmptyState from '@/components/common/EmptyState'
 import Button from '@/components/common/Button'
@@ -18,10 +18,26 @@ export default function DeckDetailPage() {
   const navigate    = useNavigate()
   const { notify }  = useNotification()
 
-  const { decks }                                 = useDecks()
   const { cards, loading, error, deleteCard }     = useCards(deckId!)
+  const [deck, setDeck]                           = useState<Deck | null>(null)
 
-  const deck = decks.find(d => d.id === deckId)
+  // The deck is loaded by its id. It used to be picked out of the list of the
+  // user's decks, which only works for a deck that is in that list.
+  useEffect(() => {
+    if (!deckId) return
+    let ignore = false
+
+    getDeck(deckId)
+      .then(loaded => {
+        if (!ignore) setDeck(loaded)
+      })
+      .catch(() => {
+        // Nothing to do here. The cards request fails for the same reason
+        // (deck not found, or not allowed) and its error is what the page shows.
+      })
+
+    return () => { ignore = true }
+  }, [deckId])
 
   const [deleteTarget, setDeleteTarget]   = useState<Card | null>(null)
   const [deleting, setDeleting]           = useState(false)

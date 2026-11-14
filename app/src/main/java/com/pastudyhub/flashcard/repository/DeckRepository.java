@@ -42,14 +42,22 @@ public interface DeckRepository extends JpaRepository<Deck, UUID> {
 
     /**
      * Browse public decks from all users (for the public deck explorer).
-     * Optionally filter by category.
+     * Optionally filter by category, and by text in the title or description.
+     *
+     * <p>pattern is a lower-case LIKE pattern built by the service, where "%" alone
+     * matches every deck and "!" is the escape character. The order comes from
+     * the Pageable.
      *
      * <p>Safe: parameterized JPQL.
      */
     @Query("SELECT d FROM Deck d WHERE d.isPublic = true AND d.isDeleted = false " +
            "AND (:category IS NULL OR d.category = :category) " +
-           "ORDER BY d.updatedAt DESC")
-    Page<Deck> findPublicDecks(@Param("category") MedicalCategory category, Pageable pageable);
+           "AND (LOWER(d.title) LIKE :pattern ESCAPE '!' " +
+           "     OR LOWER(d.description) LIKE :pattern ESCAPE '!')")
+    Page<Deck> findPublicDecks(
+            @Param("category") MedicalCategory category,
+            @Param("pattern") String pattern,
+            Pageable pageable);
 
     /**
      * Count non-deleted cards in a deck.

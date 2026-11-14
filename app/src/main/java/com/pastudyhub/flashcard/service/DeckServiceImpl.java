@@ -33,6 +33,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DeckServiceImpl implements DeckService {
 
+    // The most decks one request for the public list can ask for
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final DeckRepository deckRepository;
     private final CardRepository cardRepository;
     private final ReviewScheduleRepository reviewScheduleRepository;
@@ -112,13 +115,36 @@ public class DeckServiceImpl implements DeckService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<DeckResponse> getPublicDecks(MedicalCategory category, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("updatedAt").descending());
-        return deckRepository.findPublicDecks(category, pageable)
+    public Page<DeckResponse> getPublicDecks(String search, MedicalCategory category, int page, int size) {
+        // Keep odd values from the URL from turning into an error or a huge query
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+
+        // Newest first. The id is a second sort key so that decks saved at the same
+        // moment always come back in the same order, otherwise a deck could show up
+        // on two pages or on none.
+        Sort newestFirst = Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.asc("id"));
+        Pageable pageable = PageRequest.of(safePage, safeSize, newestFirst);
+
+        return deckRepository.findPublicDecks(category, toLikePattern(search), pageable)
                 .map(deck -> {
                     int cardCount = cardRepository.countByDeckIdAndNotDeleted(deck.getId());
                     return deckMapper.toResponse(deck, cardCount, 0);
                 });
+    }
+
+    // Turns what the user typed into a "contains this text" pattern for LIKE.
+    // % and _ mean "anything" in LIKE, so they are escaped with ! to be searched
+    // for as plain characters. No search text gives "%", which matches every deck.
+    private String toLikePattern(String search) {
+        if (search == null || search.isBlank()) {
+            return "%";
+        }
+        String escaped = search.trim().toLowerCase()
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
+        return "%" + escaped + "%";
     }
 
     @Override

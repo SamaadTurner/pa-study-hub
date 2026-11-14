@@ -73,12 +73,13 @@ public class DeckController {
     }
 
     @GetMapping("/decks/public")
-    @Operation(summary = "Browse public decks")
+    @Operation(summary = "Browse public decks, optionally searching the title and description")
     public Page<DeckResponse> getPublicDecks(
+            @RequestParam(required = false) String search,
             @RequestParam(required = false) MedicalCategory category,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return deckService.getPublicDecks(category, page, size);
+        return deckService.getPublicDecks(search, category, page, size);
     }
 
     @PostMapping("/decks/{deckId}/clone")

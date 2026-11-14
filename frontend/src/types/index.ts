@@ -206,4 +206,5 @@ export interface PaginatedResponse<T> {
   totalPages: number
   number: number
   size: number
+  last: boolean  // true when there are no more pages after this one
 }

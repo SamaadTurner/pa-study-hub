@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { Card, Deck, ReviewCard, ReviewResult } from '@/types'
+import type { Card, Deck, PaginatedResponse, ReviewCard, ReviewResult } from '@/types'
 
 // Backend response types (match Java DTOs)
 interface DeckResponse {
@@ -93,10 +93,32 @@ export async function getDecks(): Promise<Deck[]> {
   return decks.map(mapDeck)
 }
 
-export async function getPublicDecks(): Promise<Deck[]> {
-  const { data } = await apiClient.get<{ content: DeckResponse[] }>('/decks/public')
-  const decks = data.content || []
-  return decks.map(mapDeck)
+export const PUBLIC_DECKS_PAGE_SIZE = 20
+
+export interface PublicDeckPage {
+  decks: Deck[]
+  totalDecks: number  // how many public decks match, counting the pages not loaded yet
+  hasMore: boolean
+}
+
+// One page of the public deck list. The search and the category are sent to the
+// backend, so they look through every public deck and not only the ones on screen.
+export async function getPublicDecks(
+  options: { search?: string; category?: string | null; page?: number } = {}
+): Promise<PublicDeckPage> {
+  const params: Record<string, string | number> = {
+    page: options.page ?? 0,
+    size: PUBLIC_DECKS_PAGE_SIZE,
+  }
+  if (options.search) params.search = options.search
+  if (options.category) params.category = options.category
+
+  const { data } = await apiClient.get<PaginatedResponse<DeckResponse>>('/decks/public', { params })
+  return {
+    decks: (data.content || []).map(mapDeck),
+    totalDecks: data.totalElements,
+    hasMore: !data.last,
+  }
 }
 
 export async function getDeck(deckId: string): Promise<Deck> {

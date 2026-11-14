@@ -1,24 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { newUser, register, startExam } from './helpers'
-
-// Picks an answer on the question that is on screen. optionIndex 0 is option A.
-async function pickOption(page: Page, questionNumber: number, total: number, optionIndex = 0) {
-  // Wait for the right question first, so a pick is never made on the previous one
-  await expect(page.getByText(`Question ${questionNumber} / ${total}`)).toBeVisible()
-  await page.getByRole('radio').nth(optionIndex).click()
-}
-
-// Answers every question with option A and finishes the exam
-async function answerAllAndFinish(page: Page, total: number) {
-  for (let number = 1; number <= total; number++) {
-    await pickOption(page, number, total)
-    if (number < total) {
-      await page.getByRole('button', { name: 'Next Question →' }).click()
-    }
-  }
-  await page.getByRole('button', { name: 'Finish Exam' }).click()
-  await expect(page).toHaveURL(/\/exam\/[0-9a-f-]{36}\/results$/)
-}
+import { newUser, register, startExam, pickOption, answerAllAndFinish } from './helpers'
 
 // The small labels on the results page: Correct, Incorrect or Not answered
 function resultBadges(page: Page, label: string) {

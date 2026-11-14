@@ -13,7 +13,7 @@ public interface DeckService {
     DeckResponse createDeck(CreateDeckRequest request, UUID userId);
     DeckResponse updateDeck(UUID deckId, CreateDeckRequest request, UUID userId);
     void deleteDeck(UUID deckId, UUID userId);
-    Page<DeckResponse> getPublicDecks(MedicalCategory category, int page, int size);
+    Page<DeckResponse> getPublicDecks(String search, MedicalCategory category, int page, int size);
     DeckResponse cloneDeck(UUID sourceDeckId, UUID userId);
     DeckStatsResponse getDeckStats(UUID deckId, UUID userId);
 }

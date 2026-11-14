@@ -92,11 +92,37 @@ export async function createDeckWithCards(
   page: Page,
   title: string,
   cards: { front: string; back: string; hint?: string }[],
+  options: { isPublic?: boolean } = {},
 ) {
-  await createDeck(page, title)
+  await createDeck(page, title, options)
   await openDeck(page, title)
   for (const card of cards) {
     await addCard(page, card.front, card.back, card.hint)
+  }
+}
+
+// Makes public decks by calling the API directly as the user who is logged in on
+// this page. Tests that need more than 20 decks use this, because clicking through
+// the form that many times would take most of a minute. The decks are made one
+// after the other, so the last title in the list is the newest deck.
+export async function createPublicDecksThroughApi(
+  page: Page,
+  decks: { title: string; category?: string }[],
+) {
+  // The frontend keeps the login token here (see src/api/client.ts)
+  const token = await page.evaluate(() => localStorage.getItem('pa_access_token'))
+
+  for (const deck of decks) {
+    const response = await page.request.post('/api/v1/decks', {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {
+        title: deck.title,
+        description: '',
+        category: deck.category ?? 'CARDIOLOGY',
+        isPublic: true,
+      },
+    })
+    expect(response.status()).toBe(201)
   }
 }
 

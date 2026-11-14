@@ -101,26 +101,59 @@ export async function createDeckWithCards(
   }
 }
 
-// Makes public decks by calling the API directly as the user who is logged in on
-// this page. Tests that need more than 20 decks use this, because clicking through
-// the form that many times would take most of a minute. The decks are made one
-// after the other, so the last title in the list is the newest deck.
-export async function createPublicDecksThroughApi(
-  page: Page,
-  decks: { title: string; category?: string }[],
-) {
-  // The frontend keeps the login token here (see src/api/client.ts)
+// The frontend keeps the login token in the browser's storage (see src/api/client.ts).
+// The helpers below use it to call the API as the user who is logged in on the page.
+async function authHeader(page: Page) {
   const token = await page.evaluate(() => localStorage.getItem('pa_access_token'))
+  return { Authorization: `Bearer ${token}` }
+}
+
+// Makes decks by calling the API directly. Tests that need a lot of decks use
+// this, because clicking through the form that many times would take minutes.
+// The decks are made one after the other, so the last one in the list is the
+// newest. Returns the ids of the new decks in the same order.
+export async function createDecksThroughApi(
+  page: Page,
+  decks: { title: string; category?: string; isPublic?: boolean }[],
+): Promise<string[]> {
+  const headers = await authHeader(page)
+  const ids: string[] = []
 
   for (const deck of decks) {
     const response = await page.request.post('/api/v1/decks', {
-      headers: { Authorization: `Bearer ${token}` },
+      headers,
       data: {
         title: deck.title,
         description: '',
         category: deck.category ?? 'CARDIOLOGY',
-        isPublic: true,
+        isPublic: deck.isPublic ?? false,
       },
+    })
+    expect(response.status()).toBe(201)
+    ids.push((await response.json()).id)
+  }
+  return ids
+}
+
+export async function createPublicDecksThroughApi(
+  page: Page,
+  decks: { title: string; category?: string }[],
+) {
+  return createDecksThroughApi(page, decks.map(deck => ({ ...deck, isPublic: true })))
+}
+
+// Adds cards to a deck by calling the API directly, in the order given
+export async function createCardsThroughApi(
+  page: Page,
+  deckId: string,
+  cards: { front: string; back: string }[],
+) {
+  const headers = await authHeader(page)
+
+  for (const card of cards) {
+    const response = await page.request.post(`/api/v1/decks/${deckId}/cards`, {
+      headers,
+      data: { front: card.front, back: card.back, tags: [] },
     })
     expect(response.status()).toBe(201)
   }

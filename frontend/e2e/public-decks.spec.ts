@@ -57,10 +57,10 @@ test.describe('Public decks', () => {
     const word = uniqueWord()
     await register(page, newUser())
 
-    // One deck, then 21 newer ones. The list is newest first, so the old deck
+    // One deck, then 25 newer ones. The list is newest first, so the old deck
     // cannot be on the first page of 20.
     const decks = [{ title: `Oldest ${word}` }]
-    for (let i = 1; i <= 21; i++) {
+    for (let i = 1; i <= 25; i++) {
       decks.push({ title: `Newer ${word} ${i}` })
     }
     await createPublicDecksThroughApi(page, decks)

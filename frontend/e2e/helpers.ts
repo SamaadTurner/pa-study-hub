@@ -148,3 +148,22 @@ export async function startExam(page: Page, choices: ExamChoices) {
   await expect(page).toHaveURL(/\/exam\/[0-9a-f-]{36}$/)
   await expect(page.getByText(`Question 1 / ${choices.questions}`)).toBeVisible()
 }
+
+// Picks an answer on the exam question that is on screen. optionIndex 0 is option A.
+export async function pickOption(page: Page, questionNumber: number, total: number, optionIndex = 0) {
+  // Wait for the right question first, so a pick is never made on the previous one
+  await expect(page.getByText(`Question ${questionNumber} / ${total}`)).toBeVisible()
+  await page.getByRole('radio').nth(optionIndex).click()
+}
+
+// Answers every exam question with option A and finishes the exam
+export async function answerAllAndFinish(page: Page, total: number) {
+  for (let number = 1; number <= total; number++) {
+    await pickOption(page, number, total)
+    if (number < total) {
+      await page.getByRole('button', { name: 'Next Question →' }).click()
+    }
+  }
+  await page.getByRole('button', { name: 'Finish Exam' }).click()
+  await expect(page).toHaveURL(/\/exam\/[0-9a-f-]{36}\/results$/)
+}

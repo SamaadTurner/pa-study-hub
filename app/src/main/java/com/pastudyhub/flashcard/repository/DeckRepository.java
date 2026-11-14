@@ -22,13 +22,12 @@ public interface DeckRepository extends JpaRepository<Deck, UUID> {
 
     /**
      * Find all non-deleted decks for a user, optionally filtered by category.
-     * Returns most recently updated decks first.
+     * The order comes from the Pageable.
      *
      * <p>Safe: parameterized JPQL with Spring Data — no injection risk.
      */
     @Query("SELECT d FROM Deck d WHERE d.userId = :userId AND d.isDeleted = false " +
-           "AND (:category IS NULL OR d.category = :category) " +
-           "ORDER BY d.updatedAt DESC")
+           "AND (:category IS NULL OR d.category = :category)")
     Page<Deck> findByUserIdAndNotDeleted(
             @Param("userId") UUID userId,
             @Param("category") MedicalCategory category,

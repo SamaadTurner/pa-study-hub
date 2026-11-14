@@ -47,7 +47,7 @@ public interface CardRepository extends JpaRepository<Card, UUID> {
      */
     @Query("SELECT c FROM Card c WHERE c.deck.id = :deckId AND c.isDeleted = false " +
            "AND NOT EXISTS (SELECT rs.id FROM ReviewSchedule rs WHERE rs.card = c AND rs.userId = :userId) " +
-           "ORDER BY c.createdAt ASC")
+           "ORDER BY c.positionInDeck ASC, c.createdAt ASC, c.id ASC")
     List<Card> findNeverReviewed(@Param("deckId") UUID deckId, @Param("userId") UUID userId, Pageable pageable);
 
     /**
@@ -58,10 +58,20 @@ public interface CardRepository extends JpaRepository<Card, UUID> {
     int countNeverReviewed(@Param("deckId") UUID deckId, @Param("userId") UUID userId);
 
     /**
-     * Find all card IDs in a deck (used for batch operations like deck cloning).
+     * All cards of a deck in deck order (used when a deck is copied).
      *
      * <p>Safe: parameterized JPQL.
      */
-    @Query("SELECT c.id FROM Card c WHERE c.deck.id = :deckId AND c.isDeleted = false")
-    List<UUID> findCardIdsByDeckId(@Param("deckId") UUID deckId);
+    @Query("SELECT c FROM Card c WHERE c.deck.id = :deckId AND c.isDeleted = false " +
+           "ORDER BY c.positionInDeck ASC, c.createdAt ASC, c.id ASC")
+    List<Card> findAllInDeckOrder(@Param("deckId") UUID deckId);
+
+    /**
+     * The highest position used in a deck so far, 0 for a deck without cards.
+     * Deleted cards are counted too, so a position is never handed out twice.
+     *
+     * <p>Safe: parameterized JPQL.
+     */
+    @Query("SELECT COALESCE(MAX(c.positionInDeck), 0) FROM Card c WHERE c.deck.id = :deckId")
+    int findLastPositionInDeck(@Param("deckId") UUID deckId);
 }

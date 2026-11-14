@@ -69,6 +69,16 @@ public class Card {
     @Builder.Default
     private boolean isDeleted = false;
 
+    /**
+     * Where the card sits in its deck: 1 for the first card that was added, 2 for
+     * the next one, and so on. The card list is sorted by this. The created date
+     * can't be used for that, because cards saved in the same instant (a copied
+     * deck) all get the same date.
+     */
+    @Column(name = "position_in_deck", nullable = false)
+    @Builder.Default
+    private int positionInDeck = 0;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

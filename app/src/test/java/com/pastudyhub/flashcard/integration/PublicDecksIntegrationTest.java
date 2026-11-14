@@ -10,7 +10,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -199,8 +201,15 @@ class PublicDecksIntegrationTest extends BaseIntegrationTest {
         assertThat(distinct).hasSize(25);
         assertThat(distinct).containsExactlyInAnyOrderElementsOf(created);
 
-        // The deck made last is the first one listed
-        assertThat(returned.get(0)).isEqualTo(created.get(24));
+        // Newest first. The dates are compared and not the ids, because two decks
+        // made in the same instant have the same date and can come in either order.
+        List<LocalDateTime> dates = new ArrayList<>();
+        for (JsonNode page : List.of(first, second, third)) {
+            for (JsonNode deck : page.get("content")) {
+                dates.add(LocalDateTime.parse(deck.get("updatedAt").asText()));
+            }
+        }
+        assertThat(dates).isSortedAccordingTo(Comparator.reverseOrder());
     }
 
     @Test

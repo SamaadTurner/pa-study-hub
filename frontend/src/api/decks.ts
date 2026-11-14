@@ -1,4 +1,5 @@
 import apiClient from './client'
+import { fetchAllPages } from './pagination'
 import type { Card, Deck, PaginatedResponse, ReviewCard, ReviewResult } from '@/types'
 
 // Backend response types (match Java DTOs)
@@ -87,9 +88,10 @@ function mapReviewResult(response: ReviewResponse, cardId: string, quality: numb
 
 // ---- Decks -----------------------------------------------------------------
 
+// All of the user's own decks. The backend answers in pages, and this used to
+// take only the first one, so a user never saw more than their 20 newest decks.
 export async function getDecks(): Promise<Deck[]> {
-  const { data } = await apiClient.get<{ content: DeckResponse[] }>('/decks')
-  const decks = data.content || []
+  const decks = await fetchAllPages<DeckResponse>('/decks')
   return decks.map(mapDeck)
 }
 
@@ -147,9 +149,9 @@ export async function cloneDeck(deckId: string): Promise<Deck> {
 
 // ---- Cards -----------------------------------------------------------------
 
+// All cards of a deck, in the order they were added (not only the first 50)
 export async function getCards(deckId: string): Promise<Card[]> {
-  const { data } = await apiClient.get<{ content: CardResponse[] }>(`/decks/${deckId}/cards`)
-  const cards = data.content || []
+  const cards = await fetchAllPages<CardResponse>(`/decks/${deckId}/cards`)
   return cards.map(mapCard)
 }
 

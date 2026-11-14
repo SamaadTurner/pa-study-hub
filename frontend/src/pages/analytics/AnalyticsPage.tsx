@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
-import { getDashboard } from '@/api/progress'
-import type { ProgressDashboard, DailyProgressPoint } from '@/types'
+import { useProgress } from '@/hooks/useProgress'
+import type { DailyProgressPoint } from '@/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
+import EmptyState from '@/components/common/EmptyState'
 import { getCategoryLabel, CATEGORY_HEX_COLORS } from '@/utils/categoryColors'
-import { formatDate } from '@/utils/formatDate'
+import { formatShortDate } from '@/utils/formatDate'
+import { itemsStudied, activityLevel, describeDay, type ActivityLevel } from '@/utils/activity'
 import {
   BarChart,
   Bar,
@@ -31,7 +32,7 @@ function CategoryAccuracyChart({ data }: { data: Record<string, number> }) {
   if (chartData.length === 0) {
     return (
       <p className="text-sm text-gray-400 text-center py-8">
-        No category data yet — complete some reviews first.
+        No category data yet. Review some cards or finish a practice exam first.
       </p>
     )
   }
@@ -70,18 +71,19 @@ function CategoryAccuracyChart({ data }: { data: Record<string, number> }) {
 
 // ── Accuracy trend line ─────────────────────────────────────────────────────
 function AccuracyTrendChart({ data }: { data: DailyProgressPoint[] }) {
-  const chartData = data
-    .filter(d => d.cardsReviewed > 0)
-    .map(d => ({
-      date: formatDate(d.date),
-      accuracy: Math.round(d.accuracy),
-      cards: d.cardsReviewed,
-    }))
+  const daysStudied = data.filter(d => itemsStudied(d) > 0).length
 
-  if (chartData.length < 2) {
+  // Every day gets a place on the chart, so the dates are evenly spaced. A day
+  // without studying has no accuracy, and the line passes straight over it.
+  const chartData = data.map(d => ({
+    date: formatShortDate(d.date),
+    accuracy: itemsStudied(d) > 0 ? Math.round(d.accuracy) : null,
+  }))
+
+  if (daysStudied < 2) {
     return (
       <p className="text-sm text-gray-400 text-center py-8">
-        Not enough data yet — study for multiple days to see a trend.
+        Not enough data yet. Study on two or more days to see a trend.
       </p>
     )
   }
@@ -94,6 +96,7 @@ function AccuracyTrendChart({ data }: { data: DailyProgressPoint[] }) {
           dataKey="date"
           tick={{ fontSize: 10 }}
           interval="preserveStartEnd"
+          minTickGap={24}
         />
         <YAxis
           domain={[0, 100]}
@@ -106,6 +109,7 @@ function AccuracyTrendChart({ data }: { data: DailyProgressPoint[] }) {
         <Line
           type="monotone"
           dataKey="accuracy"
+          connectNulls
           stroke="#6366f1"
           strokeWidth={2}
           dot={{ r: 3, fill: '#6366f1' }}
@@ -117,36 +121,27 @@ function AccuracyTrendChart({ data }: { data: DailyProgressPoint[] }) {
 }
 
 // ── Activity heatmap ────────────────────────────────────────────────────────
+const LEVEL_COLORS: Record<ActivityLevel, string> = {
+  none:    'bg-gray-100',
+  light:   'bg-primary-100',
+  active:  'bg-primary-300',
+  goalMet: 'bg-primary-500',
+}
+
+// One square per day, oldest first, exactly the days the backend sent. The page
+// used to work out 35 dates of its own, but the backend only has the last 30,
+// so the first five squares could never be filled in.
 function ActivityHeatmap({ data }: { data: DailyProgressPoint[] }) {
-  const byDate = Object.fromEntries(data.map(d => [d.date, d]))
-
-  // Build last 35 days grid (5 rows × 7 cols, newest at bottom-right)
-  const today = new Date()
-  const days: Array<{ date: string; point: DailyProgressPoint | null }> = []
-  for (let i = 34; i >= 0; i--) {
-    const d = new Date(today)
-    d.setDate(d.getDate() - i)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    days.push({ date: key, point: byDate[key] ?? null })
-  }
-
-  function cellColor(point: DailyProgressPoint | null): string {
-    if (!point || point.cardsReviewed === 0) return 'bg-gray-100'
-    if (point.goalMet) return 'bg-primary-500'
-    if (point.cardsReviewed >= 10) return 'bg-primary-300'
-    return 'bg-primary-100'
-  }
-
   return (
     <div>
-      <div className="grid grid-cols-7 gap-1.5">
-        {days.map(({ date, point }) => (
+      <div className="grid grid-cols-10 gap-1.5">
+        {data.map(point => (
           <div
-            key={date}
-            title={point
-              ? `${date}: ${point.cardsReviewed} cards, ${Math.round(point.accuracy)}% accuracy`
-              : date}
-            className={`h-7 rounded ${cellColor(point)} cursor-default transition-opacity hover:opacity-75`}
+            key={point.date}
+            role="img"
+            aria-label={describeDay(point)}
+            title={describeDay(point)}
+            className={`h-7 rounded ${LEVEL_COLORS[activityLevel(point)]} cursor-default transition-opacity hover:opacity-75`}
           />
         ))}
       </div>
@@ -170,18 +165,7 @@ function ActivityHeatmap({ data }: { data: DailyProgressPoint[] }) {
 
 // ── Main page ───────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
-  const [dashboard, setDashboard]   = useState<ProgressDashboard | null>(null)
-  const [activity, setActivity]     = useState<DailyProgressPoint[]>([])
-  const [loading, setLoading]       = useState(true)
-
-  useEffect(() => {
-    getDashboard()
-      .then(dash => {
-        setDashboard(dash)
-        setActivity(dash.last30DaysActivity || [])
-      })
-      .finally(() => setLoading(false))
-  }, [])
+  const { dashboard, loading, error, refetch } = useProgress()
 
   if (loading) {
     return (
@@ -191,6 +175,20 @@ export default function AnalyticsPage() {
     )
   }
 
+  // Without this the page showed 0% and empty charts when the request failed,
+  // which looks the same as an account that has never studied.
+  if (error) {
+    return (
+      <EmptyState
+        icon="⚠️"
+        title="Failed to load analytics"
+        message={error}
+        action={{ label: 'Try Again', onClick: refetch }}
+      />
+    )
+  }
+
+  const activity = dashboard?.last30DaysActivity ?? []
   const overallAcc = dashboard?.overallAccuracy ?? 0
 
   return (
@@ -222,8 +220,15 @@ export default function AnalyticsPage() {
 
       {/* Activity heatmap */}
       <section className="bg-white border border-gray-200 rounded-xl p-6">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Study Activity — Last 35 Days</h2>
-        <ActivityHeatmap data={dashboard?.last30DaysActivity ?? []} />
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-gray-900">Study Activity, Last 30 Days</h2>
+          {activity.length > 0 && (
+            <span className="text-xs text-gray-400">
+              {formatShortDate(activity[0].date)} to today, oldest first
+            </span>
+          )}
+        </div>
+        <ActivityHeatmap data={activity} />
       </section>
 
       {/* Accuracy trend */}

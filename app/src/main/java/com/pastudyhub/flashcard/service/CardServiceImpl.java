@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,9 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class CardServiceImpl {
+
+    // The most cards one request for a deck's cards can ask for
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final CardRepository cardRepository;
     private final DeckRepository deckRepository;
@@ -45,7 +49,18 @@ public class CardServiceImpl {
             throw new UnauthorizedDeckAccessException("You do not have permission to view this deck");
         }
 
-        return cardRepository.findByDeckIdAndNotDeleted(deckId, PageRequest.of(page, size))
+        // Keep odd values from the URL from turning into an error or a huge query
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+
+        // In the order the cards were added. Without a sort the database may hand
+        // the rows back in any order, and that order can change when a card is
+        // edited, so a card could be on two pages or on none. The date and the id
+        // only matter for two cards that somehow have the same position.
+        Sort deckOrder = Sort.by(
+                Sort.Order.asc("positionInDeck"), Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
+
+        return cardRepository.findByDeckIdAndNotDeleted(deckId, PageRequest.of(safePage, safeSize, deckOrder))
                 .map(card -> {
                     Optional<ReviewSchedule> schedule = reviewScheduleRepository
                             .findByCardIdAndUserId(card.getId(), userId);
@@ -63,6 +78,8 @@ public class CardServiceImpl {
         }
 
         Card card = cardMapper.toEntity(request, deck);
+        // A new card goes to the end of the deck
+        card.setPositionInDeck(cardRepository.findLastPositionInDeck(deckId) + 1);
         // saveAndFlush so createdAt is filled in before the response is built
         Card saved = cardRepository.saveAndFlush(card);
         log.info("Card created: id={}, deckId={}", saved.getId(), deckId);

@@ -33,7 +33,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DeckServiceImpl implements DeckService {
 
-    // The most decks one request for the public list can ask for
+    // The most decks one request for a list of decks can ask for
     private static final int MAX_PAGE_SIZE = 100;
 
     private final DeckRepository deckRepository;
@@ -45,8 +45,7 @@ public class DeckServiceImpl implements DeckService {
     @Override
     @Transactional(readOnly = true)
     public Page<DeckResponse> getUserDecks(UUID userId, MedicalCategory category, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("updatedAt").descending());
-        return deckRepository.findByUserIdAndNotDeleted(userId, category, pageable)
+        return deckRepository.findByUserIdAndNotDeleted(userId, category, newestFirst(page, size))
                 .map(deck -> {
                     int cardCount = cardRepository.countByDeckIdAndNotDeleted(deck.getId());
                     int cardsToReview = countCardsToReview(deck.getId(), userId);
@@ -116,21 +115,24 @@ public class DeckServiceImpl implements DeckService {
     @Override
     @Transactional(readOnly = true)
     public Page<DeckResponse> getPublicDecks(String search, MedicalCategory category, int page, int size) {
-        // Keep odd values from the URL from turning into an error or a huge query
-        int safePage = Math.max(page, 0);
-        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-
-        // Newest first. The id is a second sort key so that decks saved at the same
-        // moment always come back in the same order, otherwise a deck could show up
-        // on two pages or on none.
-        Sort newestFirst = Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.asc("id"));
-        Pageable pageable = PageRequest.of(safePage, safeSize, newestFirst);
-
-        return deckRepository.findPublicDecks(category, toLikePattern(search), pageable)
+        return deckRepository.findPublicDecks(category, toLikePattern(search), newestFirst(page, size))
                 .map(deck -> {
                     int cardCount = cardRepository.countByDeckIdAndNotDeleted(deck.getId());
                     return deckMapper.toResponse(deck, cardCount, 0);
                 });
+    }
+
+    // One page of decks, the most recently changed first.
+    private Pageable newestFirst(int page, int size) {
+        // Keep odd values from the URL from turning into an error or a huge query
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+
+        // The id is a second sort key so that decks saved at the same moment always
+        // come back in the same order, otherwise a deck could show up on two pages
+        // or on none.
+        Sort sort = Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.asc("id"));
+        return PageRequest.of(safePage, safeSize, sort);
     }
 
     // Turns what the user typed into a "contains this text" pattern for LIKE.
@@ -166,21 +168,22 @@ public class DeckServiceImpl implements DeckService {
                 .build();
         Deck savedClone = deckRepository.saveAndFlush(clone);
 
-        // Clone all cards from the source deck
-        List<UUID> sourceCardIds = cardRepository.findCardIdsByDeckId(sourceDeckId);
-        for (UUID cardId : sourceCardIds) {
-            cardRepository.findByIdAndNotDeleted(cardId).ifPresent(sourceCard -> {
-                Card clonedCard = Card.builder()
-                        .deck(savedClone)
-                        .front(sourceCard.getFront())
-                        .back(sourceCard.getBack())
-                        .hint(sourceCard.getHint())
-                        .imageUrl(sourceCard.getImageUrl())
-                        .tags(sourceCard.getTags())
-                        .isDeleted(false)
-                        .build();
-                cardRepository.save(clonedCard);
-            });
+        // Copy the cards in the order they have in the source deck. The copies are
+        // numbered 1, 2, 3... so the new deck shows them in that same order.
+        int position = 0;
+        for (Card sourceCard : cardRepository.findAllInDeckOrder(sourceDeckId)) {
+            position++;
+            Card clonedCard = Card.builder()
+                    .deck(savedClone)
+                    .front(sourceCard.getFront())
+                    .back(sourceCard.getBack())
+                    .hint(sourceCard.getHint())
+                    .imageUrl(sourceCard.getImageUrl())
+                    .tags(sourceCard.getTags())
+                    .isDeleted(false)
+                    .positionInDeck(position)
+                    .build();
+            cardRepository.save(clonedCard);
         }
 
         int cardCount = cardRepository.countByDeckIdAndNotDeleted(savedClone.getId());

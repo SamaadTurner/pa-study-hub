@@ -1,0 +1,72 @@
+# Render Blueprint for the hosted demo. Render reads this file when you create a
+# Blueprint from this repo (Render dashboard > New > Blueprint).
+#
+# Two services, both on Render's free plan:
+#   pa-study-hub-api  the Spring Boot backend, built from the Dockerfile
+#   pa-study-hub      the React app as a static site
+#
+# The database is not on Render: Render's free PostgreSQL is deleted after 30 days.
+# It is a free Neon database instead. Render asks for the three values marked
+# "sync: false" when the Blueprint is created. They come from Neon's connection
+# details:
+#   SPRING_DATASOURCE_URL  jdbc:postgresql://<host>/<database>?sslmode=require
+#                          (use the direct host, not the "-pooler" one, so the
+#                          Flyway migrations can run)
+#   DB_USER, DB_PASSWORD   the Neon role and its password
+#
+# The free backend sleeps after 15 minutes without visitors. The next visit wakes
+# it up, which takes about a minute, and the app says so if a request fails meanwhile.
+
+services:
+  - type: web
+    name: pa-study-hub-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    # Only rebuild the backend when backend files change
+    buildFilter:
+      paths:
+        - app/**
+        - build.gradle.kts
+        - settings.gradle.kts
+        - lombok.config
+        - gradle/**
+        - Dockerfile
+    envVars:
+      # Render makes up a random value once and keeps it
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      # The free plan has a small share of one CPU. These two options make the
+      # JVM start faster with it, which matters because every wake-up is a start.
+      - key: JAVA_TOOL_OPTIONS
+        value: -XX:+UseSerialGC -XX:TieredStopAtLevel=1
+
+  - type: web
+    name: pa-study-hub
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    buildFilter:
+      paths:
+        - frontend/**
+    routes:
+      # The app calls the API on its own address at /api/v1. Render passes those
+      # requests on to the backend, the job Vite does in development and nginx in
+      # Docker. If Render gave the backend a different address than the one
+      # below (it adds a suffix when the name is taken), change it here.
+      - type: rewrite
+        source: /api/*
+        destination: https://pa-study-hub-api.onrender.com/api/*
+      # Every other address gets index.html, and React Router shows the right page
+      - type: rewrite
+        source: /*
+        destination: /index.html

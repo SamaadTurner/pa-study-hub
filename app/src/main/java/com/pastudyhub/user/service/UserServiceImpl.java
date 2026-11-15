@@ -7,6 +7,7 @@ import com.pastudyhub.user.exception.InvalidCredentialsException;
 import com.pastudyhub.user.exception.UserNotFoundException;
 import com.pastudyhub.user.mapper.UserMapper;
 import com.pastudyhub.user.model.User;
+import com.pastudyhub.user.repository.RefreshTokenRepository;
 import com.pastudyhub.user.repository.UserRepository;
 import com.pastudyhub.user.security.PasswordPolicy;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import java.util.UUID;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicy passwordPolicy;
     private final UserMapper userMapper;
@@ -93,6 +95,11 @@ public class UserServiceImpl implements UserService {
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+
+        // Sign out everywhere. A refresh token from before the change may be in the
+        // hands of whoever made the user want a new password.
+        refreshTokenRepository.revokeAllForUser(userId);
+
         log.info("Password changed for user: id={}", userId);
     }
 

@@ -107,8 +107,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return buildAuthResponse(user);
     }
 
+    // noRollbackFor: when a revoked token is used again, this method revokes every
+    // token of the user and then throws. A normal @Transactional would undo that
+    // revoke because of the exception, and the stolen-token check would do nothing.
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = InvalidTokenException.class)
     public AuthResponse refresh(RefreshTokenRequest request) {
         RefreshToken existingToken = refreshTokenRepository.findByToken(request.getRefreshToken())
                 .orElseThrow(() -> new InvalidTokenException("Refresh token not found"));

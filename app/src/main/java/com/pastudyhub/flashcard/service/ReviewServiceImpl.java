@@ -11,9 +11,11 @@ import com.pastudyhub.flashcard.exception.UnauthorizedDeckAccessException;
 import com.pastudyhub.flashcard.mapper.CardMapper;
 import com.pastudyhub.flashcard.model.Card;
 import com.pastudyhub.flashcard.model.Deck;
+import com.pastudyhub.flashcard.model.ReviewLog;
 import com.pastudyhub.flashcard.model.ReviewSchedule;
 import com.pastudyhub.flashcard.repository.CardRepository;
 import com.pastudyhub.flashcard.repository.DeckRepository;
+import com.pastudyhub.flashcard.repository.ReviewLogRepository;
 import com.pastudyhub.flashcard.repository.ReviewScheduleRepository;
 import com.pastudyhub.progress.dto.LogActivityRequest;
 import com.pastudyhub.progress.model.ActivityType;
@@ -49,6 +51,7 @@ public class ReviewServiceImpl {
     private final CardRepository cardRepository;
     private final DeckRepository deckRepository;
     private final ReviewScheduleRepository reviewScheduleRepository;
+    private final ReviewLogRepository reviewLogRepository;
     private final CardMapper cardMapper;
     private final ProgressService progressService;
 
@@ -115,6 +118,12 @@ public class ReviewServiceImpl {
                         .repetitions(0)
                         .build());
 
+        LocalDateTime now = LocalDateTime.now();
+
+        // Written before the schedule changes, because it records what the card
+        // looked like when the user saw it (the planned interval, the last review)
+        logReview(card, userId, schedule, request, now);
+
         // Run the SM-2 algorithm
         SpacedRepetitionEngine engine = new SpacedRepetitionEngine(schedule);
         ReviewResult result = engine.calculateNextReview(request.getQuality());
@@ -124,7 +133,7 @@ public class ReviewServiceImpl {
         schedule.setEaseFactor(result.newEaseFactor());
         schedule.setRepetitions(result.newRepetitions());
         schedule.setNextReviewDate(result.nextReviewDate());
-        schedule.setLastReviewedAt(LocalDateTime.now());
+        schedule.setLastReviewedAt(now);
         schedule.setLastQuality(request.getQuality());
 
         reviewScheduleRepository.save(schedule);
@@ -145,6 +154,35 @@ public class ReviewServiceImpl {
                 .repetitions(result.newRepetitions())
                 .message(message)
                 .build();
+    }
+
+    /**
+     * Adds this review to the review history. It runs in the same transaction as
+     * the schedule update, so a review can't be saved without its history row.
+     */
+    private void logReview(Card card, UUID userId, ReviewSchedule schedule, ReviewRequest request,
+                           LocalDateTime reviewedAt) {
+        // Calendar days, not 24-hour periods: a card seen at 11 pm and again at 8 am
+        // the next morning counts as one day, the way schedulers count intervals
+        Integer daysSinceLastReview = null;
+        if (schedule.getLastReviewedAt() != null) {
+            daysSinceLastReview = (int) ChronoUnit.DAYS.between(
+                    schedule.getLastReviewedAt().toLocalDate(), reviewedAt.toLocalDate());
+        }
+
+        Integer timeSpent = request.getTimeSpentSeconds() == null
+                ? null
+                : secondsToCount(request.getTimeSpentSeconds());
+
+        reviewLogRepository.save(ReviewLog.builder()
+                .userId(userId)
+                .card(card)
+                .quality(request.getQuality())
+                .reviewedAt(reviewedAt)
+                .daysSinceLastReview(daysSinceLastReview)
+                .scheduledDays(schedule.getInterval())
+                .timeSpentSeconds(timeSpent)
+                .build());
     }
 
     // The time is optional in the request, and anything over the cap is cut down to it

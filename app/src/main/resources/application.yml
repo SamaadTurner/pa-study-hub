@@ -29,7 +29,9 @@ server:
   port: ${PORT:8080}
   error:
     include-message: always
-    include-stacktrace: on_param
+    # It was "on_param", which sent the full Java stack trace to anyone who added
+    # ?trace=true to a request. That shows the inside of the app to strangers.
+    include-stacktrace: never
 
 # JWT Configuration
 # There is no default secret on purpose. A secret that sits in a public repo would
@@ -54,6 +56,8 @@ management:
 logging:
   level:
     root: INFO
-    com.pastudyhub: DEBUG
+    com.pastudyhub: INFO
     org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
+    # Every SQL statement in the log is useful while developing (see application-dev.yml)
+    # but too much on a server
+    org.hibernate.SQL: WARN

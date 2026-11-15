@@ -13,7 +13,7 @@ about a minute to wake it up.
 Built for Jocelyn, who starts PA school this spring.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 288 backend tests, 92 frontend unit tests and 52 end-to-end browser tests
+the frontend. 303 backend tests, 92 frontend unit tests and 52 end-to-end browser tests
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -102,7 +102,7 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 288 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 303 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
   They cover 97.3% of lines and 82.0% of branches (JaCoCo, without the code Lombok
@@ -151,6 +151,18 @@ days, then the last interval times the ease factor. Below 3, it starts over at 1
 The ease factor goes up after an easy answer and down after a hard one, never below
 1.3. This is the SM-2 algorithm from SuperMemo, the same idea Anki started from. The
 code is in `SpacedRepetitionEngine.java`.
+
+There is also **FSRS-6**, the newer scheduler Anki offers since 2023. Instead of an ease
+factor it tracks each card's *stability* (days until the chance of remembering drops to
+90%) and *difficulty*, and plans the next review for the day that chance reaches the
+target (90% by default). `FsrsEngine.java` is a port of the official TypeScript
+implementation (ts-fsrs), and its tests compare every step of several review sequences
+with numbers printed by that implementation.
+
+Both schedulers run on every review and keep their own numbers, and every review is
+logged (`review_logs`). `SCHEDULING_ALGORITHM=sm2` or `fsrs` decides whose date is used,
+so switching never loses a card's history. SM-2 stays the default until there is a
+measured comparison of how well each predicts forgetting.
 
 ## Decisions
 

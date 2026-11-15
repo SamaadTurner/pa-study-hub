@@ -1,3 +1,4 @@
+import { lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { NotificationProvider } from '@/contexts/NotificationContext'
@@ -7,17 +8,24 @@ import ErrorBoundary from '@/components/common/ErrorBoundary'
 
 import LoginPage        from '@/pages/auth/LoginPage'
 import RegisterPage     from '@/pages/auth/RegisterPage'
-import DashboardPage    from '@/pages/dashboard/DashboardPage'
-import DecksPage        from '@/pages/decks/DecksPage'
-import DeckDetailPage   from '@/pages/decks/DeckDetailPage'
-import ReviewPage       from '@/pages/decks/ReviewPage'
-import CardEditorPage   from '@/pages/decks/CardEditorPage'
-import PublicDecksPage  from '@/pages/decks/PublicDecksPage'
-import ExamSetupPage    from '@/pages/exam/ExamSetupPage'
-import ExamPage         from '@/pages/exam/ExamPage'
-import ExamResultsPage  from '@/pages/exam/ExamResultsPage'
-import ExamHistoryPage  from '@/pages/exam/ExamHistoryPage'
-import AnalyticsPage    from '@/pages/analytics/AnalyticsPage'
+
+// The login and register pages are part of the main bundle, because one of them
+// is the first thing a visitor sees. Every page behind the login is its own file
+// that the browser fetches the first time the page is opened (AppLayout shows a
+// spinner meanwhile). That keeps the first load small: the chart library is
+// bigger than the rest of the app, and only the analytics and exam results
+// pages use it.
+const DashboardPage    = lazy(() => import('@/pages/dashboard/DashboardPage'))
+const DecksPage        = lazy(() => import('@/pages/decks/DecksPage'))
+const DeckDetailPage   = lazy(() => import('@/pages/decks/DeckDetailPage'))
+const ReviewPage       = lazy(() => import('@/pages/decks/ReviewPage'))
+const CardEditorPage   = lazy(() => import('@/pages/decks/CardEditorPage'))
+const PublicDecksPage  = lazy(() => import('@/pages/decks/PublicDecksPage'))
+const ExamSetupPage    = lazy(() => import('@/pages/exam/ExamSetupPage'))
+const ExamPage         = lazy(() => import('@/pages/exam/ExamPage'))
+const ExamResultsPage  = lazy(() => import('@/pages/exam/ExamResultsPage'))
+const ExamHistoryPage  = lazy(() => import('@/pages/exam/ExamHistoryPage'))
+const AnalyticsPage    = lazy(() => import('@/pages/analytics/AnalyticsPage'))
 
 export default function App() {
   return (

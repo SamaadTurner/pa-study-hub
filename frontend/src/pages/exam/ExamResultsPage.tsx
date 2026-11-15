@@ -5,6 +5,8 @@ import type { ExamResult, ExamAnswerDetail, ApiError } from '@/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import Button from '@/components/common/Button'
 import AnswerOptions from '@/components/exams/AnswerOptions'
+import ExplainAnswer from '@/components/ai/ExplainAnswer'
+import { useAiStatus } from '@/hooks/useAiStatus'
 import { getCategoryLabel, CATEGORY_HEX_COLORS } from '@/utils/categoryColors'
 import { formatDuration } from '@/utils/formatDuration'
 import {
@@ -28,7 +30,15 @@ const BAND_STYLES: Record<string, { bg: string; text: string; border: string; la
 const DEFAULT_BAND = { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', label: 'Complete' }
 
 // One question in the review list: what was picked, what was right, and why
-function QuestionReview({ detail, number }: { detail: ExamAnswerDetail; number: number }) {
+interface QuestionReviewProps {
+  detail: ExamAnswerDetail
+  number: number
+  sessionId: string
+  // Null when the AI features are off, and then there is no Explain button
+  onUsedAiRequest: (() => void) | null
+}
+
+function QuestionReview({ detail, number, sessionId, onUsedAiRequest }: QuestionReviewProps) {
   const correctOption = detail.answerOptions.find(option => option.isCorrect)
   const wasAnswered   = detail.selectedOptionId !== null
 
@@ -70,6 +80,15 @@ function QuestionReview({ detail, number }: { detail: ExamAnswerDetail; number: 
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Explanation</p>
         <p className="text-sm text-gray-700 leading-relaxed">{detail.explanation}</p>
       </div>
+
+      {onUsedAiRequest && (
+        <ExplainAnswer
+          sessionId={sessionId}
+          questionId={detail.questionId}
+          wasCorrect={wasAnswered && detail.isCorrect}
+          onUsedRequest={onUsedAiRequest}
+        />
+      )}
     </div>
   )
 }
@@ -77,6 +96,7 @@ function QuestionReview({ detail, number }: { detail: ExamAnswerDetail; number: 
 export default function ExamResultsPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
+  const ai = useAiStatus()
 
   const [result, setResult]   = useState<ExamResult | null>(null)
   const [loading, setLoading] = useState(true)
@@ -206,7 +226,13 @@ export default function ExamResultsPage() {
       <section className="space-y-4">
         <h2 className="text-sm font-semibold text-gray-900">Review your answers</h2>
         {result.answerDetails.map((detail, index) => (
-          <QuestionReview key={detail.questionId} detail={detail} number={index + 1} />
+          <QuestionReview
+            key={detail.questionId}
+            detail={detail}
+            number={index + 1}
+            sessionId={result.sessionId}
+            onUsedAiRequest={ai.enabled ? ai.refresh : null}
+          />
         ))}
       </section>
 

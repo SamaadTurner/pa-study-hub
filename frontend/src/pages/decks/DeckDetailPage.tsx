@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useCards } from '@/hooks/useCards'
+import { useAiStatus } from '@/hooks/useAiStatus'
+import SuggestCardsModal from '@/components/ai/SuggestCardsModal'
 import { getDeck } from '@/api/decks'
 import type { Card, Deck } from '@/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
@@ -18,7 +20,9 @@ export default function DeckDetailPage() {
   const navigate    = useNavigate()
   const { notify }  = useNotification()
 
-  const { cards, loading, error, deleteCard }     = useCards(deckId!)
+  const { cards, loading, error, createCard, deleteCard } = useCards(deckId!)
+  const ai = useAiStatus()
+  const [suggestOpen, setSuggestOpen] = useState(false)
   const [deck, setDeck]                           = useState<Deck | null>(null)
 
   // The deck is loaded by its id. It used to be picked out of the list of the
@@ -108,6 +112,12 @@ export default function DeckDetailPage() {
               size="sm"
             >
               Study ({deck.dueCardCount})
+            </Button>
+          )}
+          {/* Only there when the server has the AI features turned on */}
+          {ai.enabled && (
+            <Button variant="secondary" size="sm" onClick={() => setSuggestOpen(true)}>
+              Suggest cards
             </Button>
           )}
           <Button
@@ -223,6 +233,14 @@ export default function DeckDetailPage() {
           ))}
         </div>
       )}
+
+      <SuggestCardsModal
+        isOpen={suggestOpen}
+        onClose={() => setSuggestOpen(false)}
+        remainingToday={ai.remainingToday}
+        onAddCard={createCard}
+        onUsedRequest={ai.refresh}
+      />
 
       <ConfirmModal
         isOpen={!!deleteTarget}

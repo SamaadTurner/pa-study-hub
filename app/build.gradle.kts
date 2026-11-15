@@ -53,6 +53,28 @@ dependencies {
     testImplementation("com.h2database:h2")
 }
 
+// The scheduler evaluation (session 20) is a command-line tool, not part of the app,
+// so it has its own source folder (src/evaluation) and is never in the app's jar.
+sourceSets {
+    create("evaluation") {
+        compileClasspath += sourceSets.main.get().output + configurations.compileClasspath.get()
+        runtimeClasspath += sourceSets.main.get().output + configurations.runtimeClasspath.get()
+    }
+    test {
+        // The unit tests for the evaluation live with the other tests
+        compileClasspath += sourceSets["evaluation"].output
+        runtimeClasspath += sourceSets["evaluation"].output
+    }
+}
+
+// ./gradlew :app:evaluateSchedulers --args="path/to/reviews.csv"
+tasks.register<JavaExec>("evaluateSchedulers") {
+    description = "Scores SM-2 and FSRS on a file of review histories"
+    group = "verification"
+    classpath = sourceSets["evaluation"].runtimeClasspath
+    mainClass.set("com.pastudyhub.evaluation.SchedulerEvaluation")
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
     finalizedBy(tasks.named("jacocoTestReport"))

@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios'
 import type { ApiError } from '@/types'
+import { isServerUnreachable, SERVER_UNREACHABLE_MESSAGE } from '@/utils/serverStatus'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 const TOKEN_KEY  = 'pa_access_token'
@@ -62,6 +63,12 @@ apiClient.interceptors.response.use(
       title: 'Request Failed',
       detail: 'An unexpected error occurred.',
       fieldErrors: undefined,
+    }
+
+    if (isServerUnreachable(error.response?.status)) {
+      apiError.title = 'Server not reachable'
+      apiError.detail = SERVER_UNREACHABLE_MESSAGE
+      return Promise.reject(apiError)
     }
 
     const data = error.response?.data as Record<string, unknown> | undefined

@@ -87,6 +87,16 @@ test.describe('Accounts', () => {
     await expect(page).toHaveURL(/\/register$/)
   })
 
+  test('a server that is still starting up gets a clear message on login', async ({ page }) => {
+    // What the free host answers while the backend is waking up
+    await page.route('**/api/v1/auth/login', (route) => route.fulfill({ status: 503, body: 'starting' }))
+
+    await logIn(page, 'someone@example.com', 'Str0ng!Passw0rd')
+
+    await expect(page.getByText(/The server is not answering/)).toBeVisible()
+    await expect(page).toHaveURL(/\/login$/)
+  })
+
   test('the demo account from the dev profile can log in', async ({ page }) => {
     // The backend creates this account at startup, but only with the "dev" profile
     // (playwright.config.ts starts it that way). The test only looks: the account

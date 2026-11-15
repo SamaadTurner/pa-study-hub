@@ -28,7 +28,8 @@ public class AiProperties {
     /** The AI features are off while this is empty. */
     private String apiKey = "";
 
-    private String model = "llama-3.3-70b-versatile";
+    // Groq retired llama-3.3-70b-versatile in 2026; check the model list before changing this
+    private String model = "openai/gpt-oss-120b";
 
     /** How long to wait for an answer before giving up. */
     private int timeoutSeconds = 30;
@@ -38,7 +39,7 @@ public class AiProperties {
 
     /**
      * AI requests the whole site may make per day. Keep it under the provider's own
-     * daily limit (about 1,000 on Groq's free plan for the default model in Nov 2026).
+     * daily limit (about 1,000 requests a day on Groq's free plan for the default model in Nov 2026).
      */
     private int dailyLimitTotal = 300;
 

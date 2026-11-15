@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, develop, consolidate-to-monolith, "feat/**"]
+    branches: [main, develop, "feat/**"]
   pull_request:
     branches: [main, develop]
 

@@ -187,6 +187,25 @@ what SM-2 aims for: 90% recall on the day its interval ends, falling off exponen
 ./gradlew :app:evaluateSchedulers --args="path/to/reviews.csv"
 ```
 
+**Results (2026-11-15).** The data is 10 users from the public
+[anki-revlogs-10k](https://huggingface.co/datasets/open-spaced-repetition/anki-revlogs-10k)
+dataset: 507,273 Anki reviews of 88,156 cards, of which 298,661 reviews could be predicted
+(the first review of each card, and extra reviews on the same day, are skipped). The
+dataset's license does not allow sharing the data, so only the scores are here. FSRS uses
+its default parameters, not ones fitted to each user.
+
+| Scheduler | Log loss | RMSE (bins) | AUC |
+|---|---|---|---|
+| SM-2 | 1.217 | 0.288 | 0.558 |
+| FSRS-6 | **0.557** | **0.108** | **0.749** |
+
+FSRS is better on all three across the pooled reviews. AUC is the fairest of the three for
+SM-2, because it only depends on the order of the predictions, so it does not rest on the
+90% assumption above; SM-2 is only a little better than guessing at telling which cards
+will be forgotten. Scored user by user, FSRS has the better log loss and RMSE for 8 of the
+10 users and the better AUC for 9 of 10. For the two users where SM-2 did slightly better,
+FSRS with parameters fitted to their own history would be the next thing to try.
+
 ## Decisions
 
 **From six services to one app.** The first version was six Spring Boot services

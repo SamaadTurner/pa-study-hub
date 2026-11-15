@@ -40,6 +40,8 @@ services:
       DB_USER: ${DB_USER:-pastudyhub}
       DB_PASSWORD: ${DB_PASSWORD:-pastudyhub_pass}
       JWT_SECRET: ${JWT_SECRET}
+      # Optional. Empty leaves the AI features off.
+      AI_API_KEY: ${AI_API_KEY:-}
     ports:
       - "8080:8080"
     depends_on:

@@ -9,7 +9,7 @@ streaks, daily goals and accuracy by topic.
 Built for Jocelyn, who starts PA school this spring.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 237 backend tests, 89 frontend unit tests and 47 end-to-end browser tests
+the frontend. 283 backend tests, 92 frontend unit tests and 52 end-to-end browser tests
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -29,6 +29,9 @@ run in CI on every push.
   every question.
 - **Progress.** Daily goals for cards and minutes, a study streak, and an analytics page
   with 30 days of activity and accuracy by topic. Flashcards and exams both count.
+- **Optional AI help.** Paste notes and get suggested flashcards to review and edit
+  before saving, or ask why your answer to an exam question was wrong. Off unless the
+  server has an API key (see [AI features](#ai-features)).
 
 | Studying a card | A practice exam question |
 |---|---|
@@ -95,15 +98,16 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 237 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 283 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 96.7% of lines and 80.7% of branches (JaCoCo, without the code Lombok
+  They cover 97.3% of lines and 82.0% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
-- **Frontend:** 89 unit tests with Vitest and React Testing Library.
-- **End to end:** 47 Playwright tests that click through the real app: accounts, decks
+- **Frontend:** 92 unit tests with Vitest and React Testing Library.
+- **End to end:** 52 Playwright tests that click through the real app: accounts, decks
   and cards, studying, exams (including the timer running out), public decks,
-  analytics, and lists of more than 100 decks and cards.
+  analytics, the AI buttons (with the model's answers faked), and lists of more than 100
+  decks and cards.
 - **CI** has four jobs: backend tests, frontend tests with lint and build, end-to-end
   tests, and a Docker Compose run of the whole stack.
 
@@ -152,8 +156,9 @@ For one app with a handful of users that was mostly overhead: features that cros
 services needed HTTP calls between them and could not share a transaction. In July 2026
 I merged them into one application with one database. One of those HTTP calls survived
 the merge and pointed at a service that no longer existed, so reviews never reached the
-streak counter until I replaced it with a plain method call in the same transaction. The packages still follow the old service
-lines, so splitting one out later would be possible.
+streak counter until I replaced it with a plain method call in the same transaction.
+The packages still follow the old service lines, so splitting one out later would be
+possible.
 
 **JWT with refresh tokens.** Access tokens last 15 minutes and are checked without a
 database lookup. Refresh tokens are stored, work once, and are replaced on every use.
@@ -168,6 +173,28 @@ migration that does not fit the code fails CI.
 **Exams are stored question by question.** The questions an exam picked are saved when it
 starts, in order, with the order of their answer options fixed per exam. That is what lets
 a reload, the results page and the history all show the same exam.
+
+## AI features
+
+Two optional features use a language model: **Suggest cards** on a deck's page turns
+pasted notes into up to 10 suggested cards, and **Explain my mistake** on the exam results
+page explains one question, including why the option you picked was wrong.
+
+- **Provider:** [Groq](https://console.groq.com)'s free tier with the `openai/gpt-oss-120b`
+  model (no credit card, about 1,000 requests a day in November 2026). The backend talks to
+  any OpenAI-compatible API, so Google Gemini or a local Ollama model work by changing
+  `AI_BASE_URL` and `AI_MODEL`.
+- **Off by default.** Without `AI_API_KEY` the status endpoint says so and the buttons are
+  hidden. CI never calls a real model: the tests use a fake one.
+- **A person checks the output.** Suggested cards are not saved until you keep them, and
+  every AI answer on screen says it can be wrong. The prompts tell the model to use only
+  the facts in your notes, or in the question's own teaching note.
+- **Daily limits** so a free key can't be used up: 20 requests per user and 300 for the
+  whole site per UTC day (`AI_DAILY_LIMIT_PER_USER`, `AI_DAILY_LIMIT_TOTAL`), counted in the
+  database. A request that fails validation costs nothing.
+
+To turn it on locally, add `AI_API_KEY=<your Groq key>` to the backend command above, or to
+`.env` for Docker.
 
 ## Known limits
 

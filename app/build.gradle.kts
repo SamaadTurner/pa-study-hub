@@ -66,13 +66,25 @@ tasks.named<JacocoReport>("jacocoTestReport") {
     }
 }
 
+// The build fails if coverage drops below these numbers. They sit a little under
+// what the tests measured on 2026-11-14 (96.6% of lines, 80.5% of branches), so a
+// small change does not break the build but a real drop does.
+//
+// Code that Lombok generates (getters, builders, equals) is not counted. See
+// lombok.config in the root folder.
 tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+    dependsOn(tasks.named("test"))
     violationRules {
         rule {
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.70".toBigDecimal() // Lowered to 70% during consolidation
+                minimum = "0.95".toBigDecimal()
+            }
+            limit {
+                counter = "BRANCH"
+                value = "COVEREDRATIO"
+                minimum = "0.78".toBigDecimal()
             }
         }
     }

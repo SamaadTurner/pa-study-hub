@@ -132,10 +132,13 @@ cd frontend && npx cypress open
 
 ## Code Coverage
 
-JaCoCo code coverage is enforced at 80% minimum line coverage. To view reports:
+The backend tests cover 96.6% of lines and 80.5% of branches (measured 2026-11-14
+with JaCoCo). Code that Lombok generates is not counted. The build fails under 95%
+of lines or 78% of branches, and CI runs that check on every push.
 
 ```bash
-./gradlew jacocoTestReport
+# Tests, coverage report and the minimum check
+./gradlew :app:test :app:jacocoTestCoverageVerification
 # Report at: app/build/reports/jacoco/test/html/index.html
 ```
 

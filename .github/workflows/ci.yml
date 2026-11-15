@@ -52,8 +52,10 @@ jobs:
         env:
           JWT_SECRET: test-jwt-secret-for-ci-must-be-at-least-32-chars
 
-      - name: Run backend tests (H2)
-        run: ./gradlew :app:test --no-daemon
+      # The second task fails the build if coverage is under the minimum
+      # set in app/build.gradle.kts
+      - name: Run backend tests (H2) and check coverage
+        run: ./gradlew :app:test :app:jacocoTestCoverageVerification --no-daemon
         env:
           JWT_SECRET: test-jwt-secret-for-ci-must-be-at-least-32-chars
 

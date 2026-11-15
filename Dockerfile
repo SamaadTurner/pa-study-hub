@@ -9,7 +9,7 @@ FROM gradle:8.5-jdk17-alpine AS builder
 WORKDIR /build
 
 # Copy gradle configuration
-COPY build.gradle.kts settings.gradle.kts gradlew ./
+COPY build.gradle.kts settings.gradle.kts lombok.config gradlew ./
 COPY gradle ./gradle
 
 # Copy source code

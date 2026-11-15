@@ -42,6 +42,14 @@ jwt:
   access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:900000} # 15 minutes
   refresh-token-expiry-days: ${JWT_REFRESH_TOKEN_EXPIRY_DAYS:7}
 
+# Optional AI features (see com.pastudyhub.ai.AiProperties). Off unless AI_API_KEY
+# is set. The defaults use Groq's free tier, which needs no credit card.
+ai:
+  base-url: ${AI_BASE_URL:https://api.groq.com/openai/v1}
+  api-key: ${AI_API_KEY:}
+  model: ${AI_MODEL:llama-3.3-70b-versatile}
+  timeout-seconds: 30
+
 # Actuator
 management:
   endpoints:

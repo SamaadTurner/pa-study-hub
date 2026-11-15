@@ -28,7 +28,8 @@ public class CardMapper {
         if (schedule != null) {
             scheduleInfo = CardResponse.ReviewScheduleInfo.builder()
                     .nextReviewDate(schedule.getNextReviewDate())
-                    .interval(schedule.getInterval())
+                    // The interval of whichever scheduler is active, not SM-2's own number
+                    .interval(schedule.getPlannedIntervalDays())
                     .easeFactor(schedule.getEaseFactor())
                     .repetitions(schedule.getRepetitions())
                     .build();

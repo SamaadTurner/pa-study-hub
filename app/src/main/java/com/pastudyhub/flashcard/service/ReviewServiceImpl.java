@@ -3,7 +3,9 @@ package com.pastudyhub.flashcard.service;
 import com.pastudyhub.flashcard.dto.CardResponse;
 import com.pastudyhub.flashcard.dto.ReviewRequest;
 import com.pastudyhub.flashcard.dto.ReviewResponse;
+import com.pastudyhub.flashcard.engine.FsrsEngine;
 import com.pastudyhub.flashcard.engine.ReviewResult;
+import com.pastudyhub.flashcard.engine.SchedulingProperties;
 import com.pastudyhub.flashcard.engine.SpacedRepetitionEngine;
 import com.pastudyhub.flashcard.exception.CardNotFoundException;
 import com.pastudyhub.flashcard.exception.DeckNotFoundException;
@@ -34,7 +36,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Service for flashcard review operations using the SM-2 algorithm.
+ * Service for flashcard reviews. Every review runs both SM-2 and FSRS; the
+ * "scheduling.algorithm" setting decides which one sets the next review date.
  */
 @Slf4j
 @Service
@@ -54,6 +57,7 @@ public class ReviewServiceImpl {
     private final ReviewLogRepository reviewLogRepository;
     private final CardMapper cardMapper;
     private final ProgressService progressService;
+    private final SchedulingProperties schedulingProperties;
 
     /**
      * Get the cards to study in a deck right now (max 20).
@@ -119,20 +123,39 @@ public class ReviewServiceImpl {
                         .build());
 
         LocalDateTime now = LocalDateTime.now();
+        LocalDate today = now.toLocalDate();
+
+        // Calendar days, not 24-hour periods: a card seen at 11 pm and again at 8 am
+        // the next morning counts as one day, the way schedulers count intervals.
+        // Null on the first review.
+        Integer daysSinceLastReview = null;
+        if (schedule.getLastReviewedAt() != null) {
+            daysSinceLastReview = (int) ChronoUnit.DAYS.between(schedule.getLastReviewedAt().toLocalDate(), today);
+        }
 
         // Written before the schedule changes, because it records what the card
         // looked like when the user saw it (the planned interval, the last review)
-        logReview(card, userId, schedule, request, now);
+        logReview(card, userId, schedule, request, now, daysSinceLastReview);
 
-        // Run the SM-2 algorithm
-        SpacedRepetitionEngine engine = new SpacedRepetitionEngine(schedule);
-        ReviewResult result = engine.calculateNextReview(request.getQuality());
+        // Both schedulers run on every review, so each keeps a complete history of
+        // the card and the setting can be switched at any time
+        ReviewResult sm2 = new SpacedRepetitionEngine(schedule).calculateNextReview(request.getQuality());
+        FsrsEngine.Result fsrs = runFsrs(schedule, daysSinceLastReview, request.getQuality());
 
-        // Update the schedule with the new values
-        schedule.setInterval(result.newInterval());
-        schedule.setEaseFactor(result.newEaseFactor());
-        schedule.setRepetitions(result.newRepetitions());
-        schedule.setNextReviewDate(result.nextReviewDate());
+        schedule.setInterval(sm2.newInterval());
+        schedule.setEaseFactor(sm2.newEaseFactor());
+        schedule.setRepetitions(sm2.newRepetitions());
+        schedule.setFsrsStability(fsrs.memory().stability());
+        schedule.setFsrsDifficulty(fsrs.memory().difficulty());
+
+        // The setting decides whose interval is used
+        int plannedDays = schedulingProperties.getAlgorithm() == SchedulingProperties.Algorithm.FSRS
+                ? fsrs.intervalDays()
+                : sm2.newInterval();
+        LocalDate nextReviewDate = today.plusDays(plannedDays);
+
+        schedule.setPlannedIntervalDays(plannedDays);
+        schedule.setNextReviewDate(nextReviewDate);
         schedule.setLastReviewedAt(now);
         schedule.setLastQuality(request.getQuality());
 
@@ -141,19 +164,32 @@ public class ReviewServiceImpl {
         logReviewActivity(userId, card.getDeck().getCategory().name(), request.getQuality(),
                 secondsToCount(request.getTimeSpentSeconds()));
 
-        log.debug("Review submitted: cardId={}, userId={}, quality={}, nextReview={}",
-                cardId, userId, request.getQuality(), result.nextReviewDate());
-
-        // Build human-readable message
-        String message = buildReviewMessage(result);
+        log.debug("Review submitted: cardId={}, userId={}, quality={}, scheduler={}, nextReview={}",
+                cardId, userId, request.getQuality(), schedulingProperties.getAlgorithm(), nextReviewDate);
 
         return ReviewResponse.builder()
-                .nextReviewDate(result.nextReviewDate())
-                .interval(result.newInterval())
-                .easeFactor(result.newEaseFactor())
-                .repetitions(result.newRepetitions())
-                .message(message)
+                .nextReviewDate(nextReviewDate)
+                .interval(plannedDays)
+                .easeFactor(sm2.newEaseFactor())
+                .repetitions(sm2.newRepetitions())
+                .message(buildReviewMessage(today, nextReviewDate))
                 .build();
+    }
+
+    private FsrsEngine.Result runFsrs(ReviewSchedule schedule, Integer daysSinceLastReview, int quality) {
+        FsrsEngine engine = new FsrsEngine(schedulingProperties.getDesiredRetention());
+        int grade = FsrsEngine.gradeFromQuality(quality);
+
+        // No FSRS memory yet: a new card, or one last reviewed before FSRS was added
+        if (schedule.getFsrsStability() == null || schedule.getFsrsDifficulty() == null) {
+            return engine.review(null, 0, grade);
+        }
+
+        FsrsEngine.MemoryState memory = new FsrsEngine.MemoryState(
+                schedule.getFsrsStability(), schedule.getFsrsDifficulty());
+        // The server clock could in theory go backwards; never pass a negative gap
+        int elapsed = daysSinceLastReview == null ? 0 : Math.max(0, daysSinceLastReview);
+        return engine.review(memory, elapsed, grade);
     }
 
     /**
@@ -161,15 +197,7 @@ public class ReviewServiceImpl {
      * the schedule update, so a review can't be saved without its history row.
      */
     private void logReview(Card card, UUID userId, ReviewSchedule schedule, ReviewRequest request,
-                           LocalDateTime reviewedAt) {
-        // Calendar days, not 24-hour periods: a card seen at 11 pm and again at 8 am
-        // the next morning counts as one day, the way schedulers count intervals
-        Integer daysSinceLastReview = null;
-        if (schedule.getLastReviewedAt() != null) {
-            daysSinceLastReview = (int) ChronoUnit.DAYS.between(
-                    schedule.getLastReviewedAt().toLocalDate(), reviewedAt.toLocalDate());
-        }
-
+                           LocalDateTime reviewedAt, Integer daysSinceLastReview) {
         Integer timeSpent = request.getTimeSpentSeconds() == null
                 ? null
                 : secondsToCount(request.getTimeSpentSeconds());
@@ -180,7 +208,7 @@ public class ReviewServiceImpl {
                 .quality(request.getQuality())
                 .reviewedAt(reviewedAt)
                 .daysSinceLastReview(daysSinceLastReview)
-                .scheduledDays(schedule.getInterval())
+                .scheduledDays(schedule.getPlannedIntervalDays())
                 .timeSpentSeconds(timeSpent)
                 .build());
     }
@@ -193,8 +221,8 @@ public class ReviewServiceImpl {
         return Math.min(timeSpentSeconds, MAX_SECONDS_PER_CARD);
     }
 
-    private String buildReviewMessage(ReviewResult result) {
-        long daysUntilNext = ChronoUnit.DAYS.between(LocalDate.now(), result.nextReviewDate());
+    private String buildReviewMessage(LocalDate today, LocalDate nextReviewDate) {
+        long daysUntilNext = ChronoUnit.DAYS.between(today, nextReviewDate);
         if (daysUntilNext == 0) {
             return "Review again today";
         } else if (daysUntilNext == 1) {

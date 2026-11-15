@@ -85,6 +85,24 @@ class ReviewLogIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("With SM-2 in charge (the default), FSRS still keeps its memory of the card")
+    void fsrsMemoryIsKeptUnderSm2() throws Exception {
+        UUID user = UUID.randomUUID();
+        String cardId = createCard(user, createDeck(user, false));
+
+        review(user, cardId, 4, 10).andExpect(status().isOk());
+
+        ReviewSchedule schedule = reviewScheduleRepository
+                .findByCardIdAndUserId(UUID.fromString(cardId), user).orElseThrow();
+        // SM-2 decides: 1 day after the first Good
+        assertThat(schedule.getPlannedIntervalDays()).isEqualTo(1);
+        assertThat(schedule.getNextReviewDate()).isEqualTo(java.time.LocalDate.now().plusDays(1));
+        // ...and FSRS has its numbers ready in case the setting is switched
+        assertThat(schedule.getFsrsStability()).isEqualTo(2.3065);
+        assertThat(schedule.getFsrsDifficulty()).isNotNull();
+    }
+
+    @Test
     @DisplayName("Time spent is capped the same way as study time, and left empty when not sent")
     void timeSpentIsCappedOrEmpty() throws Exception {
         UUID user = UUID.randomUUID();

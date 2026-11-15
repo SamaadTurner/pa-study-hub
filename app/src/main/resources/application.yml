@@ -42,6 +42,12 @@ jwt:
   access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:900000} # 15 minutes
   refresh-token-expiry-days: ${JWT_REFRESH_TOKEN_EXPIRY_DAYS:7}
 
+# Which scheduler sets the next review date: sm2 or fsrs (see SchedulingProperties).
+# Both run on every review, so switching keeps every card's history.
+scheduling:
+  algorithm: ${SCHEDULING_ALGORITHM:sm2}
+  desired-retention: ${SCHEDULING_DESIRED_RETENTION:0.9}
+
 # Optional AI features (see com.pastudyhub.ai.AiProperties). Off unless AI_API_KEY
 # is set. The defaults use Groq's free tier, which needs no credit card.
 ai:

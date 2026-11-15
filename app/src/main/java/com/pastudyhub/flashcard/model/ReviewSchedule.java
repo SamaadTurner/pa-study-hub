@@ -87,4 +87,17 @@ public class ReviewSchedule {
      */
     @Column(name = "last_quality")
     private Integer lastQuality;
+
+    /** FSRS memory: days until the chance of remembering falls to 90%. Null until FSRS has seen the card. */
+    @Column(name = "fsrs_stability")
+    private Double fsrsStability;
+
+    /** FSRS memory: 1 (easy) to 10 (hard). Null until FSRS has seen the card. */
+    @Column(name = "fsrs_difficulty")
+    private Double fsrsDifficulty;
+
+    /** The interval the active scheduler chose at the last review, in days. */
+    @Column(name = "planned_interval_days", nullable = false)
+    @Builder.Default
+    private int plannedIntervalDays = 0;
 }

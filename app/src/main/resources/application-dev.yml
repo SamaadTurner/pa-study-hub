@@ -1,0 +1,11 @@
+# Settings for running the app on your own machine. Turn them on with
+#   SPRING_PROFILES_ACTIVE=dev
+#
+# Two things only happen with this profile:
+#   1. A demo account is created at startup (see DemoAccountLoader).
+#   2. The JWT secret below is used when JWT_SECRET is not set.
+#
+# Neither is safe anywhere but on a developer's machine, so do not use this
+# profile for a deployment.
+jwt:
+  secret: ${JWT_SECRET:local-development-only-secret-do-not-use-anywhere-else}

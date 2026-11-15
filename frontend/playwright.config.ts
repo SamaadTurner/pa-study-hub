@@ -42,6 +42,9 @@ export default defineConfig({
       // --no-daemon so that stopping the tests also stops the backend
       command: `"${gradle}" :app:bootRun --no-daemon`,
       cwd: repoRoot,
+      // The "dev" profile creates the demo account that auth.spec.ts logs in with,
+      // and has a JWT secret for local use. These are added to the normal environment.
+      env: { SPRING_PROFILES_ACTIVE: 'dev' },
       url: 'http://127.0.0.1:8080/actuator/health',
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,

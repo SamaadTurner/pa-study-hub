@@ -65,13 +65,11 @@ docker-compose up -d
 # 4. Wait for services to be healthy (~60 seconds on first run)
 docker-compose ps
 
-# 5. Open the app
+# 5. Open the app and register an account
 open http://localhost:3000
-
-# Default seed user credentials:
-# Email: jocelyn@pastudyhub.com
-# Password: PAStudent2026!
 ```
+
+There is no ready-made login. The app will not start without `JWT_SECRET`.
 
 ## Running Locally (Without Docker)
 
@@ -84,12 +82,17 @@ CREATE DATABASE pa_study_hub;
 Start the backend:
 
 ```bash
-# Backend API
-./gradlew :app:bootRun
+# Backend API, with the "dev" profile
+SPRING_PROFILES_ACTIVE=dev ./gradlew :app:bootRun
 
 # API will be available at http://localhost:8080
 # Swagger UI at http://localhost:8080/swagger-ui.html
 ```
+
+The `dev` profile is for your own machine only. It does two things: it uses a
+built-in JWT secret when `JWT_SECRET` is not set, and it creates a demo account at
+startup (`demo@example.com` / `DemoStudent1!`). Without the profile there is no demo
+account and the app refuses to start until `JWT_SECRET` is set.
 
 Start the frontend:
 

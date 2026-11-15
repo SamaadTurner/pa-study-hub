@@ -86,4 +86,14 @@ test.describe('Accounts', () => {
     await expect(page.getByText('An account with this email already exists. Try logging in instead.')).toBeVisible()
     await expect(page).toHaveURL(/\/register$/)
   })
+
+  test('the demo account from the dev profile can log in', async ({ page }) => {
+    // The backend creates this account at startup, but only with the "dev" profile
+    // (playwright.config.ts starts it that way). The test only looks: the account
+    // is shared by every run, so it must not add decks or study anything.
+    await logIn(page, 'demo@example.com', 'DemoStudent1!')
+
+    await expect(page).toHaveURL(/\/dashboard$/)
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Demo')
+  })
 })

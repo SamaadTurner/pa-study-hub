@@ -13,7 +13,7 @@ about a minute to wake it up.
 Built for Jocelyn, who starts PA school this spring.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 303 backend tests, 92 frontend unit tests and 52 end-to-end browser tests
+the frontend. 315 backend tests, 92 frontend unit tests and 52 end-to-end browser tests
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -102,7 +102,7 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 303 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 315 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
   They cover 97.3% of lines and 82.0% of branches (JaCoCo, without the code Lombok
@@ -163,6 +163,29 @@ Both schedulers run on every review and keep their own numbers, and every review
 logged (`review_logs`). `SCHEDULING_ALGORITHM=sm2` or `fsrs` decides whose date is used,
 so switching never loses a card's history. SM-2 stays the default until there is a
 measured comparison of how well each predicts forgetting.
+
+### Comparing the schedulers
+
+`src/evaluation` is a small command-line tool (kept out of the app's jar) that replays
+review histories and scores both schedulers the way the public
+[spaced-repetition benchmark](https://github.com/open-spaced-repetition/srs-benchmark)
+does. Before every review except a card's first, each scheduler predicts the chance the
+card is remembered; then it is shown the real rating (anything but Again counts as
+remembered). Three scores come out:
+
+- **Log loss:** how surprised the scheduler was on average. Lower is better.
+- **RMSE (bins):** calibration. Predictions are grouped in 10% bins and each bin's average
+  prediction is compared with how often those cards really were remembered. Lower is better.
+- **AUC:** ranking only. 0.5 is guessing, 1 is perfect.
+
+FSRS predicts recall directly. SM-2 only picks intervals, so to score it the tool assumes
+what SM-2 aims for: 90% recall on the day its interval ends, falling off exponentially
+(`0.9 ^ (days / interval)`). SM-2's scores depend on that assumption.
+
+```bash
+# reviews.csv has a header and the columns card_id,day,rating (rating 1 to 4)
+./gradlew :app:evaluateSchedulers --args="path/to/reviews.csv"
+```
 
 ## Decisions
 

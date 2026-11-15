@@ -2,13 +2,21 @@ package com.pastudyhub.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pastudyhub.ai.dto.GeneratedCard;
+import com.pastudyhub.ai.usage.AiLimitReachedException;
+import com.pastudyhub.ai.usage.AiUsageLimiter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @DisplayName("Flashcard generator")
 class FlashcardGeneratorTest {
@@ -39,7 +47,9 @@ class FlashcardGeneratorTest {
     }
 
     private final FakeChatClient chatClient = new FakeChatClient();
-    private final FlashcardGenerator generator = new FlashcardGenerator(chatClient, new ObjectMapper());
+    private final AiUsageLimiter usageLimiter = mock(AiUsageLimiter.class);
+    private final FlashcardGenerator generator = new FlashcardGenerator(chatClient, usageLimiter, new ObjectMapper());
+    private final UUID user = UUID.randomUUID();
 
     @Test
     @DisplayName("Returns the cards from the model's answer")
@@ -51,7 +61,7 @@ class FlashcardGeneratorTest {
                 ]}
                 """;
 
-        List<GeneratedCard> cards = generator.generate("my notes", 2);
+        List<GeneratedCard> cards = generator.generate(user, "my notes", 2);
 
         assertThat(cards).containsExactly(
                 new GeneratedCard("What is Beck's triad?",
@@ -64,7 +74,7 @@ class FlashcardGeneratorTest {
     void buildsThePrompt() {
         chatClient.reply = "{\"cards\": [{\"front\": \"Q\", \"back\": \"A\"}]}";
 
-        generator.generate("  Aortic stenosis: crescendo-decrescendo murmur.  ", 3);
+        generator.generate(user, "  Aortic stenosis: crescendo-decrescendo murmur.  ", 3);
 
         assertThat(chatClient.lastUserPrompt)
                 .startsWith("Write 3 flashcards")
@@ -77,7 +87,7 @@ class FlashcardGeneratorTest {
     void readsWrappedJson() {
         chatClient.reply = "Here are your cards:\n```json\n{\"cards\": [{\"front\": \"Q\", \"back\": \"A\"}]}\n```";
 
-        assertThat(generator.generate("notes", 1)).containsExactly(new GeneratedCard("Q", "A"));
+        assertThat(generator.generate(user, "notes", 1)).containsExactly(new GeneratedCard("Q", "A"));
     }
 
     @Test
@@ -93,7 +103,7 @@ class FlashcardGeneratorTest {
                 ]}
                 """;
 
-        assertThat(generator.generate("notes", 5))
+        assertThat(generator.generate(user, "notes", 5))
                 .containsExactly(new GeneratedCard("Q1", "A1"), new GeneratedCard("Q2", "A2"));
     }
 
@@ -107,7 +117,7 @@ class FlashcardGeneratorTest {
                 + "{\"front\": \"Q\", \"back\": \"" + longBack + "\"},"
                 + "{\"front\": \"Q ok\", \"back\": \"A ok\"}]}";
 
-        assertThat(generator.generate("notes", 3)).containsExactly(new GeneratedCard("Q ok", "A ok"));
+        assertThat(generator.generate(user, "notes", 3)).containsExactly(new GeneratedCard("Q ok", "A ok"));
     }
 
     @Test
@@ -117,7 +127,7 @@ class FlashcardGeneratorTest {
                 {"cards": [{"front": "Q1", "back": "A1"}, {"front": "Q2", "back": "A2"}, {"front": "Q3", "back": "A3"}]}
                 """;
 
-        assertThat(generator.generate("notes", 2)).hasSize(2);
+        assertThat(generator.generate(user, "notes", 2)).hasSize(2);
     }
 
     @Test
@@ -125,7 +135,7 @@ class FlashcardGeneratorTest {
     void notJson() {
         chatClient.reply = "Sorry, I can't help with that.";
 
-        assertThatThrownBy(() -> generator.generate("notes", 3))
+        assertThatThrownBy(() -> generator.generate(user, "notes", 3))
                 .isInstanceOf(AiResponseException.class)
                 .hasMessageContaining("expected format");
     }
@@ -135,7 +145,7 @@ class FlashcardGeneratorTest {
     void brokenJson() {
         chatClient.reply = "{\"cards\": [{\"front\": \"Q\", }";
 
-        assertThatThrownBy(() -> generator.generate("notes", 3))
+        assertThatThrownBy(() -> generator.generate(user, "notes", 3))
                 .isInstanceOf(AiResponseException.class)
                 .hasMessageContaining("expected format");
     }
@@ -145,7 +155,7 @@ class FlashcardGeneratorTest {
     void noCardsList() {
         chatClient.reply = "{\"flashcards\": \"none\"}";
 
-        assertThatThrownBy(() -> generator.generate("notes", 3))
+        assertThatThrownBy(() -> generator.generate(user, "notes", 3))
                 .isInstanceOf(AiResponseException.class)
                 .hasMessageContaining("did not contain any flashcards");
     }
@@ -155,7 +165,7 @@ class FlashcardGeneratorTest {
     void noUsableCards() {
         chatClient.reply = "{\"cards\": [{\"front\": \"\", \"back\": \"\"}]}";
 
-        assertThatThrownBy(() -> generator.generate("notes", 3))
+        assertThatThrownBy(() -> generator.generate(user, "notes", 3))
                 .isInstanceOf(AiResponseException.class)
                 .hasMessageContaining("usable");
     }
@@ -165,8 +175,29 @@ class FlashcardGeneratorTest {
     void turnedOff() {
         chatClient.enabled = false;
 
-        assertThatThrownBy(() -> generator.generate("notes", 3))
+        assertThatThrownBy(() -> generator.generate(user, "notes", 3))
                 .isInstanceOf(AiUnavailableException.class);
+        assertThat(chatClient.lastUserPrompt).isNull();
+        verify(usageLimiter, never()).useOne(any());
+    }
+
+    @Test
+    @DisplayName("Each request is counted against the user's daily limit")
+    void countsTheRequest() {
+        chatClient.reply = "{\"cards\": [{\"front\": \"Q\", \"back\": \"A\"}]}";
+
+        generator.generate(user, "notes", 1);
+
+        verify(usageLimiter).useOne(user);
+    }
+
+    @Test
+    @DisplayName("When the limit is reached the model is not called")
+    void limitReached() {
+        doThrow(new AiLimitReachedException("limit")).when(usageLimiter).useOne(user);
+
+        assertThatThrownBy(() -> generator.generate(user, "notes", 3))
+                .isInstanceOf(AiLimitReachedException.class);
         assertThat(chatClient.lastUserPrompt).isNull();
     }
 }

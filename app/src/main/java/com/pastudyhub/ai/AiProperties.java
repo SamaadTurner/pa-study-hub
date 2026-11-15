@@ -33,6 +33,15 @@ public class AiProperties {
     /** How long to wait for an answer before giving up. */
     private int timeoutSeconds = 30;
 
+    /** AI requests one user may make per day (UTC). */
+    private int dailyLimitPerUser = 20;
+
+    /**
+     * AI requests the whole site may make per day. Keep it under the provider's own
+     * daily limit (about 1,000 on Groq's free plan for the default model in Nov 2026).
+     */
+    private int dailyLimitTotal = 300;
+
     public boolean isEnabled() {
         return apiKey != null && !apiKey.isBlank();
     }

@@ -49,6 +49,9 @@ ai:
   api-key: ${AI_API_KEY:}
   model: ${AI_MODEL:llama-3.3-70b-versatile}
   timeout-seconds: 30
+  # Requests per day (UTC), so a free key can't be used up by one user or a script
+  daily-limit-per-user: ${AI_DAILY_LIMIT_PER_USER:20}
+  daily-limit-total: ${AI_DAILY_LIMIT_TOTAL:300}
 
 # Actuator
 management:

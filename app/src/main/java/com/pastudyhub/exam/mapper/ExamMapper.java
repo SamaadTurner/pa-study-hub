@@ -30,8 +30,10 @@ public class ExamMapper {
      * The shuffle is seeded with the exam's and the question's id. That way the same
      * exam always gives the same order (after a page reload, and on the results
      * page), while another exam with the same question gives a different one.
+     * The AI explainer uses it too, so it can name the options by the letters the
+     * user saw.
      */
-    List<AnswerOption> optionsInExamOrder(UUID sessionId, Question question) {
+    public List<AnswerOption> optionsInExamOrder(UUID sessionId, Question question) {
         List<AnswerOption> options = new ArrayList<>(question.getAnswerOptions());
         // All four halves of the two ids go into the seed, so any two exams differ
         UUID questionId = question.getId();

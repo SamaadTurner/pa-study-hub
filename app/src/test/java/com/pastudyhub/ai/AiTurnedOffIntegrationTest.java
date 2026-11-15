@@ -30,7 +30,8 @@ class AiTurnedOffIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(get("/api/v1/ai/status").header("Authorization", bearerToken(UUID.randomUUID())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.enabled").value(false))
-                .andExpect(jsonPath("$.model").doesNotExist());
+                .andExpect(jsonPath("$.model").doesNotExist())
+                .andExpect(jsonPath("$.remainingToday").doesNotExist());
     }
 
     @Test

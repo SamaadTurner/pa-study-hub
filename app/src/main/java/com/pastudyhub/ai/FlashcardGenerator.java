@@ -1,14 +1,15 @@
 package com.pastudyhub.ai;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pastudyhub.ai.dto.GeneratedCard;
+import com.pastudyhub.ai.usage.AiUsageLimiter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Turns a student's notes into suggested flashcards.
@@ -34,12 +35,14 @@ public class FlashcardGenerator {
             """;
 
     private final ChatClient chatClient;
+    private final AiUsageLimiter usageLimiter;
     private final ObjectMapper objectMapper;
 
-    public List<GeneratedCard> generate(String notes, int count) {
+    public List<GeneratedCard> generate(UUID userId, String notes, int count) {
         if (!chatClient.isEnabled()) {
             throw new AiUnavailableException("AI features are turned off on this server.");
         }
+        usageLimiter.useOne(userId);
 
         String userPrompt = "Write " + count + " flashcards from these notes:\n\n" + notes.trim();
         String reply = chatClient.complete(SYSTEM_PROMPT, userPrompt);
@@ -53,7 +56,7 @@ public class FlashcardGenerator {
      * each card: a card without both a front and a back is left out.
      */
     List<GeneratedCard> readCards(String reply, int count) {
-        JsonNode cardsNode = parseJson(reply).path("cards");
+        JsonNode cardsNode = AiJson.readObject(objectMapper, reply).path("cards");
         if (!cardsNode.isArray()) {
             throw new AiResponseException("The AI answer did not contain any flashcards.");
         }
@@ -79,21 +82,5 @@ public class FlashcardGenerator {
             throw new AiResponseException("The AI answer did not contain any usable flashcards.");
         }
         return cards;
-    }
-
-    private JsonNode parseJson(String reply) {
-        // Some models put the JSON in a ```json block or add a sentence around it,
-        // so read from the first { to the last }
-        int start = reply.indexOf('{');
-        int end = reply.lastIndexOf('}');
-        if (start < 0 || end < start) {
-            throw new AiResponseException("The AI answer was not in the expected format.");
-        }
-
-        try {
-            return objectMapper.readTree(reply.substring(start, end + 1));
-        } catch (JsonProcessingException e) {
-            throw new AiResponseException("The AI answer was not in the expected format.", e);
-        }
     }
 }

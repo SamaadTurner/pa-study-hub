@@ -22,6 +22,8 @@ services:
     name: pa-study-hub-api
     runtime: docker
     plan: free
+    # Same area as the Neon database (AWS US East 2, Ohio), so each query stays short
+    region: ohio
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health

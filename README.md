@@ -6,6 +6,10 @@ A study app for physician assistant (PA) students: flashcards with spaced repeti
 timed practice exams in the style of the PANCE board exam, and a dashboard that tracks
 streaks, daily goals and accuracy by topic.
 
+**Try it: https://pa-study-hub.onrender.com** (register any email). It runs on free
+plans, so after 15 minutes without visitors the server sleeps and the first page takes
+about a minute to wake it up.
+
 Built for Jocelyn, who starts PA school this spring.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
@@ -173,6 +177,14 @@ migration that does not fit the code fails CI.
 **Exams are stored question by question.** The questions an exam picked are saved when it
 starts, in order, with the order of their answer options fixed per exam. That is what lets
 a reload, the results page and the history all show the same exam.
+
+**Hosting on free plans.** The backend runs on Render's free plan from the Dockerfile and
+the frontend is a Render static site (`render.yaml`). The static site passes `/api` on to
+the backend, so the browser only talks to one address and the backend needs no CORS
+setup. The database is a free Neon PostgreSQL in the same region (Oregon), because
+Render's free database is deleted after 30 days. The cost of free is the one-minute wake-up
+after an idle period; the app tells the user the server is starting instead of showing an
+error.
 
 ## AI features
 

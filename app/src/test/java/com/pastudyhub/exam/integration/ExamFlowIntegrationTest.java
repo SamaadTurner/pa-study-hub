@@ -293,8 +293,8 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.answerDetails", hasSize(3)))
                 .andExpect(jsonPath("$.answerDetails[0].selectedOptionId").doesNotExist())
                 .andExpect(jsonPath("$.answerDetails[0].isCorrect").value(false))
-                // the results do show the right answer and the explanation
-                .andExpect(jsonPath("$.answerDetails[0].answerOptions[0].isCorrect").value(true))
+                // the results do show the right answer (exactly one option) and the explanation
+                .andExpect(jsonPath("$.answerDetails[0].answerOptions[?(@.isCorrect == true)]", hasSize(1)))
                 .andExpect(jsonPath("$.answerDetails[0].explanation").isString());
     }
 
@@ -598,7 +598,59 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.minutesStudiedToday").value(5));
     }
 
+    // ---- order of the answer options ---------------------------------------
+    // The options are shuffled per exam (see ExamMapper). What matters to the user
+    // is that the order then stays put for that exam.
+
+    @Test
+    @DisplayName("Loading the exam again shows the answer options in the same order")
+    void loadExam_keepsOptionOrder() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 4);
+
+        JsonNode loaded = loadExam(user, started.get("id").asText());
+
+        for (int i = 0; i < 4; i++) {
+            assertThat(optionIds(loaded.get("questions").get(i)))
+                    .isEqualTo(optionIds(started.get("questions").get(i)));
+        }
+    }
+
+    @Test
+    @DisplayName("The results list the options in the order the exam showed them")
+    void results_keepOptionOrder() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 4);
+        String sessionId = started.get("id").asText();
+
+        MvcResult finished = mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode result = objectMapper.readTree(finished.getResponse().getContentAsString());
+
+        for (int i = 0; i < 4; i++) {
+            JsonNode detail = result.get("answerDetails").get(i);
+            assertThat(optionIds(detail)).isEqualTo(optionIds(started.get("questions").get(i)));
+
+            // orderIndex is the place on screen: 0, 1, 2, 3 from top to bottom
+            for (int position = 0; position < 4; position++) {
+                assertThat(detail.get("answerOptions").get(position).get("orderIndex").asInt())
+                        .isEqualTo(position);
+            }
+        }
+    }
+
     // ---- helpers -----------------------------------------------------------
+
+    // The ids of a question's answer options, in the order they came back
+    private List<String> optionIds(JsonNode question) {
+        List<String> ids = new ArrayList<>();
+        for (JsonNode option : question.get("answerOptions")) {
+            ids.add(option.get("id").asText());
+        }
+        return ids;
+    }
 
     // The same body the exam setup page sends, limited to the questions added above
     private String startJson(int questionCount) {

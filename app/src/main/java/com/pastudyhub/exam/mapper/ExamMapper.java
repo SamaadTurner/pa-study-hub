@@ -8,9 +8,12 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.SplittableRandom;
 import java.util.UUID;
 
 /**
@@ -19,16 +22,54 @@ import java.util.UUID;
 @Component
 public class ExamMapper {
 
-    public AnswerOptionResponse toAnswerOptionResponse(AnswerOption option, boolean revealAnswer) {
-        return AnswerOptionResponse.builder()
-                .id(option.getId())
-                .text(option.getText())
-                .orderIndex(option.getOrderIndex())
-                .isCorrect(revealAnswer ? option.isCorrect() : null)
-                .build();
+    /**
+     * The answer options of a question in the order this exam shows them.
+     *
+     * <p>The question bank stores the right answer first. Shown in that order, every
+     * exam could be passed by always picking A, so each exam shuffles the options.
+     * The shuffle is seeded with the exam's and the question's id. That way the same
+     * exam always gives the same order (after a page reload, and on the results
+     * page), while another exam with the same question gives a different one.
+     */
+    List<AnswerOption> optionsInExamOrder(UUID sessionId, Question question) {
+        List<AnswerOption> options = new ArrayList<>(question.getAnswerOptions());
+        // All four halves of the two ids go into the seed, so any two exams differ
+        UUID questionId = question.getId();
+        long seed = sessionId.getMostSignificantBits();
+        seed = seed * 31 + sessionId.getLeastSignificantBits();
+        seed = seed * 31 + questionId.getMostSignificantBits();
+        seed = seed * 31 + questionId.getLeastSignificantBits();
+
+        // SplittableRandom and not Random: Random gives almost the same first numbers
+        // for seeds that are close together, so neighbouring questions came out in
+        // the same order. SplittableRandom scrambles the seed first.
+        // The loop is the usual Fisher-Yates shuffle (what Collections.shuffle does).
+        SplittableRandom random = new SplittableRandom(seed);
+        for (int i = options.size() - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            Collections.swap(options, i, j);
+        }
+        return options;
     }
 
-    public QuestionResponse toQuestionResponse(Question question, boolean revealAnswer) {
+    // orderIndex in the response is the position on screen (0 is A), not the stored one
+    private List<AnswerOptionResponse> toOptionResponses(UUID sessionId, Question question, boolean revealAnswer) {
+        List<AnswerOption> options = optionsInExamOrder(sessionId, question);
+        List<AnswerOptionResponse> responses = new ArrayList<>();
+
+        for (int position = 0; position < options.size(); position++) {
+            AnswerOption option = options.get(position);
+            responses.add(AnswerOptionResponse.builder()
+                    .id(option.getId())
+                    .text(option.getText())
+                    .orderIndex(position)
+                    .isCorrect(revealAnswer ? option.isCorrect() : null)
+                    .build());
+        }
+        return responses;
+    }
+
+    private QuestionResponse toQuestionResponse(UUID sessionId, Question question, boolean revealAnswer) {
         return QuestionResponse.builder()
                 .id(question.getId())
                 .stem(question.getStem())
@@ -36,9 +77,7 @@ public class ExamMapper {
                 .category(question.getCategory())
                 .difficulty(question.getDifficulty())
                 .explanation(revealAnswer ? question.getExplanation() : null)
-                .answerOptions(question.getAnswerOptions().stream()
-                        .map(opt -> toAnswerOptionResponse(opt, revealAnswer))
-                        .toList())
+                .answerOptions(toOptionResponses(sessionId, question, revealAnswer))
                 .build();
     }
 
@@ -69,7 +108,7 @@ public class ExamMapper {
                 .questions(questions.stream()
                         .map(q -> {
                             // never reveal the right answer during the exam
-                            QuestionResponse response = toQuestionResponse(q, false);
+                            QuestionResponse response = toQuestionResponse(session.getId(), q, false);
                             response.setSelectedOptionId(pickedOptionByQuestion.get(q.getId()));
                             return response;
                         })
@@ -96,16 +135,14 @@ public class ExamMapper {
      *
      * @param answer the user's answer to this question, or null if they never answered it
      */
-    public ExamAnswerDetailResponse toAnswerDetail(Question q, ExamAnswer answer) {
+    public ExamAnswerDetailResponse toAnswerDetail(UUID sessionId, Question q, ExamAnswer answer) {
         if (answer == null) {
             // Not answered: nothing was picked, and it counts as wrong
             return ExamAnswerDetailResponse.builder()
                     .questionId(q.getId())
                     .stem(q.getStem())
                     .clinicalVignette(q.getClinicalVignette())
-                    .answerOptions(q.getAnswerOptions().stream()
-                            .map(opt -> toAnswerOptionResponse(opt, true))
-                            .toList())
+                    .answerOptions(toOptionResponses(sessionId, q, true))
                     .selectedOptionId(null)
                     .isCorrect(false)
                     .explanation(q.getExplanation())
@@ -117,9 +154,7 @@ public class ExamMapper {
                 .questionId(q.getId())
                 .stem(q.getStem())
                 .clinicalVignette(q.getClinicalVignette())
-                .answerOptions(q.getAnswerOptions().stream()
-                        .map(opt -> toAnswerOptionResponse(opt, true))
-                        .toList())
+                .answerOptions(toOptionResponses(sessionId, q, true))
                 .selectedOptionId(answer.getSelectedOption() != null ? answer.getSelectedOption().getId() : null)
                 .isCorrect(answer.isCorrect())
                 .explanation(q.getExplanation())
@@ -148,7 +183,7 @@ public class ExamMapper {
                 .completedAt(session.getCompletedAt())
                 // One entry per question of the exam, in exam order, answered or not
                 .answerDetails(questions.stream()
-                        .map(q -> toAnswerDetail(q, answerByQuestion.get(q.getId())))
+                        .map(q -> toAnswerDetail(session.getId(), q, answerByQuestion.get(q.getId())))
                         .toList())
                 .build();
     }

@@ -16,10 +16,12 @@ RUN npm ci --silent
 # Copy source and build
 COPY . .
 
-# VITE_API_URL is baked into the bundle at build time.
-# Pass it as a build arg: docker build --build-arg VITE_API_URL=https://api.example.com .
-ARG VITE_API_URL=/api/v1
-ENV VITE_API_URL=${VITE_API_URL}
+# By default the app calls the API at /api/v1 on its own address, and nginx
+# passes those requests on to the backend (see nginx.conf). The address is fixed
+# when the bundle is built. To build for an API that lives somewhere else:
+#   docker build --build-arg VITE_API_BASE_URL=https://api.example.com/api/v1 .
+ARG VITE_API_BASE_URL=/api/v1
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
 RUN npm run build
 

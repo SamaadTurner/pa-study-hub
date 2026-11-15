@@ -1,103 +1,76 @@
-version: "3.9"
-
-# PA Study Hub — Docker Compose (Monolith)
-# Spins up the monolith app, single database, and frontend.
-# Prerequisites: Docker Desktop, .env file (copy from .env.example)
+# Runs the whole app in containers: PostgreSQL, the backend and the frontend.
 #
-# Usage:
-#   docker-compose up -d          # Start everything in background
-#   docker-compose logs -f        # Follow logs
-#   docker-compose down -v        # Stop and delete volumes
-
-networks:
-  pa-study-network:
-    driver: bridge
-
-volumes:
-  postgres-data:
+#   cp .env.example .env      (then set JWT_SECRET in .env)
+#   docker compose up --build
+#
+# Then open http://localhost:3000 and register an account.
+# CI starts this file on every push and registers a user through it, so it is
+# known to work (see the "compose" job in .github/workflows/ci.yml).
 
 services:
 
-  # =============================================
-  # DATABASE
-  # =============================================
-
+  # The database is only reachable from the other containers. To look at it from
+  # your machine, add a "ports" entry here (for example "5433:5432").
   postgres:
     image: postgres:15-alpine
-    container_name: pa-study-hub-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME:-pa_study_hub}
-      POSTGRES_USER: ${DB_USERNAME:-pastudyhub}
+      POSTGRES_USER: ${DB_USER:-pastudyhub}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-pastudyhub_pass}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    networks:
-      - pa-study-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-pastudyhub} -d ${DB_NAME:-pa_study_hub}"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pastudyhub} -d ${DB_NAME:-pa_study_hub}"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
-  # =============================================
-  # MONOLITH APPLICATION
-  # =============================================
-
+  # The Spring Boot backend. It creates the tables itself on first start (Flyway).
+  # It will not start without JWT_SECRET, on purpose.
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: pa-study-hub-app
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: docker
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-pa_study_hub}
-      # application.yml reads DB_USER. It was DB_USERNAME here, which the app ignored.
-      DB_USER: ${DB_USERNAME:-pastudyhub}
+      DB_USER: ${DB_USER:-pastudyhub}
       DB_PASSWORD: ${DB_PASSWORD:-pastudyhub_pass}
       JWT_SECRET: ${JWT_SECRET}
-      JWT_ACCESS_TOKEN_EXPIRY_MS: ${JWT_ACCESS_TOKEN_EXPIRY_MS:-900000}
-      JWT_REFRESH_TOKEN_EXPIRY_DAYS: ${JWT_REFRESH_TOKEN_EXPIRY_DAYS:-7}
     ports:
       - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - pa-study-network
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+      # 127.0.0.1 and not localhost: inside the container localhost can mean the
+      # IPv6 address, which the app does not listen on
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
 
-  # =============================================
-  # FRONTEND
-  # =============================================
-
+  # nginx with the built React app. It also passes /api requests on to the
+  # backend (see frontend/nginx.conf), so the browser only talks to port 3000.
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: pa-study-hub-frontend
     restart: unless-stopped
-    environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api/v1}
     ports:
       - "3000:80"
     depends_on:
       app:
         condition: service_healthy
-    networks:
-      - pa-study-network
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
-      interval: 30s
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:80/health || exit 1"]
+      interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 6
+
+volumes:
+  postgres-data:

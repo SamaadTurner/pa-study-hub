@@ -10,8 +10,6 @@ streaks, daily goals and accuracy by topic.
 plans, so after 15 minutes without visitors the server sleeps and the first page takes
 about a minute to wake it up.
 
-Built for Jocelyn, who starts PA school this spring.
-
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
 the frontend. 315 backend tests, 92 frontend unit tests and 52 end-to-end browser tests
 run in CI on every push.

@@ -80,26 +80,8 @@ class ReviewLogIntegrationTest extends BaseIntegrationTest {
         ReviewLog second = history.get(1);
         assertThat(second.getQuality()).isEqualTo(2);
         assertThat(second.getDaysSinceLastReview()).isEqualTo(3);
-        // SM-2 sets 1 day after the first good answer; that was the plan when the card came back
-        assertThat(second.getScheduledDays()).isEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("With SM-2 in charge (the default), FSRS still keeps its memory of the card")
-    void fsrsMemoryIsKeptUnderSm2() throws Exception {
-        UUID user = UUID.randomUUID();
-        String cardId = createCard(user, createDeck(user, false));
-
-        review(user, cardId, 4, 10).andExpect(status().isOk());
-
-        ReviewSchedule schedule = reviewScheduleRepository
-                .findByCardIdAndUserId(UUID.fromString(cardId), user).orElseThrow();
-        // SM-2 decides: 1 day after the first Good
-        assertThat(schedule.getPlannedIntervalDays()).isEqualTo(1);
-        assertThat(schedule.getNextReviewDate()).isEqualTo(java.time.LocalDate.now().plusDays(1));
-        // ...and FSRS has its numbers ready in case the setting is switched
-        assertThat(schedule.getFsrsStability()).isEqualTo(2.3065);
-        assertThat(schedule.getFsrsDifficulty()).isNotNull();
+        // FSRS (the default) sets 3 days after a first Good; that was the plan when the card came back
+        assertThat(second.getScheduledDays()).isEqualTo(3);
     }
 
     @Test

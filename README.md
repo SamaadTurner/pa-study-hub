@@ -161,8 +161,8 @@ with numbers printed by that implementation.
 
 Both schedulers run on every review and keep their own numbers, and every review is
 logged (`review_logs`). `SCHEDULING_ALGORITHM=sm2` or `fsrs` decides whose date is used,
-so switching never loses a card's history. SM-2 stays the default until there is a
-measured comparison of how well each predicts forgetting.
+so switching never loses a card's history. FSRS has been the default since it was
+measured against SM-2 on real review histories (results below).
 
 ### Comparing the schedulers
 

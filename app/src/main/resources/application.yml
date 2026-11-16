@@ -45,7 +45,7 @@ jwt:
 # Which scheduler sets the next review date: sm2 or fsrs (see SchedulingProperties).
 # Both run on every review, so switching keeps every card's history.
 scheduling:
-  algorithm: ${SCHEDULING_ALGORITHM:sm2}
+  algorithm: ${SCHEDULING_ALGORITHM:fsrs}
   desired-retention: ${SCHEDULING_DESIRED_RETENTION:0.9}
 
 # Optional AI features (see com.pastudyhub.ai.AiProperties). Off unless AI_API_KEY

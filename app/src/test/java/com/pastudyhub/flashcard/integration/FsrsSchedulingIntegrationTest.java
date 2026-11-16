@@ -11,7 +11,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -27,11 +26,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Reviews with the FSRS scheduler switched on (scheduling.algorithm=fsrs). The
+ * Reviews with the default settings, where FSRS sets the dates (since session 20). The
  * numbers are the same reference values as in FsrsEngineTest.
  */
 @DisplayName("Reviews scheduled by FSRS")
-@TestPropertySource(properties = "scheduling.algorithm=fsrs")
 class FsrsSchedulingIntegrationTest extends BaseIntegrationTest {
 
     @Autowired

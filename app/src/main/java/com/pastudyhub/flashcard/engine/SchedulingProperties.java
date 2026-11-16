@@ -21,8 +21,11 @@ public class SchedulingProperties {
 
     public enum Algorithm { SM2, FSRS }
 
-    /** SM-2 stays the default until session 20 has measured which one predicts better. */
-    private Algorithm algorithm = Algorithm.SM2;
+    /**
+     * FSRS since session 20: on 10 users' real Anki histories it predicted forgetting
+     * far better than SM-2 (see the README). SM-2 can still be chosen.
+     */
+    private Algorithm algorithm = Algorithm.FSRS;
 
     /**
      * For FSRS: the chance of remembering a card on the day it comes back. 0.9 is the

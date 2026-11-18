@@ -184,6 +184,9 @@ export default function ExamHistoryPage() {
                       {getCategoryLabel(exam.categoryFilter)}
                     </p>
                   )}
+                  {exam.followsBlueprint && (
+                    <p className="text-xs text-gray-400 mt-0.5">PANCE blueprint mix</p>
+                  )}
                 </div>
                 <div className="text-right">
                   <span className="text-sm font-bold text-gray-900">

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { startExam } from '@/api/exam'
 import { ALL_CATEGORIES, getCategoryLabel } from '@/utils/categoryColors'
+import { TASK_AREAS } from '@/utils/taskAreas'
 import Button from '@/components/common/Button'
 import { useNotification } from '@/contexts/NotificationContext'
 import type { ApiError } from '@/types'
@@ -28,6 +29,7 @@ export default function ExamSetupPage() {
   const [timeLimitMinutes, setTimeLimitMinutes]      = useState(0)
   const [customCount, setCustomCount]               = useState('')
   const [useCustomCount, setUseCustomCount]         = useState(false)
+  const [followBlueprint, setFollowBlueprint]       = useState(false)
   const [loading, setLoading]                       = useState(false)
   const [error, setError]                           = useState<string | null>(null)
 
@@ -47,6 +49,7 @@ export default function ExamSetupPage() {
         questionCount: effectiveCount,
         timeLimitMinutes: timeLimitMinutes || undefined,
         categoryFilter: category === ALL ? undefined : category,
+        followBlueprint,
       })
       navigate(`/exam/${session.id}`)
     } catch (err) {
@@ -143,6 +146,48 @@ export default function ExamSetupPage() {
         )}
       </section>
 
+      {/* Question mix */}
+      <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
+        <h2 className="text-sm font-semibold text-gray-900">Question Mix</h2>
+        <div className="space-y-2">
+          <label className="flex items-start gap-2.5 text-sm text-gray-700 cursor-pointer">
+            <input
+              type="radio"
+              name="mix"
+              checked={!followBlueprint}
+              onChange={() => setFollowBlueprint(false)}
+              className="mt-0.5 border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+            <span>Random</span>
+          </label>
+          <label className="flex items-start gap-2.5 text-sm text-gray-700 cursor-pointer">
+            <input
+              type="radio"
+              name="mix"
+              checked={followBlueprint}
+              onChange={() => setFollowBlueprint(true)}
+              className="mt-0.5 border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+            <span>
+              PANCE blueprint mix
+              <span className="block text-xs text-gray-500">
+                Same share of each task as the real exam, as far as the question bank allows
+              </span>
+            </span>
+          </label>
+        </div>
+        {followBlueprint && (
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs text-gray-500 pt-1">
+            {TASK_AREAS.map(area => (
+              <li key={area.value} className="flex justify-between">
+                <span>{area.label}</span>
+                <span className="tabular-nums">{area.percent}%</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       {/* Time Limit */}
       <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
         <h2 className="text-sm font-semibold text-gray-900">Time Limit</h2>
@@ -187,7 +232,9 @@ export default function ExamSetupPage() {
             </span>
           </p>
           <p className="text-xs text-gray-400">
-            Questions randomly selected from the PANCE question bank
+            {followBlueprint
+              ? 'Questions picked to follow the 2025 PANCE blueprint task mix'
+              : 'Questions randomly selected from the PANCE question bank'}
           </p>
         </div>
         <Button onClick={handleStart} loading={loading} size="lg">

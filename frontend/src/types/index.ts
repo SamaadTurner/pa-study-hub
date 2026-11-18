@@ -78,11 +78,23 @@ export type DifficultyLevel = 'EASY' | 'MEDIUM' | 'HARD'
 export type ExamStatus = 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED'
 export type PerformanceBand = 'EXCELLENT' | 'GOOD' | 'PASSING' | 'NEEDS_IMPROVEMENT'
 
+// What a question tests, the second dimension of the PANCE blueprint
+export type TaskArea =
+  | 'HISTORY_AND_PHYSICAL'
+  | 'DIAGNOSTIC_STUDIES'
+  | 'MOST_LIKELY_DIAGNOSIS'
+  | 'HEALTH_MAINTENANCE'
+  | 'CLINICAL_INTERVENTION'
+  | 'PHARMACEUTICAL_THERAPEUTICS'
+  | 'BASIC_SCIENCE'
+  | 'PROFESSIONAL_PRACTICE'
+
 export interface StartExamRequest {
   questionCount: number
   timeLimitMinutes?: number
   categoryFilter?: string
   difficultyFilter?: DifficultyLevel
+  followBlueprint?: boolean  // pick questions in the blueprint's task area percentages
 }
 
 // The exam types below use the same field names as the backend's JSON.
@@ -98,6 +110,7 @@ export interface ExamQuestion {
   stem: string
   clinicalVignette: string | null
   category: string
+  taskArea: TaskArea
   answerOptions: AnswerOption[]
   selectedOptionId: string | null  // the option picked so far, if any
 }
@@ -105,6 +118,7 @@ export interface ExamQuestion {
 export interface ExamSession {
   id: string
   categoryFilter: string | null
+  followsBlueprint: boolean
   questionCount: number
   answeredCount: number
   timeLimitMinutes: number             // 0 means no time limit
@@ -119,6 +133,7 @@ export interface ExamAnswerDetail {
   questionId: string
   stem: string
   clinicalVignette: string | null
+  taskArea: TaskArea
   answerOptions: AnswerOption[]
   selectedOptionId: string | null  // null when the question was not answered
   isCorrect: boolean
@@ -150,6 +165,7 @@ export interface ExamHistorySummary {
   scorePercent: number | null
   performanceBand: PerformanceBand | null
   categoryFilter: string | null
+  followsBlueprint: boolean
   startedAt: string
   completedAt: string | null
   durationSeconds: number | null

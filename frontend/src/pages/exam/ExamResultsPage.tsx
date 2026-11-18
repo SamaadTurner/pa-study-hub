@@ -8,6 +8,7 @@ import AnswerOptions from '@/components/exams/AnswerOptions'
 import ExplainAnswer from '@/components/ai/ExplainAnswer'
 import { useAiStatus } from '@/hooks/useAiStatus'
 import { getCategoryLabel, CATEGORY_HEX_COLORS } from '@/utils/categoryColors'
+import { getTaskAreaLabel } from '@/utils/taskAreas'
 import { formatDuration } from '@/utils/formatDuration'
 import {
   BarChart,
@@ -55,7 +56,10 @@ function QuestionReview({ detail, number, sessionId, onUsedAiRequest }: Question
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-gray-900">Question {number}</span>
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-semibold text-gray-900">Question {number}</span>
+          <span className="text-xs text-gray-500">{getTaskAreaLabel(detail.taskArea)}</span>
+        </div>
         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
           {badgeText}
         </span>

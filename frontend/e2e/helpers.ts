@@ -164,6 +164,7 @@ export interface ExamChoices {
   category: string
   questions: 5 | 10 | 20 | 30
   timeLimit?: '15 min' | '30 min' | '60 min'
+  followBlueprint?: boolean
 }
 
 // Fills in the exam setup page, starts the exam and waits for the first question.
@@ -175,6 +176,9 @@ export async function startExam(page: Page, choices: ExamChoices) {
   await page.getByRole('button', { name: String(choices.questions), exact: true }).click()
   if (choices.timeLimit) {
     await page.getByRole('button', { name: choices.timeLimit }).click()
+  }
+  if (choices.followBlueprint) {
+    await page.getByLabel(/PANCE blueprint mix/).check()
   }
   await page.getByRole('button', { name: /Start Exam/ }).click()
 

@@ -249,4 +249,23 @@ test.describe('Practice exams', () => {
     // Exam questions are not flashcards, so the card goal has not moved
     await expect(page.getByText('0 / 20')).toBeVisible()
   })
+
+  test('a blueprint exam covers every task area the question bank has', async ({ page }) => {
+    await register(page, newUser())
+    await startExam(page, { category: 'All categories', questions: 10, followBlueprint: true })
+    await answerAllAndFinish(page, 10)
+
+    // A 10 question blueprint exam asks for 2 history and physical questions and 1
+    // health maintenance question. The starter bank has exactly one of each, so both
+    // are always in it (a random pick of 10 out of 30 would often miss them).
+    await expect(page.getByText('History & physical exam', { exact: true })).toHaveCount(1)
+    await expect(page.getByText('Health maintenance', { exact: true })).toHaveCount(1)
+    for (const area of ['Diagnostic & lab studies', 'Most likely diagnosis', 'Clinical intervention',
+      'Pharmaceutical therapeutics', 'Basic science']) {
+      await expect(page.getByText(area, { exact: true }).first()).toBeVisible()
+    }
+
+    await page.goto('/exam/history')
+    await expect(page.getByText('PANCE blueprint mix')).toBeVisible()
+  })
 })

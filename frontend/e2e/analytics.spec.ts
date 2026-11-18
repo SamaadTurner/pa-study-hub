@@ -150,4 +150,29 @@ test.describe('Analytics', () => {
     await expect(page.getByText('Failed to load analytics')).toBeHidden()
     await expect(statNumber(page, 'Overall accuracy')).toHaveText('0%')
   })
+
+  test('practice exams by task: empty at first, then the weakest task once there is enough data', async ({ page }) => {
+    await register(page, newUser())
+    await openAnalytics(page)
+    const tasks = section(page, 'Practice Exams by Task')
+    await expect(tasks.getByText('No exam results yet')).toBeVisible()
+
+    // A 10 question pharmacology exam has all 7 pharmaceutical therapeutics questions
+    // of the starter bank. Finishing it with nothing answered makes them all wrong.
+    await startExam(page, { category: 'Pharmacology', questions: 10 })
+    for (let number = 1; number < 10; number++) {
+      await expect(page.getByText(`Question ${number} / 10`)).toBeVisible()
+      await page.getByRole('button', { name: 'Skip →' }).click()
+    }
+    await expect(page.getByText('Question 10 / 10')).toBeVisible()
+    page.once('dialog', dialog => dialog.accept())
+    await page.getByRole('button', { name: 'Finish Exam' }).click()
+    await expect(page).toHaveURL(/\/exam\/[0-9a-f-]{36}\/results$/)
+
+    await openAnalytics(page)
+    await expect(tasks.getByText('You miss pharmaceutical therapeutics questions 100% of the time.')).toBeVisible()
+    await expect(tasks.getByRole('listitem', { name: 'Pharmaceutical therapeutics: 0 of 7 right' })).toBeVisible()
+    // The other three questions are one each of three other tasks
+    await expect(tasks.getByRole('listitem')).toHaveCount(4)
+  })
 })

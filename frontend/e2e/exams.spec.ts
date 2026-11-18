@@ -46,6 +46,19 @@ test.describe('Practice exams', () => {
     await expect(resultBadges(page, 'Incorrect')).toHaveCount(5 - correct)
     await expect(resultBadges(page, 'Not answered')).toHaveCount(0)
     await expect(page.getByText(`${correct * 20}%`).first()).toBeVisible()
+
+    // The task breakdown covers all 5 questions and agrees with the score
+    const tasks = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Performance by Task' }) })
+    const rows = await tasks.getByRole('listitem').evaluateAll(items => items.map(item => item.getAttribute('aria-label')))
+    let right = 0
+    let total = 0
+    for (const row of rows) {
+      const [, got, outOf] = row!.match(/: (\d+) of (\d+) right$/)!
+      right += Number(got)
+      total += Number(outOf)
+    }
+    expect(total).toBe(5)
+    expect(right).toBe(correct)
   })
 
   test('an answer is kept when going back to a question', async ({ page }) => {
@@ -258,12 +271,12 @@ test.describe('Practice exams', () => {
     // A 10 question blueprint exam asks for 2 history and physical questions and 1
     // health maintenance question. The starter bank has exactly one of each, so both
     // are always in it (a random pick of 10 out of 30 would often miss them).
-    await expect(page.getByText('History & physical exam', { exact: true })).toHaveCount(1)
-    await expect(page.getByText('Health maintenance', { exact: true })).toHaveCount(1)
-    for (const area of ['Diagnostic & lab studies', 'Most likely diagnosis', 'Clinical intervention',
-      'Pharmaceutical therapeutics', 'Basic science']) {
-      await expect(page.getByText(area, { exact: true }).first()).toBeVisible()
-    }
+    // The "Performance by Task" list on the results page shows what the exam had.
+    const tasks = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Performance by Task' }) })
+    await expect(tasks.getByRole('listitem', { name: /^History & physical exam: \d of 1 right$/ })).toBeVisible()
+    await expect(tasks.getByRole('listitem', { name: /^Health maintenance: \d of 1 right$/ })).toBeVisible()
+    // Every task the starter bank has questions for (all but professional practice)
+    await expect(tasks.getByRole('listitem')).toHaveCount(7)
 
     await page.goto('/exam/history')
     await expect(page.getByText('PANCE blueprint mix')).toBeVisible()

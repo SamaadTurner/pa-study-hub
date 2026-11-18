@@ -1,5 +1,10 @@
+import { useState, useEffect, useCallback } from 'react'
 import { useProgress } from '@/hooks/useProgress'
-import type { DailyProgressPoint } from '@/types'
+import { getTaskAreaScores } from '@/api/exam'
+import type { DailyProgressPoint, TaskAreaScore, ApiError } from '@/types'
+import TaskAreaScores from '@/components/exams/TaskAreaScores'
+import Button from '@/components/common/Button'
+import { weakestTaskArea, describeWeakest, MIN_QUESTIONS_FOR_WEAKEST } from '@/utils/taskAreas'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import EmptyState from '@/components/common/EmptyState'
 import { getCategoryLabel, CATEGORY_HEX_COLORS } from '@/utils/categoryColors'
@@ -163,6 +168,72 @@ function ActivityHeatmap({ data }: { data: DailyProgressPoint[] }) {
   )
 }
 
+// ── Practice exams by task area ─────────────────────────────────────────────
+// Loads its own data, so if this request fails the rest of the page still shows.
+function ExamTaskAreaSection() {
+  const [scores, setScores]   = useState<TaskAreaScore[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      setScores(await getTaskAreaScores())
+    } catch (err) {
+      setError((err as ApiError)?.detail ?? 'Failed to load exam results by task')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  let body
+  if (loading) {
+    body = <LoadingSpinner message="Loading..." />
+  } else if (error) {
+    body = (
+      <div className="text-center py-4 space-y-3">
+        <p className="text-sm text-red-600">{error}</p>
+        <Button variant="secondary" onClick={load}>Try Again</Button>
+      </div>
+    )
+  } else if (!scores || scores.length === 0) {
+    body = (
+      <p className="text-sm text-gray-400 text-center py-8">
+        No exam results yet. Finish a practice exam to see how you do on each task.
+      </p>
+    )
+  } else {
+    const weakest = weakestTaskArea(scores)
+    body = (
+      <div className="space-y-5">
+        {weakest ? (
+          <p className="text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+            {describeWeakest(weakest)}
+          </p>
+        ) : (
+          <p className="text-xs text-gray-500">
+            Your weakest task is shown once a task has at least {MIN_QUESTIONS_FOR_WEAKEST} questions with a miss.
+          </p>
+        )}
+        <TaskAreaScores scores={scores} />
+      </div>
+    )
+  }
+
+  return (
+    <section className="bg-white border border-gray-200 rounded-xl p-6">
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-gray-900">Practice Exams by Task</h2>
+        <p className="text-xs text-gray-500 mt-0.5">All finished exams. Unanswered questions count as wrong.</p>
+      </div>
+      {body}
+    </section>
+  )
+}
+
 // ── Main page ───────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
   const { dashboard, loading, error, refetch } = useProgress()
@@ -248,6 +319,8 @@ export default function AnalyticsPage() {
         </div>
         <CategoryAccuracyChart data={dashboard?.categoryAccuracy ?? {}} />
       </section>
+
+      <ExamTaskAreaSection />
 
     </div>
   )

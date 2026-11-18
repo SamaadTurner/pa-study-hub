@@ -9,6 +9,7 @@ import ExplainAnswer from '@/components/ai/ExplainAnswer'
 import { useAiStatus } from '@/hooks/useAiStatus'
 import { getCategoryLabel, CATEGORY_HEX_COLORS } from '@/utils/categoryColors'
 import { getTaskAreaLabel } from '@/utils/taskAreas'
+import TaskAreaScores from '@/components/exams/TaskAreaScores'
 import { formatDuration } from '@/utils/formatDuration'
 import {
   BarChart,
@@ -211,6 +212,17 @@ export default function ExamResultsPage() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+        </section>
+      )}
+
+      {/* ── Task area breakdown ───────────────────────────────────────── */}
+      {result.taskAreaBreakdown.length > 0 && (
+        <section className="bg-white border border-gray-200 rounded-xl p-6">
+          <h2 className="text-sm font-semibold text-gray-900 mb-1">Performance by Task</h2>
+          <p className="text-xs text-gray-500 mb-5">
+            What each question tested, as sorted by the PANCE blueprint
+          </p>
+          <TaskAreaScores scores={result.taskAreaBreakdown} />
         </section>
       )}
 

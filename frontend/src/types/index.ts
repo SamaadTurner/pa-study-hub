@@ -141,6 +141,14 @@ export interface ExamAnswerDetail {
   timeSpentSeconds: number | null
 }
 
+// Right answers out of questions for one task area. Unanswered questions count as wrong.
+export interface TaskAreaScore {
+  taskArea: TaskArea
+  correct: number
+  total: number
+  percent: number
+}
+
 export interface ExamResult {
   sessionId: string
   rawScore: number
@@ -149,6 +157,7 @@ export interface ExamResult {
   performanceBand: PerformanceBand
   performanceMessage: string
   categoryBreakdown: Record<string, number>
+  taskAreaBreakdown: TaskAreaScore[]  // in blueprint order, only areas in this exam
   avgTimePerQuestionSeconds: number
   durationSeconds: number
   completedAt: string

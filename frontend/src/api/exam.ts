@@ -4,6 +4,7 @@ import type {
   ExamResult,
   ExamHistorySummary,
   StartExamRequest,
+  TaskAreaScore,
 } from '@/types'
 
 // The types in '@/types' use the same field names as the backend's JSON, so the
@@ -56,4 +57,10 @@ export async function getExamHistory(page = 0, size = 20): Promise<ExamHistorySu
     `/exams/history?page=${page}&size=${size}`
   )
   return data.content
+}
+
+// Right answers per task area over all of the user's finished exams
+export async function getTaskAreaScores(): Promise<TaskAreaScore[]> {
+  const { data } = await apiClient.get<TaskAreaScore[]>('/exams/task-areas')
+  return data
 }

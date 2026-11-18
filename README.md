@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 329 backend tests, 96 frontend unit tests and 53 end-to-end browser tests
+the frontend. 336 backend tests, 101 frontend unit tests and 54 end-to-end browser tests
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -31,6 +31,8 @@ run in CI on every push.
   every question. An exam can also follow the PANCE blueprint mix (see below).
 - **Progress.** Daily goals for cards and minutes, a study streak, and an analytics page
   with 30 days of activity and accuracy by topic. Flashcards and exams both count.
+  Exam results are also split by blueprint task, and the analytics page names your
+  weakest one ("You miss pharmaceutical therapeutics questions 40% of the time").
 - **Optional AI help.** Paste notes and get suggested flashcards to review and edit
   before saving, or ask why your answer to an exam question was wrong. Off unless the
   server has an API key (see [AI features](#ai-features)).
@@ -100,13 +102,13 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 329 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 336 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 97.8% of lines and 84.3% of branches (JaCoCo, without the code Lombok
+  They cover 97.8% of lines and 84.7% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
-- **Frontend:** 96 unit tests with Vitest and React Testing Library.
-- **End to end:** 53 Playwright tests that click through the real app: accounts, decks
+- **Frontend:** 101 unit tests with Vitest and React Testing Library.
+- **End to end:** 54 Playwright tests that click through the real app: accounts, decks
   and cards, studying, exams (including the timer running out), public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
@@ -235,7 +237,9 @@ option gets the same mix. The number of questions per area is worked out with th
 largest remainder method, so a 10 question exam still adds up to 10. When an area has
 too few questions (the starter bank has no professional practice questions), the
 missing places are filled at random from the rest. `BlueprintSelector` does the picking
-and has its own unit tests.
+and has its own unit tests. Results are scored per task area too, and the totals over all
+exams come from one grouped query. The weakest task is only named once it has at least
+5 questions, so one wrong answer in a small area does not look like a weakness.
 
 **Exams are stored question by question.** The questions an exam picked are saved when it
 starts, in order, with the order of their answer options fixed per exam. That is what lets

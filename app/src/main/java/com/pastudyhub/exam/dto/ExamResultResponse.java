@@ -1,6 +1,7 @@
 package com.pastudyhub.exam.dto;
 
 import com.pastudyhub.exam.engine.PerformanceBand;
+import com.pastudyhub.exam.engine.TaskAreaScore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,6 +24,8 @@ public class ExamResultResponse {
     private PerformanceBand performanceBand;
     private String performanceMessage;
     private Map<String, Double> categoryBreakdown;
+    /** Right answers per blueprint task area, in blueprint order */
+    private List<TaskAreaScore> taskAreaBreakdown;
     private double avgTimePerQuestionSeconds;
     private int durationSeconds;
     private LocalDateTime completedAt;

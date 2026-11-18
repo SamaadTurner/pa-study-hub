@@ -184,6 +184,7 @@ public class ExamMapper {
                 .performanceBand(band)
                 .performanceMessage(band.getMessage())
                 .categoryBreakdown(scoreResult.categoryBreakdown())
+                .taskAreaBreakdown(scoreResult.taskAreaBreakdown())
                 .avgTimePerQuestionSeconds(scoreResult.avgTimePerQuestionSeconds())
                 .durationSeconds(session.getDurationSeconds())
                 .completedAt(session.getCompletedAt())

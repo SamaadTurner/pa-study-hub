@@ -1,6 +1,7 @@
 package com.pastudyhub.exam.controller;
 
 import com.pastudyhub.exam.dto.*;
+import com.pastudyhub.exam.engine.TaskAreaScore;
 import com.pastudyhub.exam.service.ExamService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -85,5 +87,11 @@ public class ExamController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return examService.getExamHistory(userId, page, size);
+    }
+
+    @GetMapping("/task-areas")
+    @Operation(summary = "Right answers per PANCE task area over all finished exams of the current user")
+    public List<TaskAreaScore> getTaskAreaScores(@RequestHeader("X-User-Id") UUID userId) {
+        return examService.getTaskAreaScores(userId);
     }
 }

@@ -5,6 +5,7 @@ import com.pastudyhub.exam.engine.BlueprintSelector;
 import com.pastudyhub.exam.engine.QuestionRandomizer;
 import com.pastudyhub.exam.engine.ScoreResult;
 import com.pastudyhub.exam.engine.ScoringEngine;
+import com.pastudyhub.exam.engine.TaskAreaScore;
 import com.pastudyhub.exam.exception.ExamAlreadyCompletedException;
 import com.pastudyhub.exam.exception.ExamNotCompletedException;
 import com.pastudyhub.exam.exception.ExamSessionNotFoundException;
@@ -17,6 +18,7 @@ import com.pastudyhub.exam.repository.ExamAnswerRepository;
 import com.pastudyhub.exam.repository.ExamQuestionRepository;
 import com.pastudyhub.exam.repository.ExamSessionRepository;
 import com.pastudyhub.exam.repository.QuestionRepository;
+import com.pastudyhub.exam.repository.TaskAreaTotals;
 import com.pastudyhub.progress.dto.LogActivityRequest;
 import com.pastudyhub.progress.model.ActivityType;
 import com.pastudyhub.progress.service.ProgressService;
@@ -30,8 +32,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -213,6 +217,22 @@ public class ExamServiceImpl implements ExamService {
     public Page<ExamHistorySummary> getExamHistory(UUID userId, int page, int size) {
         return examSessionRepository.findByUserIdOrderByStartedAtDesc(userId, PageRequest.of(page, size))
                 .map(examMapper::toHistorySummary);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TaskAreaScore> getTaskAreaScores(UUID userId) {
+        Map<TaskArea, TaskAreaTotals> totalsByArea = new EnumMap<>(TaskArea.class);
+        for (TaskAreaTotals totals : examQuestionRepository.totalsByTaskArea(userId)) {
+            totalsByArea.put(totals.taskArea(), totals);
+        }
+
+        // In blueprint order, and only the areas the user has had questions in
+        List<TaskAreaScore> scores = new ArrayList<>();
+        for (TaskAreaTotals totals : totalsByArea.values()) {
+            scores.add(TaskAreaScore.of(totals.taskArea(), (int) totals.correct(), (int) totals.total()));
+        }
+        return scores;
     }
 
     /**

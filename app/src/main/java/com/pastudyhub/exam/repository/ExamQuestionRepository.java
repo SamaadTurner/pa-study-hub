@@ -16,4 +16,18 @@ public interface ExamQuestionRepository extends JpaRepository<ExamQuestion, UUID
     List<ExamQuestion> findBySessionInOrder(@Param("sessionId") UUID sessionId);
 
     Optional<ExamQuestion> findByExamSessionIdAndQuestionId(UUID examSessionId, UUID questionId);
+
+    /**
+     * For every task area, how many questions the user was asked in finished exams
+     * and how many of those they got right. Unanswered questions have no answer row,
+     * so the left join leaves them out of the right ones and they count as wrong.
+     * One query for all exams, instead of loading every exam and its answers.
+     */
+    @Query("SELECT new com.pastudyhub.exam.repository.TaskAreaTotals(q.taskArea, COUNT(eq), "
+            + "SUM(CASE WHEN a.isCorrect = true THEN 1 ELSE 0 END)) "
+            + "FROM ExamQuestion eq JOIN eq.question q JOIN eq.examSession s "
+            + "LEFT JOIN ExamAnswer a ON a.examSession = s AND a.question = q "
+            + "WHERE s.userId = :userId AND s.status = com.pastudyhub.exam.model.ExamStatus.COMPLETED "
+            + "GROUP BY q.taskArea")
+    List<TaskAreaTotals> totalsByTaskArea(@Param("userId") UUID userId);
 }

@@ -20,6 +20,7 @@ class ScoringEngineTest {
         Question question = Question.builder()
                 .id(UUID.randomUUID())
                 .category(category)
+                .taskArea(TaskArea.MOST_LIKELY_DIAGNOSIS)
                 .difficulty(DifficultyLevel.MEDIUM)
                 .stem("Test question")
                 .explanation("Test explanation")
@@ -44,6 +45,7 @@ class ScoringEngineTest {
         return Question.builder()
                 .id(UUID.randomUUID())
                 .category(category)
+                .taskArea(TaskArea.MOST_LIKELY_DIAGNOSIS)
                 .difficulty(DifficultyLevel.MEDIUM)
                 .stem("Test question")
                 .explanation("Test explanation")
@@ -277,6 +279,54 @@ class ScoringEngineTest {
         assertThat(breakdown.get("CARDIOLOGY")).isEqualTo(66.7);
     }
 
+    // ---- calculateTaskAreaBreakdown ----------------------------------------
+
+    private Question question(TaskArea area) {
+        Question question = question(QuestionCategory.CARDIOLOGY);
+        question.setTaskArea(area);
+        return question;
+    }
+
+    private ExamAnswer answerTo(Question question, boolean correct) {
+        return ExamAnswer.builder().id(UUID.randomUUID()).question(question).isCorrect(correct).build();
+    }
+
+    @Test
+    @DisplayName("calculateTaskAreaBreakdown: counts right answers per task area, unanswered count as wrong")
+    void taskAreaBreakdown_countsPerArea() {
+        Question drug1 = question(TaskArea.PHARMACEUTICAL_THERAPEUTICS);
+        Question drug2 = question(TaskArea.PHARMACEUTICAL_THERAPEUTICS);
+        Question drug3 = question(TaskArea.PHARMACEUTICAL_THERAPEUTICS);
+        Question diagnosis = question(TaskArea.MOST_LIKELY_DIAGNOSIS);
+        // drug3 is not answered
+        List<ExamAnswer> answers = List.of(answerTo(drug1, true), answerTo(drug2, false), answerTo(diagnosis, true));
+
+        List<TaskAreaScore> breakdown = new ScoringEngine(
+                List.of(drug1, drug2, drug3, diagnosis), answers).calculateTaskAreaBreakdown();
+
+        // Blueprint order: diagnosis comes before pharmaceutical therapeutics
+        assertThat(breakdown).containsExactly(
+                new TaskAreaScore(TaskArea.MOST_LIKELY_DIAGNOSIS, 1, 1, 100.0),
+                new TaskAreaScore(TaskArea.PHARMACEUTICAL_THERAPEUTICS, 1, 3, 33.3));
+    }
+
+    @Test
+    @DisplayName("calculateTaskAreaBreakdown: areas with no question in the exam are left out")
+    void taskAreaBreakdown_onlyAreasInExam() {
+        Question question = question(TaskArea.BASIC_SCIENCE);
+
+        List<TaskAreaScore> breakdown = new ScoringEngine(List.of(question), List.of()).calculateTaskAreaBreakdown();
+
+        assertThat(breakdown).containsExactly(new TaskAreaScore(TaskArea.BASIC_SCIENCE, 0, 1, 0.0));
+    }
+
+    @Test
+    @DisplayName("TaskAreaScore.of: rounds to one decimal and gives 0 for no questions")
+    void taskAreaScore_of() {
+        assertThat(TaskAreaScore.of(TaskArea.HEALTH_MAINTENANCE, 2, 3).percent()).isEqualTo(66.7);
+        assertThat(TaskAreaScore.of(TaskArea.HEALTH_MAINTENANCE, 0, 0).percent()).isEqualTo(0.0);
+    }
+
     // ---- calculateAvgTimePerQuestion ---------------------------------------
 
     @Test
@@ -315,11 +365,11 @@ class ScoringEngineTest {
         UUID wrongId2 = UUID.randomUUID();
         UUID correctId = UUID.randomUUID();
 
-        Question correct = Question.builder().id(correctId).category(QuestionCategory.CARDIOLOGY)
+        Question correct = Question.builder().id(correctId).category(QuestionCategory.CARDIOLOGY).taskArea(TaskArea.MOST_LIKELY_DIAGNOSIS)
                 .difficulty(DifficultyLevel.EASY).stem("q").explanation("e").isActive(true).build();
-        Question wrong1 = Question.builder().id(wrongId1).category(QuestionCategory.CARDIOLOGY)
+        Question wrong1 = Question.builder().id(wrongId1).category(QuestionCategory.CARDIOLOGY).taskArea(TaskArea.MOST_LIKELY_DIAGNOSIS)
                 .difficulty(DifficultyLevel.EASY).stem("q").explanation("e").isActive(true).build();
-        Question wrong2 = Question.builder().id(wrongId2).category(QuestionCategory.CARDIOLOGY)
+        Question wrong2 = Question.builder().id(wrongId2).category(QuestionCategory.CARDIOLOGY).taskArea(TaskArea.MOST_LIKELY_DIAGNOSIS)
                 .difficulty(DifficultyLevel.EASY).stem("q").explanation("e").isActive(true).build();
 
         List<ExamAnswer> answers = List.of(

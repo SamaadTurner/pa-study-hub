@@ -1,8 +1,10 @@
 package com.pastudyhub.exam.service;
 
 import com.pastudyhub.exam.dto.*;
+import com.pastudyhub.exam.engine.TaskAreaScore;
 import org.springframework.data.domain.Page;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface ExamService {
@@ -13,4 +15,5 @@ public interface ExamService {
     void abandonExam(UUID sessionId, UUID userId);
     ExamResultResponse getExamResult(UUID sessionId, UUID userId);
     Page<ExamHistorySummary> getExamHistory(UUID userId, int page, int size);
+    List<TaskAreaScore> getTaskAreaScores(UUID userId);
 }

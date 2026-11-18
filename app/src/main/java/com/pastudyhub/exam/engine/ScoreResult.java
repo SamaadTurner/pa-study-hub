@@ -12,6 +12,7 @@ public record ScoreResult(
         int totalQuestions,
         double scorePercent,
         Map<String, Double> categoryBreakdown,
+        List<TaskAreaScore> taskAreaBreakdown,
         PerformanceBand performanceBand,
         double avgTimePerQuestionSeconds,
         List<UUID> incorrectQuestionIds

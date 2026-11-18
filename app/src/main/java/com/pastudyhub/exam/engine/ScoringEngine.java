@@ -2,8 +2,10 @@ package com.pastudyhub.exam.engine;
 
 import com.pastudyhub.exam.model.ExamAnswer;
 import com.pastudyhub.exam.model.Question;
+import com.pastudyhub.exam.model.TaskArea;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -98,6 +100,31 @@ public class ScoringEngine {
     }
 
     /**
+     * Returns the score per blueprint task area, in the order the blueprint lists
+     * them. Only areas that have a question in the exam are included.
+     */
+    public List<TaskAreaScore> calculateTaskAreaBreakdown() {
+        Map<TaskArea, Integer> totalByArea = new EnumMap<>(TaskArea.class);
+        Map<TaskArea, Integer> correctByArea = new EnumMap<>(TaskArea.class);
+
+        for (Question question : questions) {
+            TaskArea area = question.getTaskArea();
+            totalByArea.merge(area, 1, Integer::sum);
+            if (correctQuestionIds.contains(question.getId())) {
+                correctByArea.merge(area, 1, Integer::sum);
+            }
+        }
+
+        // EnumMap keeps the areas in the order they are declared in TaskArea
+        List<TaskAreaScore> breakdown = new ArrayList<>();
+        for (Map.Entry<TaskArea, Integer> entry : totalByArea.entrySet()) {
+            int correct = correctByArea.getOrDefault(entry.getKey(), 0);
+            breakdown.add(TaskAreaScore.of(entry.getKey(), correct, entry.getValue()));
+        }
+        return breakdown;
+    }
+
+    /**
      * Returns a human-readable performance band.
      */
     public PerformanceBand getPerformanceBand() {
@@ -142,6 +169,7 @@ public class ScoringEngine {
                 questions.size(),
                 calculateScorePercent(),
                 calculateCategoryBreakdown(),
+                calculateTaskAreaBreakdown(),
                 getPerformanceBand(),
                 calculateAvgTimePerQuestion(),
                 getIncorrectQuestionIds()

@@ -87,4 +87,26 @@ class MigrationsIntegrationTest extends BaseIntegrationTest {
         assertThat(questions).isGreaterThan(0);
         assertThat(questionsWithoutRightAnswer).isZero();
     }
+
+    @Test
+    @DisplayName("Every starter question was tagged with a blueprint task area")
+    void starterQuestionsHaveTaskAreas() {
+        // V14 makes the column NOT NULL, which fails if any starter question was missed
+        String nullable = jdbcTemplate.queryForObject(
+                "SELECT is_nullable FROM information_schema.columns "
+                        + "WHERE table_name = 'questions' AND column_name = 'task_area'",
+                String.class);
+        Integer pharmacologyCategoryQuestions = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM questions WHERE category = 'PHARMACOLOGY' "
+                        + "AND task_area = 'PHARMACEUTICAL_THERAPEUTICS'",
+                Integer.class);
+        Integer areasUsed = jdbcTemplate.queryForObject(
+                "SELECT COUNT(DISTINCT task_area) FROM questions WHERE category IN "
+                        + "('CARDIOLOGY', 'PHARMACOLOGY', 'PULMONOLOGY')",
+                Integer.class);
+
+        assertThat(nullable).isEqualTo("NO");
+        assertThat(pharmacologyCategoryQuestions).isEqualTo(7);
+        assertThat(areasUsed).isEqualTo(7);
+    }
 }

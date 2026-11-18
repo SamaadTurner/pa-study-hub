@@ -19,6 +19,7 @@ import java.util.UUID;
         indexes = {
                 @Index(name = "idx_questions_category", columnList = "category"),
                 @Index(name = "idx_questions_difficulty", columnList = "difficulty"),
+                @Index(name = "idx_questions_task_area", columnList = "task_area"),
                 @Index(name = "idx_questions_is_active", columnList = "is_active")
         })
 @Getter
@@ -41,6 +42,11 @@ public class Question {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private QuestionCategory category;
+
+    /** What the question tests (diagnosis, pharmacology, ...), the blueprint's second dimension. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 40)
+    private TaskArea taskArea;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

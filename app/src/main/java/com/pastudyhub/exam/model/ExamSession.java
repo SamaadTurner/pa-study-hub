@@ -52,6 +52,11 @@ public class ExamSession {
     @Column(length = 20)
     private DifficultyLevel difficultyFilter;
 
+    /** True when the questions were picked to follow the PANCE blueprint task mix. */
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean followsBlueprint = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

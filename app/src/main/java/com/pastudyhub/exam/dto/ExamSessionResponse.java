@@ -23,6 +23,7 @@ public class ExamSessionResponse {
     private int timeLimitMinutes;
     private QuestionCategory categoryFilter;
     private DifficultyLevel difficultyFilter;
+    private boolean followsBlueprint;
     private ExamStatus status;
     private LocalDateTime startedAt;
     private LocalDateTime completedAt;

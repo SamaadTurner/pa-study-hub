@@ -1,6 +1,7 @@
 package com.pastudyhub.exam.service;
 
 import com.pastudyhub.exam.dto.*;
+import com.pastudyhub.exam.engine.BlueprintSelector;
 import com.pastudyhub.exam.engine.QuestionRandomizer;
 import com.pastudyhub.exam.engine.ScoreResult;
 import com.pastudyhub.exam.engine.ScoringEngine;
@@ -31,6 +32,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
@@ -56,11 +58,15 @@ public class ExamServiceImpl implements ExamService {
         List<Question> pool = questionRepository.findActiveByFilters(
                 request.getCategoryFilter(), request.getDifficultyFilter());
 
-        QuestionRandomizer randomizer = new QuestionRandomizer(pool);
         List<Question> selected;
         try {
-            selected = randomizer.select(request.getQuestionCount(),
-                    request.getCategoryFilter(), request.getDifficultyFilter());
+            if (request.isFollowBlueprint()) {
+                selected = new BlueprintSelector(new Random()).select(pool, request.getQuestionCount());
+            } else {
+                QuestionRandomizer randomizer = new QuestionRandomizer(pool);
+                selected = randomizer.select(request.getQuestionCount(),
+                        request.getCategoryFilter(), request.getDifficultyFilter());
+            }
         } catch (IllegalStateException ex) {
             throw new InsufficientQuestionsException(request.getQuestionCount(), pool.size());
         }
@@ -71,6 +77,7 @@ public class ExamServiceImpl implements ExamService {
                 .timeLimitMinutes(request.getTimeLimitMinutes())
                 .categoryFilter(request.getCategoryFilter())
                 .difficultyFilter(request.getDifficultyFilter())
+                .followsBlueprint(request.isFollowBlueprint())
                 .status(ExamStatus.IN_PROGRESS)
                 .build();
 

@@ -2,6 +2,7 @@ package com.pastudyhub.exam.dto;
 
 import com.pastudyhub.exam.model.DifficultyLevel;
 import com.pastudyhub.exam.model.QuestionCategory;
+import com.pastudyhub.exam.model.TaskArea;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,6 +20,7 @@ public class QuestionResponse {
     private String stem;
     private String clinicalVignette;
     private QuestionCategory category;
+    private TaskArea taskArea;
     private DifficultyLevel difficulty;
     private List<AnswerOptionResponse> answerOptions;
     /** Only populated after exam is completed. */

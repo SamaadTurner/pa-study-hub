@@ -1,6 +1,7 @@
 package com.pastudyhub.exam.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.pastudyhub.exam.model.TaskArea;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,7 @@ public class ExamAnswerDetailResponse {
     private UUID questionId;
     private String stem;
     private String clinicalVignette;
+    private TaskArea taskArea;
     private List<AnswerOptionResponse> answerOptions;  // includes isCorrect=true
     private UUID selectedOptionId;
     // Lombok names the getter isCorrect(), which Jackson would write as "correct".

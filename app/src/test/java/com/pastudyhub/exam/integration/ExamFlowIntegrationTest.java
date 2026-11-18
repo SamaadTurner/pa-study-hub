@@ -7,6 +7,7 @@ import com.pastudyhub.exam.model.AnswerOption;
 import com.pastudyhub.exam.model.DifficultyLevel;
 import com.pastudyhub.exam.model.Question;
 import com.pastudyhub.exam.model.QuestionCategory;
+import com.pastudyhub.exam.model.TaskArea;
 import com.pastudyhub.exam.repository.AnswerOptionRepository;
 import com.pastudyhub.exam.repository.QuestionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,7 +24,9 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -63,6 +66,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
             Question question = Question.builder()
                     .stem("Dermatology test question " + i)
                     .category(QuestionCategory.DERMATOLOGY)
+                    .taskArea(TaskArea.MOST_LIKELY_DIAGNOSIS)
                     .difficulty(DifficultyLevel.MEDIUM)
                     .explanation("Explanation for question " + i)
                     .isActive(true)
@@ -639,6 +643,65 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
                         .isEqualTo(position);
             }
         }
+    }
+
+    // ---- blueprint task areas -----------------------------------------------
+
+    @Test
+    @DisplayName("Each question in an exam says which task area it tests")
+    void questions_haveTaskArea() throws Exception {
+        UUID user = UUID.randomUUID();
+        JsonNode started = startExam(user, 1);
+
+        assertThat(started.get("followsBlueprint").asBoolean()).isFalse();
+        assertThat(started.get("questions").get(0).get("taskArea").asText()).isEqualTo("MOST_LIKELY_DIAGNOSIS");
+    }
+
+    @Test
+    @DisplayName("An exam can be started in the blueprint mix, and the history and results remember it")
+    void blueprintExam_isRememberedEverywhere() throws Exception {
+        UUID user = UUID.randomUUID();
+        String body = "{\"questionCount\": 3, \"categoryFilter\": \"DERMATOLOGY\","
+                + " \"followBlueprint\": true, \"timeLimitMinutes\": 0}";
+
+        MvcResult result = mockMvc.perform(post("/api/v1/exams")
+                        .header("Authorization", bearerToken(user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.followsBlueprint").value(true))
+                // the category filter still applies, so only dermatology questions
+                .andExpect(jsonPath("$.questions", hasSize(3)))
+                .andExpect(jsonPath("$.questions[*].category", everyItem(is("DERMATOLOGY"))))
+                .andReturn();
+        String sessionId = objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+
+        // a reload still says it follows the blueprint
+        assertThat(loadExam(user, sessionId).get("followsBlueprint").asBoolean()).isTrue();
+
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.answerDetails[*].taskArea", everyItem(is("MOST_LIKELY_DIAGNOSIS"))));
+
+        mockMvc.perform(get("/api/v1/exams/history")
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].followsBlueprint").value(true));
+    }
+
+    @Test
+    @DisplayName("A blueprint exam asking for more questions than exist gets 422, like any other exam")
+    void blueprintExam_tooManyQuestions_returns422() throws Exception {
+        UUID user = UUID.randomUUID();
+        String body = "{\"questionCount\": " + (QUESTIONS_AVAILABLE + 1) + ", \"categoryFilter\": \"DERMATOLOGY\","
+                + " \"followBlueprint\": true, \"timeLimitMinutes\": 0}";
+
+        mockMvc.perform(post("/api/v1/exams")
+                        .header("Authorization", bearerToken(user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isUnprocessableEntity());
     }
 
     // ---- helpers -----------------------------------------------------------

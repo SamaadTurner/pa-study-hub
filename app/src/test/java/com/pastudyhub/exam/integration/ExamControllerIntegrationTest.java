@@ -42,6 +42,7 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
             Question q = Question.builder()
                     .stem("What is the most common cause of CAP?")
                     .category(QuestionCategory.PULMONOLOGY)
+                    .taskArea(TaskArea.MOST_LIKELY_DIAGNOSIS)
                     .difficulty(DifficultyLevel.EASY)
                     .explanation("Streptococcus pneumoniae is the most common cause of CAP.")
                     .isActive(true)

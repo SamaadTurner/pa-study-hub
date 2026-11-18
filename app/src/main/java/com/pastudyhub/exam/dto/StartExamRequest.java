@@ -25,6 +25,9 @@ public class StartExamRequest {
     /** Optional — null means all difficulties */
     private DifficultyLevel difficultyFilter;
 
+    /** True picks questions in the PANCE blueprint task area percentages. */
+    private boolean followBlueprint;
+
     /** 0 = untimed; positive = minutes */
     @Min(value = 0, message = "Time limit cannot be negative")
     @Max(value = 360, message = "Maximum 6-hour time limit")

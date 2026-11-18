@@ -7,6 +7,7 @@ import com.pastudyhub.exam.model.AnswerOption;
 import com.pastudyhub.exam.model.DifficultyLevel;
 import com.pastudyhub.exam.model.Question;
 import com.pastudyhub.exam.model.QuestionCategory;
+import com.pastudyhub.exam.model.TaskArea;
 import com.pastudyhub.exam.repository.QuestionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -67,6 +68,7 @@ class AnswerExplainerIntegrationTest extends BaseIntegrationTest {
                     .stem("Neurology test question " + i)
                     .clinicalVignette("A 30-year-old with a sudden severe headache.")
                     .category(QuestionCategory.NEUROLOGY)
+                    .taskArea(TaskArea.MOST_LIKELY_DIAGNOSIS)
                     .difficulty(DifficultyLevel.MEDIUM)
                     .explanation("Teaching note " + i)
                     .isActive(true)

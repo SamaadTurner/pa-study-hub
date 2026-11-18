@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 315 backend tests, 92 frontend unit tests and 52 end-to-end browser tests
+the frontend. 329 backend tests, 96 frontend unit tests and 53 end-to-end browser tests
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -28,7 +28,7 @@ run in CI on every push.
 - **Practice exams.** Pick a topic, 5 to 30 questions and an optional time limit. You
   can skip and go back, and a reload keeps your answers and the time left. Right and
   wrong answers are only shown at the end, like the real exam, with an explanation for
-  every question.
+  every question. An exam can also follow the PANCE blueprint mix (see below).
 - **Progress.** Daily goals for cards and minutes, a study streak, and an analytics page
   with 30 days of activity and accuracy by topic. Flashcards and exams both count.
 - **Optional AI help.** Paste notes and get suggested flashcards to review and edit
@@ -100,13 +100,13 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 315 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 329 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 97.3% of lines and 82.0% of branches (JaCoCo, without the code Lombok
+  They cover 97.8% of lines and 84.3% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
-- **Frontend:** 92 unit tests with Vitest and React Testing Library.
-- **End to end:** 52 Playwright tests that click through the real app: accounts, decks
+- **Frontend:** 96 unit tests with Vitest and React Testing Library.
+- **End to end:** 53 Playwright tests that click through the real app: accounts, decks
   and cards, studying, exams (including the timer running out), public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
@@ -225,6 +225,17 @@ usually means someone copied it. Changing the password revokes the refresh token
 Java classes and never runs the migration files. On PostgreSQL the schema comes from the
 migrations and Hibernate checks at startup that every class matches its table, so a
 migration that does not fit the code fails CI.
+
+**Exams can follow the PANCE blueprint.** NCCPA's 2025 blueprint sorts questions two
+ways: by organ system, and by the task being tested (history and physical 16%,
+diagnostic studies 10%, most likely diagnosis 18%, health maintenance 11%, clinical
+intervention 16%, pharmaceutical therapeutics 15%, basic science 8%, professional
+practice 6%). Every question has a task area, and an exam started with the blueprint
+option gets the same mix. The number of questions per area is worked out with the
+largest remainder method, so a 10 question exam still adds up to 10. When an area has
+too few questions (the starter bank has no professional practice questions), the
+missing places are filled at random from the rest. `BlueprintSelector` does the picking
+and has its own unit tests.
 
 **Exams are stored question by question.** The questions an exam picked are saved when it
 starts, in order, with the order of their answer options fixed per exam. That is what lets

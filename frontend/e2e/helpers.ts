@@ -159,17 +159,51 @@ export async function createCardsThroughApi(
   }
 }
 
+// Writes practice exam questions by calling the API directly. Each has four
+// options and the first one is right. Returns the ids in the same order.
+export async function createQuestionsThroughApi(
+  page: Page,
+  questions: { stem: string; category: string; isPublic?: boolean }[],
+): Promise<string[]> {
+  const headers = await authHeader(page)
+  const ids: string[] = []
+
+  for (const question of questions) {
+    const response = await page.request.post('/api/v1/questions', {
+      headers,
+      data: {
+        stem: question.stem,
+        category: question.category,
+        taskArea: 'MOST_LIKELY_DIAGNOSIS',
+        difficulty: 'MEDIUM',
+        explanation: `Explanation for: ${question.stem}`,
+        isPublic: question.isPublic ?? false,
+        answerOptions: [
+          { text: 'Right answer', isCorrect: true },
+          { text: 'Wrong answer 1', isCorrect: false },
+          { text: 'Wrong answer 2', isCorrect: false },
+          { text: 'Wrong answer 3', isCorrect: false },
+        ],
+      },
+    })
+    expect(response.status()).toBe(201)
+    ids.push((await response.json()).id)
+  }
+  return ids
+}
+
 export interface ExamChoices {
   // The category's name as shown on the setup page, for example 'Cardiology'
   category: string
   questions: 5 | 10 | 20 | 30
   timeLimit?: '15 min' | '30 min' | '60 min'
   followBlueprint?: boolean
+  includeShared?: boolean
 }
 
 // Fills in the exam setup page, starts the exam and waits for the first question.
 // The starter question bank only has questions for Cardiology, Pharmacology and
-// Pulmonology (10 each), so the tests stick to those.
+// Pulmonology (10 each). Tests that use another category write their own questions.
 export async function startExam(page: Page, choices: ExamChoices) {
   await page.goto('/exam')
   await page.getByLabel(choices.category, { exact: true }).check()
@@ -179,6 +213,9 @@ export async function startExam(page: Page, choices: ExamChoices) {
   }
   if (choices.followBlueprint) {
     await page.getByLabel(/PANCE blueprint mix/).check()
+  }
+  if (choices.includeShared) {
+    await page.getByLabel(/Include questions other users shared/).check()
   }
   await page.getByRole('button', { name: /Start Exam/ }).click()
 

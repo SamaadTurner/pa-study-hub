@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 391 backend tests, 115 frontend unit tests and 68 end-to-end browser tests
+the frontend. 396 backend tests, 115 frontend unit tests and 71 end-to-end browser tests
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -32,7 +32,9 @@ run in CI on every push.
 - **Your own questions.** Write multiple-choice questions with a patient scenario and an
   explanation. They are part of every exam you start, and you can share them. Questions
   other users shared are only used when you tick "Include questions other users shared",
-  and the results page marks them as not checked.
+  and the results page marks them as not checked and has a Report button. A shared
+  question with 3 reports leaves other people's exams. Shared questions can be browsed by
+  topic, and the setup page shows how many questions each topic has.
 - **Progress.** Daily goals for cards and minutes, a study streak, and an analytics page
   with 30 days of activity and accuracy by topic. Flashcards and exams both count.
   Exam results are also split by blueprint task, and the analytics page names your
@@ -113,13 +115,13 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 391 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 396 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 97.7% of lines and 85.4% of branches (JaCoCo, without the code Lombok
+  They cover 97.8% of lines and 86.1% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
 - **Frontend:** 115 unit tests with Vitest and React Testing Library.
-- **End to end:** 68 Playwright tests that click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens and the profile page), decks
+- **End to end:** 71 Playwright tests that click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens and the profile page), decks
   and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
@@ -261,7 +263,11 @@ at the questions and answer options it asked. Editing a question that is already
 an exam saves a new question and retires the old one, and deleting it only retires it, so
 old results still show what was asked. A question that was never used is simply updated
 or deleted. Shared questions are left out of exams unless the user asks for them, because
-nobody reviews them; the starter questions and your own are always in the pool. The
+nobody reviews them; the starter questions and your own are always in the pool. Users
+keep them in check instead: someone who had a shared question in a finished exam can report
+it once, and with 3 reports from different users it is left out of other people's exams.
+The author sees the reasons and notes (never who sent them), and fixing the question saves
+a new version that starts without reports. The
 question bank grows this way without the app writing medical content itself.
 
 **The server enforces exam time limits.** The page counts down, but a closed tab or a
@@ -334,8 +340,8 @@ To turn it on locally, add `AI_API_KEY=<your Groq key>` to the backend command a
 
 - The login lock counts failures in memory, so a restart clears it, and it is per email
   only: someone who knows your email can lock you out for 15 minutes.
-- Only 30 starter questions, in three topics. Users can add their own, but shared
-  questions are not reviewed by anyone, and there is no way to report a wrong one yet.
+- Only 30 starter questions, in three topics. Users can add their own. Shared questions
+  are only checked by other users' reports, not by an expert.
 
 ## License
 

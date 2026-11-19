@@ -9,6 +9,7 @@ import com.pastudyhub.user.model.UserRole;
 import com.pastudyhub.user.repository.RefreshTokenRepository;
 import com.pastudyhub.user.repository.UserRepository;
 import com.pastudyhub.user.security.JwtTokenProvider;
+import com.pastudyhub.user.security.LoginAttemptLimiter;
 import com.pastudyhub.user.security.PasswordPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicy passwordPolicy;
     private final UserMapper userMapper;
+    private final LoginAttemptLimiter loginAttemptLimiter;
 
     @Value("${jwt.refresh-token-expiry-days:7}")
     private int refreshTokenExpiryDays;
@@ -87,19 +89,24 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public AuthResponse login(LoginRequest request) {
         String normalizedEmail = request.getEmail().toLowerCase().trim();
 
-        User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(InvalidCredentialsException::new);
+        // Checked first, so a locked email gets no answer about its password
+        loginAttemptLimiter.checkAllowed(normalizedEmail);
 
+        // Unknown emails count as failures too. Otherwise the lock would only
+        // happen for emails that have an account, which tells an attacker which do.
+        User user = userRepository.findByEmail(normalizedEmail).orElse(null);
+        if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            loginAttemptLimiter.recordFailure(normalizedEmail);
+            throw new InvalidCredentialsException();
+        }
+
+        // Only after the password is right, so a wrong password never reveals
+        // that an account is deactivated
         if (!user.isActive()) {
             throw new AccountDeactivatedException();
         }
 
-        // Constant-time comparison via BCrypt — always run even if user not found
-        // (already handled above by throwing generic error)
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new InvalidCredentialsException();
-        }
-
+        loginAttemptLimiter.recordSuccess(normalizedEmail);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 

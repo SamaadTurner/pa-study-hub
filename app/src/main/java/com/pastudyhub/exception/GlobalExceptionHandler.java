@@ -1,8 +1,11 @@
 package com.pastudyhub.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -42,6 +45,29 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, ex.getMessage());
         problem.setTitle(status.getReasonPhrase());
         problem.setType(URI.create(ERROR_TYPE_BASE + status.value()));
+        problem.setProperty("timestamp", Instant.now().toString());
+        return problem;
+    }
+
+    // Same answer as the other app errors, plus a Retry-After header that says
+    // in seconds when logging in is possible again
+    @ExceptionHandler(com.pastudyhub.user.exception.TooManyLoginAttemptsException.class)
+    public ResponseEntity<ProblemDetail> handleTooManyLoginAttempts(
+            com.pastudyhub.user.exception.TooManyLoginAttemptsException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+                .body(handleStudyHubException(ex));
+    }
+
+    // Two requests changed the same row at once (see the version on ExamSession).
+    // Nothing was saved by the losing one, so trying again is safe.
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ProblemDetail handleConcurrentChange(ObjectOptimisticLockingFailureException ex) {
+        log.warn("Concurrent change refused: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT, "This was changed at the same time by another request. Reload and try again.");
+        problem.setTitle(HttpStatus.CONFLICT.getReasonPhrase());
+        problem.setType(URI.create(ERROR_TYPE_BASE + HttpStatus.CONFLICT.value()));
         problem.setProperty("timestamp", Instant.now().toString());
         return problem;
     }

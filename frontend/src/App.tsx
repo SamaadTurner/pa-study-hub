@@ -29,6 +29,7 @@ const MyQuestionsPage  = lazy(() => import('@/pages/exam/MyQuestionsPage'))
 const QuestionEditorPage = lazy(() => import('@/pages/exam/QuestionEditorPage'))
 const AnalyticsPage    = lazy(() => import('@/pages/analytics/AnalyticsPage'))
 const PrivacyPage      = lazy(() => import('@/pages/legal/PrivacyPage'))
+const ProfilePage      = lazy(() => import('@/pages/profile/ProfilePage'))
 
 export default function App() {
   return (
@@ -63,6 +64,7 @@ export default function App() {
                   <Route path="/exam/:sessionId"                      element={<ExamPage />} />
                   <Route path="/exam/:sessionId/results"              element={<ExamResultsPage />} />
                   <Route path="/analytics"                            element={<AnalyticsPage />} />
+                  <Route path="/profile"                              element={<ProfilePage />} />
                 </Route>
               </Route>
 

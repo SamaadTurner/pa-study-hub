@@ -27,6 +27,8 @@ interface AuthContextValue {
   linkGoogle: (credential: string, password: string) => Promise<void>
   logout: () => Promise<void>
   updateUser: (updates: Partial<User>) => void
+  // Signs out in this browser only, without calling the server (the account is gone)
+  forgetSession: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -84,6 +86,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = '/login'
   }, [])
 
+  const forgetSession = useCallback(() => {
+    clearTokens()
+    setUser(null)
+  }, [])
+
   const updateUser = useCallback((updates: Partial<User>) => {
     setUser(prev => (prev ? { ...prev, ...updates } : null))
   }, [])
@@ -91,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user, isAuthenticated: !!user, isLoading, login, register, signInWithGoogle, linkGoogle, logout, updateUser,
+        user, isAuthenticated: !!user, isLoading, login, register, signInWithGoogle, linkGoogle, logout, updateUser, forgetSession,
       }}
     >
       {children}

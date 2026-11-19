@@ -1,47 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getGoogleStatus } from '@/api/auth'
 import Button from '@/components/common/Button'
+import GoogleButton, { useGoogleClientId } from '@/components/auth/GoogleButton'
 import { useAuth } from '@/contexts/AuthContext'
 import type { ApiError } from '@/types'
-
-// The parts of Google's sign-in script this page uses
-interface GoogleCredentialResponse {
-  credential: string
-}
-
-interface GoogleAccountsId {
-  initialize: (options: { client_id: string; callback: (response: GoogleCredentialResponse) => void }) => void
-  renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void
-}
-
-declare global {
-  interface Window {
-    google?: { accounts: { id: GoogleAccountsId } }
-  }
-}
-
-const GOOGLE_SCRIPT = 'https://accounts.google.com/gsi/client'
-
-// The script is only loaded on the login and register pages, and only once
-let scriptPromise: Promise<void> | null = null
-
-function loadGoogleScript(): Promise<void> {
-  if (!scriptPromise) {
-    scriptPromise = new Promise((resolve, reject) => {
-      const script = document.createElement('script')
-      script.src = GOOGLE_SCRIPT
-      script.async = true
-      script.onload = () => resolve()
-      script.onerror = () => {
-        scriptPromise = null
-        reject(new Error('Google sign-in could not be loaded'))
-      }
-      document.head.appendChild(script)
-    })
-  }
-  return scriptPromise
-}
 
 interface Props {
   mode: 'login' | 'register'
@@ -50,7 +12,8 @@ interface Props {
 }
 
 /**
- * "Continue with Google". Shows nothing when the server has no Google client ID.
+ * "Continue with Google" on the login and register pages. Shows nothing when the
+ * server has no Google client ID.
  *
  * When an account with the same email already exists, the server asks for that
  * account's password once before Google is added to it, and this shows the form.
@@ -58,18 +21,15 @@ interface Props {
 export default function GoogleSignIn({ mode, redirectTo }: Props) {
   const navigate = useNavigate()
   const { signInWithGoogle, linkGoogle } = useAuth()
-  const buttonRef = useRef<HTMLDivElement>(null)
+  const clientId = useGoogleClientId()
 
-  const [clientId, setClientId]           = useState<string | null>(null)
   const [pendingCredential, setPending]   = useState<string | null>(null)
   const [linkMessage, setLinkMessage]     = useState('')
   const [password, setPassword]           = useState('')
   const [error, setError]                 = useState<string | null>(null)
   const [busy, setBusy]                   = useState(false)
 
-  // The callback below is set up once, so it reads the latest functions from a ref
-  const handlerRef = useRef<(credential: string) => void>(() => {})
-  handlerRef.current = async (credential: string) => {
+  async function handleCredential(credential: string) {
     setError(null)
     setBusy(true)
     try {
@@ -87,39 +47,6 @@ export default function GoogleSignIn({ mode, redirectTo }: Props) {
       setBusy(false)
     }
   }
-
-  useEffect(() => {
-    let ignore = false
-    getGoogleStatus()
-      .then(status => {
-        if (!ignore && status.enabled && status.clientId) setClientId(status.clientId)
-      })
-      .catch(() => { /* no Google button then; email and password still work */ })
-    return () => { ignore = true }
-  }, [])
-
-  useEffect(() => {
-    if (!clientId) return
-    let ignore = false
-    loadGoogleScript()
-      .then(() => {
-        if (ignore || !window.google || !buttonRef.current) return
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: response => handlerRef.current(response.credential),
-        })
-        window.google.accounts.id.renderButton(buttonRef.current, {
-          theme: 'outline',
-          size: 'large',
-          text: mode === 'register' ? 'signup_with' : 'continue_with',
-          width: Math.min(buttonRef.current.offsetWidth || 320, 400),
-        })
-      })
-      .catch(() => {
-        if (!ignore) setError('Google sign-in could not be loaded. You can still use your email and password.')
-      })
-    return () => { ignore = true }
-  }, [clientId, mode])
 
   async function handleLink(event: React.FormEvent) {
     event.preventDefault()
@@ -149,7 +76,14 @@ export default function GoogleSignIn({ mode, redirectTo }: Props) {
 
       {/* Kept in the page while the password form shows, so Cancel brings back the
           button Google already drew */}
-      <div ref={buttonRef} className={`flex justify-center min-h-[44px] ${pendingCredential ? 'hidden' : ''}`} />
+      <div className={pendingCredential ? 'hidden' : ''}>
+        <GoogleButton
+          clientId={clientId}
+          text={mode === 'register' ? 'signup_with' : 'continue_with'}
+          onCredential={handleCredential}
+          onLoadError={() => setError('Google sign-in could not be loaded. You can still use your email and password.')}
+        />
+      </div>
 
       {pendingCredential && (
         <form onSubmit={handleLink} className="space-y-3" aria-label="Link Google to your account">

@@ -26,7 +26,7 @@ export default function PrivacyPage() {
             <li>Your account: email, first and last name, and the optional school and graduation year.</li>
             <li>
               Your password, only as a one-way hash (BCrypt), never the password itself. An account made
-              with Google has no password.
+              with Google has no password until you set one.
             </li>
             <li>
               If you use Google sign-in: Google&apos;s id for your account, your email and your name. The app
@@ -63,9 +63,11 @@ export default function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-base font-semibold text-gray-900">Closing your account</h2>
           <p>
-            Closing an account turns off sign-in, but your data stays in the database. There is no button
-            for this in the app yet. To have your account closed or your data deleted completely, or for
-            any other question about your data, email{' '}
+            You can close your account on the Profile page. That deletes your account and your study data
+            for good: decks, cards, reviews, exams, activity and the questions you wrote. Two things stay,
+            because they belong to other people: their own copies of decks you made public, and questions of
+            yours that are part of their past exams (kept in those results without your name, and never used
+            again). For any other question about your data, email{' '}
             <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary-600 hover:underline">
               {CONTACT_EMAIL}
             </a>.

@@ -5,6 +5,7 @@ import { useNotification } from '@/contexts/NotificationContext'
 import type { ApiError } from '@/types'
 import Button from '@/components/common/Button'
 import GoogleSignIn from '@/components/auth/GoogleSignIn'
+import { PASSWORD_REQUIREMENTS } from '@/utils/passwordRules'
 
 interface FormState {
   email: string
@@ -23,19 +24,6 @@ interface FieldErrors {
   firstName?: string
   lastName?: string
 }
-
-interface PasswordRequirement {
-  label: string
-  test: (pw: string) => boolean
-}
-
-const PASSWORD_REQUIREMENTS: PasswordRequirement[] = [
-  { label: 'At least 8 characters',             test: pw => pw.length >= 8 },
-  { label: 'Contains uppercase letter',          test: pw => /[A-Z]/.test(pw) },
-  { label: 'Contains lowercase letter',          test: pw => /[a-z]/.test(pw) },
-  { label: 'Contains a number',                  test: pw => /\d/.test(pw) },
-  { label: 'Contains a special character',       test: pw => /[!@#$%^&*(),.?":{}|<>]/.test(pw) },
-]
 
 export default function RegisterPage() {
   const navigate   = useNavigate()

@@ -6,6 +6,10 @@ export interface User {
   firstName: string
   lastName: string
   role: 'STUDENT' | 'ADMIN'
+  paSchoolName?: string | null
+  graduationYear?: number | null
+  hasPassword: boolean    // false for an account made with Google that has no password yet
+  googleLinked: boolean
 }
 
 export interface AuthTokens {

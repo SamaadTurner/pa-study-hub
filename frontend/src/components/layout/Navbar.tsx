@@ -12,6 +12,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Flashcards',  path: '/decks',     icon: '🃏' },
   { label: 'Exams',       path: '/exam',      icon: '📝' },
   { label: 'Analytics',   path: '/analytics', icon: '📊' },
+  { label: 'Profile',     path: '/profile',   icon: '👤' },
 ]
 
 export default function Navbar() {

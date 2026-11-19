@@ -81,6 +81,13 @@ public class ExamSession {
     @Column
     private Integer durationSeconds;
 
+    // Optimistic locking: two requests that finish the same exam at once can't
+    // both succeed, so it is never scored or logged twice
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
     @OneToMany(mappedBy = "examSession", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ExamAnswer> answers = new ArrayList<>();

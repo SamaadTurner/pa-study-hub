@@ -48,6 +48,10 @@ scheduling:
   algorithm: ${SCHEDULING_ALGORITHM:fsrs}
   desired-retention: ${SCHEDULING_DESIRED_RETENTION:0.9}
 
+# How often the server hands in timed exams whose time ran out (ExamTimeLimitJob)
+exam:
+  time-limit-check-ms: 60000
+
 # Optional AI features (see com.pastudyhub.ai.AiProperties). Off unless AI_API_KEY
 # is set. The defaults use Groq's free tier, which needs no credit card.
 ai:

@@ -16,4 +16,7 @@ public interface ExamService {
     ExamResultResponse getExamResult(UUID sessionId, UUID userId);
     Page<ExamHistorySummary> getExamHistory(UUID userId, int page, int size);
     List<TaskAreaScore> getTaskAreaScores(UUID userId);
+
+    /** Hands the exam in if its time ran out. Returns true if it did. Used by ExamTimeLimitJob. */
+    boolean finishExamIfTimeUp(UUID sessionId);
 }

@@ -1,5 +1,8 @@
 import { Link } from 'react-router-dom'
 
+// Where people can write about their data
+const CONTACT_EMAIL = 'samaad.turner@gmail.com'
+
 // Keep this page true to what the app does. When a feature changes what is
 // stored or sent anywhere, change this page in the same commit.
 export default function PrivacyPage() {
@@ -61,17 +64,11 @@ export default function PrivacyPage() {
           <h2 className="text-base font-semibold text-gray-900">Closing your account</h2>
           <p>
             Closing an account turns off sign-in, but your data stays in the database. There is no button
-            for this in the app yet. To have your account closed, or your data deleted completely, open an
-            issue on the project&apos;s{' '}
-            <a
-              href="https://github.com/SamaadTurner/pa-study-hub/issues"
-              className="text-primary-600 hover:underline"
-              target="_blank"
-              rel="noreferrer"
-            >
-              GitHub page
-            </a>{' '}
-            without putting your email in it, and it will be handled from there.
+            for this in the app yet. To have your account closed or your data deleted completely, or for
+            any other question about your data, email{' '}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary-600 hover:underline">
+              {CONTACT_EMAIL}
+            </a>.
           </p>
         </section>
 

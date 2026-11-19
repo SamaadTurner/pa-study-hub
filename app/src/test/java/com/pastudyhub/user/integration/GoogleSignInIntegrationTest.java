@@ -7,6 +7,7 @@ import com.pastudyhub.user.exception.InvalidTokenException;
 import com.pastudyhub.user.google.GoogleIdentity;
 import com.pastudyhub.user.google.GoogleTokenVerifier;
 import com.pastudyhub.user.integration.TestAccounts.Account;
+import com.pastudyhub.user.model.User;
 import com.pastudyhub.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -180,19 +181,42 @@ class GoogleSignInIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("A closed account cannot sign in with Google either")
+    @DisplayName("A deactivated account cannot sign in with Google either")
     void deactivated_refused() throws Exception {
         String sub = "sub-" + UUID.randomUUID();
         String email = "closed-" + UUID.randomUUID() + "@gmail.com";
         fakeGoogle(sub, email, "Sam", "Lee");
-        MvcResult result = googleSignIn(sub, email).andExpect(status().isOk()).andReturn();
-        String accessToken = objectMapper.readTree(result.getResponse().getContentAsString())
-                .get("accessToken").asText();
+        googleSignIn(sub, email).andExpect(status().isOk());
 
-        mockMvc.perform(delete("/api/v1/users/me").header("Authorization", "Bearer " + accessToken))
-                .andExpect(status().is2xxSuccessful());
+        User user = userRepository.findByEmail(email).orElseThrow();
+        user.setActive(false);
+        userRepository.save(user);
 
         googleSignIn(sub, email).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("A Google-only account closes by typing its email, and a later Google sign-in starts fresh")
+    void googleOnly_closeAndStartAgain() throws Exception {
+        String sub = "sub-" + UUID.randomUUID();
+        String email = "fresh-" + UUID.randomUUID() + "@gmail.com";
+        fakeGoogle(sub, email, "Sam", "Lee");
+        JsonNode first = objectMapper.readTree(googleSignIn(sub, email).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        String authorization = "Bearer " + first.get("accessToken").asText();
+
+        mockMvc.perform(delete("/api/v1/users/me").header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"confirmEmail\": \"someone-else@gmail.com\"}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(delete("/api/v1/users/me").header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"confirmEmail\": \" " + email.toUpperCase() + " \"}"))
+                .andExpect(status().isNoContent());
+
+        googleSignIn(sub, email)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.id").value(org.hamcrest.Matchers.not(first.get("user").get("id").asText())));
     }
 
     // ---- helpers -------------------------------------------------------------

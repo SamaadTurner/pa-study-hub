@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Implements all authentication flows: register, login, refresh, logout.
@@ -166,6 +167,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     refreshTokenRepository.save(token);
                     log.info("User logged out: userId={}", token.getUser().getId());
                 });
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse issueTokensFor(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        return buildAuthResponse(user);
     }
 
     @Override

@@ -2,6 +2,8 @@ package com.pastudyhub.user.service;
 
 import com.pastudyhub.user.dto.*;
 
+import java.util.UUID;
+
 /**
  * Authentication service interface — dependency inversion principle.
  *
@@ -42,6 +44,12 @@ public interface AuthenticationService {
      * @param refreshToken the refresh token to revoke
      */
     void logout(String refreshToken);
+
+    /**
+     * New tokens for a user who is already logged in. Used after a password change,
+     * which signs out every device, so the browser that made the change stays signed in.
+     */
+    AuthResponse issueTokensFor(UUID userId);
 
     /** Whether Google sign-in is on, with the client ID for the button. */
     GoogleStatusResponse googleStatus();

@@ -39,6 +39,8 @@ public class UserMapper {
                 .avatarUrl(user.getAvatarUrl())
                 .createdAt(user.getCreatedAt())
                 .lastLoginAt(user.getLastLoginAt())
+                .hasPassword(user.getPasswordHash() != null)
+                .googleLinked(user.getGoogleSubject() != null)
                 .build();
     }
 }

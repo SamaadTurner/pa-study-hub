@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 public class ChangePasswordRequest {
 
-    @NotBlank(message = "Current password is required")
+    // Not needed by an account made with Google that is setting its first password
     private String currentPassword;
 
     @NotBlank(message = "New password is required")

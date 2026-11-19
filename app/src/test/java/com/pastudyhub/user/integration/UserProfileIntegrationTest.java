@@ -3,6 +3,8 @@ package com.pastudyhub.user.integration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.user.integration.TestAccounts.Account;
+import com.pastudyhub.user.model.User;
+import com.pastudyhub.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +31,9 @@ class UserProfileIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private ResultActions logIn(String email, String password) throws Exception {
         return mockMvc.perform(post("/api/v1/auth/login")
@@ -121,7 +126,7 @@ class UserProfileIntegrationTest extends BaseIntegrationTest {
     void changePassword_newPasswordWorks_oldOneDoesNot() throws Exception {
         Account account = TestAccounts.register(mockMvc, objectMapper);
 
-        changePassword(account, TestAccounts.PASSWORD, NEW_PASSWORD).andExpect(status().isNoContent());
+        changePassword(account, TestAccounts.PASSWORD, NEW_PASSWORD).andExpect(status().isOk());
 
         logIn(account.email(), TestAccounts.PASSWORD).andExpect(status().isUnauthorized());
         logIn(account.email(), NEW_PASSWORD).andExpect(status().isOk());
@@ -132,7 +137,10 @@ class UserProfileIntegrationTest extends BaseIntegrationTest {
     void changePassword_wrongCurrentPassword_isRefused() throws Exception {
         Account account = TestAccounts.register(mockMvc, objectMapper);
 
-        changePassword(account, "Wr0ng!Passw0rd", NEW_PASSWORD).andExpect(status().isUnauthorized());
+        // 400 and not 401, so the app does not take it for an expired session
+        changePassword(account, "Wr0ng!Passw0rd", NEW_PASSWORD)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Your current password is not right."));
 
         logIn(account.email(), TestAccounts.PASSWORD).andExpect(status().isOk());
         logIn(account.email(), NEW_PASSWORD).andExpect(status().isUnauthorized());
@@ -150,26 +158,66 @@ class UserProfileIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("A password change signs out the other devices")
+    @DisplayName("A password change signs out the other devices, and this one gets new tokens")
     void changePassword_revokesRefreshTokens() throws Exception {
         // People change a password when they think someone else knows it. A refresh
         // token handed out before the change must not keep that someone logged in.
         Account account = TestAccounts.register(mockMvc, objectMapper);
 
-        changePassword(account, TestAccounts.PASSWORD, NEW_PASSWORD).andExpect(status().isNoContent());
+        String body = changePassword(account, TestAccounts.PASSWORD, NEW_PASSWORD)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty())
+                .andReturn().getResponse().getContentAsString();
 
         refresh(account.refreshToken()).andExpect(status().isUnauthorized());
+        // The browser that made the change keeps working with the new refresh token
+        refresh(objectMapper.readTree(body).get("refreshToken").asText()).andExpect(status().isOk());
     }
 
     // ==================== CLOSING THE ACCOUNT ====================
 
     @Test
-    @DisplayName("After DELETE /users/me the account cannot log in or refresh")
-    void deactivate_blocksLoginAndRefresh() throws Exception {
+    @DisplayName("After closing the account it cannot log in or refresh, and the email can register again")
+    void delete_removesAccount() throws Exception {
         Account account = TestAccounts.register(mockMvc, objectMapper);
 
-        mockMvc.perform(delete("/api/v1/users/me").header("Authorization", account.authorization()))
+        mockMvc.perform(delete("/api/v1/users/me")
+                        .header("Authorization", account.authorization())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"" + TestAccounts.PASSWORD + "\"}"))
                 .andExpect(status().isNoContent());
+
+        logIn(account.email(), TestAccounts.PASSWORD).andExpect(status().isUnauthorized());
+        refresh(account.refreshToken()).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + account.email() + "\",\"password\":\"" + TestAccounts.PASSWORD
+                                + "\",\"firstName\":\"Riley\",\"lastName\":\"Morgan\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("Closing the account with a wrong password is refused and deletes nothing")
+    void delete_wrongPassword_refused() throws Exception {
+        Account account = TestAccounts.register(mockMvc, objectMapper);
+
+        mockMvc.perform(delete("/api/v1/users/me")
+                        .header("Authorization", account.authorization())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"Wr0ng!Passw0rd\"}"))
+                .andExpect(status().isBadRequest());
+
+        logIn(account.email(), TestAccounts.PASSWORD).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("An old deactivated account still cannot log in or refresh")
+    void deactivated_blocksLoginAndRefresh() throws Exception {
+        // Closing used to only deactivate. Accounts closed that way still exist.
+        Account account = TestAccounts.register(mockMvc, objectMapper);
+        User user = userRepository.findByEmail(account.email()).orElseThrow();
+        user.setActive(false);
+        userRepository.save(user);
 
         logIn(account.email(), TestAccounts.PASSWORD).andExpect(status().isForbidden());
         refresh(account.refreshToken()).andExpect(status().isForbidden());

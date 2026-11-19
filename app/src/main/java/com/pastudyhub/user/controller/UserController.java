@@ -1,9 +1,13 @@
 package com.pastudyhub.user.controller;
 
+import com.pastudyhub.user.dto.AuthResponse;
 import com.pastudyhub.user.dto.ChangePasswordRequest;
+import com.pastudyhub.user.dto.DeleteAccountRequest;
+import com.pastudyhub.user.dto.GoogleSignInRequest;
 import com.pastudyhub.user.dto.UpdateProfileRequest;
 import com.pastudyhub.user.dto.UserResponse;
 import com.pastudyhub.user.security.JwtTokenProvider;
+import com.pastudyhub.user.service.AuthenticationService;
 import com.pastudyhub.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -25,11 +29,12 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-@Tag(name = "User Profile", description = "View and update user profile, change password, deactivate account")
+@Tag(name = "User Profile", description = "View and update your profile, password, Google sign-in, and close your account")
 @SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
     private final UserService userService;
+    private final AuthenticationService authenticationService;
 
     /**
      * Get the current user's profile (derived from JWT).
@@ -59,31 +64,40 @@ public class UserController {
      * Requires the current password for verification.
      */
     @PutMapping("/me/password")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Change password")
-    public void changePassword(
+    @Operation(summary = "Change the password, or set the first one for an account made with Google",
+            description = "Signs out every device and returns new tokens for this one.")
+    public AuthResponse changePassword(
             Authentication authentication,
             @Valid @RequestBody ChangePasswordRequest request) {
         UUID userId = extractUserId(authentication);
         userService.changePassword(userId, request);
+        return authenticationService.issueTokensFor(userId);
     }
 
-    /**
-     * Soft-delete the current user's account.
-     * The user will no longer be able to log in.
-     */
+    @PostMapping("/me/google")
+    @Operation(summary = "Add Google sign-in to your account")
+    public UserResponse linkGoogle(
+            Authentication authentication,
+            @Valid @RequestBody GoogleSignInRequest request) {
+        return userService.linkGoogle(extractUserId(authentication), request.getCredential());
+    }
+
+    @DeleteMapping("/me/google")
+    @Operation(summary = "Remove Google sign-in (only when the account has a password)")
+    public UserResponse unlinkGoogle(Authentication authentication) {
+        return userService.unlinkGoogle(extractUserId(authentication));
+    }
+
     @DeleteMapping("/me")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Deactivate account (soft delete)")
-    public void deactivateAccount(Authentication authentication) {
-        UUID userId = extractUserId(authentication);
-        userService.deactivateAccount(userId);
+    @Operation(summary = "Close the account and delete all of its data",
+            description = "Needs the password, or the email typed out for an account without a password.")
+    public void deleteAccount(
+            Authentication authentication,
+            @RequestBody DeleteAccountRequest request) {
+        userService.deleteAccount(extractUserId(authentication), request);
     }
 
-    /**
-     * Extracts the user's UUID from the JWT claims stored in the Authentication principal.
-     * The principal is set by JwtAuthenticationFilter as the userId string.
-     */
     private UUID extractUserId(Authentication authentication) {
         // Principal is the userId string set in JwtAuthenticationFilter
         return UUID.fromString((String) authentication.getPrincipal());

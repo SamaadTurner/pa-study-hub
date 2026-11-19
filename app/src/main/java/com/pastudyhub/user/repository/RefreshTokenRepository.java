@@ -41,6 +41,16 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
     void revokeAllForUser(@Param("userId") UUID userId);
 
     /**
+     * Deletes every refresh token of the user. Used after a password change: the
+     * other devices' old tokens then count as unknown, not as reused. A reused
+     * (revoked) token is treated as stolen and signs out every session, which would
+     * also sign out the browser that just changed the password.
+     */
+    @Modifying
+    @Query("DELETE FROM RefreshToken r WHERE r.user.id = :userId")
+    void deleteAllForUser(@Param("userId") UUID userId);
+
+    /**
      * Delete expired and revoked tokens older than the cutoff to keep the table clean.
      * Safe: parameterized JPQL query.
      *

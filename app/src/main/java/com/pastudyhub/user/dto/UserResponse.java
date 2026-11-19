@@ -29,4 +29,7 @@ public class UserResponse {
     private String avatarUrl;
     private LocalDateTime createdAt;
     private LocalDateTime lastLoginAt;
+    /** False for an account made with Google that has not set a password. */
+    private boolean hasPassword;
+    private boolean googleLinked;
 }

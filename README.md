@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 336 backend tests, 101 frontend unit tests and 54 end-to-end browser tests
+the frontend. 344 backend tests, 112 frontend unit tests and 58 end-to-end browser tests
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -29,6 +29,10 @@ run in CI on every push.
   can skip and go back, and a reload keeps your answers and the time left. Right and
   wrong answers are only shown at the end, like the real exam, with an explanation for
   every question. An exam can also follow the PANCE blueprint mix (see below).
+- **Your own questions.** Write multiple-choice questions with a patient scenario and an
+  explanation. They are part of every exam you start, and you can share them. Questions
+  other users shared are only used when you tick "Include questions other users shared",
+  and the results page marks them as not checked.
 - **Progress.** Daily goals for cards and minutes, a study streak, and an analytics page
   with 30 days of activity and accuracy by topic. Flashcards and exams both count.
   Exam results are also split by blueprint task, and the analytics page names your
@@ -42,7 +46,8 @@ run in CI on every push.
 | ![Flashcard showing its answer with the four rating buttons](docs/screenshots/review.png) | ![Exam question with a clinical vignette and four options](docs/screenshots/exam.png) |
 
 The app comes with 3 public decks and 30 practice questions (10 each for cardiology,
-pharmacology and pulmonology). Exams in other topics say there are not enough questions.
+pharmacology and pulmonology). Exams in other topics say there are not enough questions
+until you write your own.
 
 ## Run it
 
@@ -102,14 +107,14 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 336 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 344 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 97.8% of lines and 84.7% of branches (JaCoCo, without the code Lombok
+  They cover 98.0% of lines and 85.4% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
-- **Frontend:** 101 unit tests with Vitest and React Testing Library.
-- **End to end:** 54 Playwright tests that click through the real app: accounts, decks
-  and cards, studying, exams (including the timer running out), public decks,
+- **Frontend:** 112 unit tests with Vitest and React Testing Library.
+- **End to end:** 58 Playwright tests that click through the real app: accounts, decks
+  and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
 - **CI** has four jobs: backend tests, frontend tests with lint and build, end-to-end
@@ -245,6 +250,14 @@ exams come from one grouped query. The weakest task is only named once it has at
 starts, in order, with the order of their answer options fixed per exam. That is what lets
 a reload, the results page and the history all show the same exam.
 
+**Questions users write are never changed in place once used.** A finished exam points
+at the questions and answer options it asked. Editing a question that is already part of
+an exam saves a new question and retires the old one, and deleting it only retires it, so
+old results still show what was asked. A question that was never used is simply updated
+or deleted. Shared questions are left out of exams unless the user asks for them, because
+nobody reviews them; the starter questions and your own are always in the pool. The
+question bank grows this way without the app writing medical content itself.
+
 **Hosting on free plans.** The backend runs on Render's free plan from the Dockerfile and
 the frontend is a Render static site (`render.yaml`). The static site passes `/api` on to
 the backend, so the browser only talks to one address and the backend needs no CORS
@@ -283,7 +296,8 @@ To turn it on locally, add `AI_API_KEY=<your Groq key>` to the backend command a
   the server, so it stays valid for up to 7 days.
 - There is no page for editing your profile or changing your password yet. The API for
   both exists and is tested.
-- Only 30 practice questions, in three topics.
+- Only 30 starter questions, in three topics. Users can add their own, but shared
+  questions are not reviewed by anyone, and there is no way to report a wrong one yet.
 
 ## License
 

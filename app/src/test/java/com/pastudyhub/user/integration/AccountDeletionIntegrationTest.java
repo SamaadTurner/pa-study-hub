@@ -92,7 +92,9 @@ class AccountDeletionIntegrationTest extends BaseIntegrationTest {
         // Blake's exam result still loads, and Blake's copy still has its card
         mockMvc.perform(get("/api/v1/exams/{id}/result", blakesExam).header("Authorization", blake.authorization()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.answerDetails[0].stem").value("Shared by Alex"));
+                .andExpect(jsonPath("$.answerDetails[0].stem").value("Shared by Alex"))
+                // Still marked as written by another user, not as a starter question
+                .andExpect(jsonPath("$.answerDetails[0].source").value("ANOTHER_USER"));
         mockMvc.perform(get("/api/v1/decks/{id}/cards", copyId).header("Authorization", blake.authorization()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].front").value("Front"));

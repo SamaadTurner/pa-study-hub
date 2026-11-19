@@ -2,6 +2,7 @@ package com.pastudyhub.exam.service;
 
 import com.pastudyhub.exam.dto.AnswerOptionRequest;
 import com.pastudyhub.exam.dto.AnswerOptionResponse;
+import com.pastudyhub.exam.dto.QuestionReportResponse;
 import com.pastudyhub.exam.dto.QuestionRequest;
 import com.pastudyhub.exam.dto.WrittenQuestionResponse;
 import com.pastudyhub.exam.exception.InvalidQuestionException;
@@ -9,7 +10,9 @@ import com.pastudyhub.exam.exception.QuestionAccessDeniedException;
 import com.pastudyhub.exam.exception.QuestionNotFoundException;
 import com.pastudyhub.exam.model.AnswerOption;
 import com.pastudyhub.exam.model.Question;
+import com.pastudyhub.exam.model.QuestionReport;
 import com.pastudyhub.exam.repository.ExamQuestionRepository;
+import com.pastudyhub.exam.repository.QuestionReportRepository;
 import com.pastudyhub.exam.repository.QuestionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,9 +22,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -43,16 +48,28 @@ public class QuestionAuthoringService {
 
     private final QuestionRepository questionRepository;
     private final ExamQuestionRepository examQuestionRepository;
+    private final QuestionReportRepository questionReportRepository;
 
     @Transactional(readOnly = true)
     public Page<WrittenQuestionResponse> getMyQuestions(UUID userId, int page, int size) {
         PageRequest pageRequest = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
-        return questionRepository.findWrittenBy(userId, pageRequest).map(this::toResponse);
+        Page<Question> questions = questionRepository.findWrittenBy(userId, pageRequest);
+
+        // The reports of the whole page in one query, grouped by question
+        List<UUID> ids = questions.getContent().stream().map(Question::getId).toList();
+        Map<UUID, List<QuestionReport>> reportsByQuestion = new HashMap<>();
+        if (!ids.isEmpty()) {
+            for (QuestionReport report : questionReportRepository.findByQuestionIds(ids)) {
+                reportsByQuestion.computeIfAbsent(report.getQuestion().getId(), key -> new ArrayList<>()).add(report);
+            }
+        }
+        return questions.map(q -> toResponse(q, reportsByQuestion.getOrDefault(q.getId(), List.of())));
     }
 
     @Transactional(readOnly = true)
     public WrittenQuestionResponse getMyQuestion(UUID questionId, UUID userId) {
-        return toResponse(findOwnQuestion(questionId, userId));
+        Question question = findOwnQuestion(questionId, userId);
+        return toResponse(question, questionReportRepository.findByQuestionIds(List.of(questionId)));
     }
 
     @Transactional
@@ -161,7 +178,16 @@ public class QuestionAuthoringService {
         return text.trim();
     }
 
+    // A question that was just saved has no reports yet (a new version starts clean)
     private WrittenQuestionResponse toResponse(Question question) {
+        return toResponse(question, List.of());
+    }
+
+    private WrittenQuestionResponse toResponse(Question question, List<QuestionReport> reports) {
+        List<QuestionReportResponse> reportResponses = new ArrayList<>();
+        for (QuestionReport report : reports) {
+            reportResponses.add(new QuestionReportResponse(report.getReason(), report.getNote(), report.getCreatedAt()));
+        }
         List<AnswerOptionResponse> options = new ArrayList<>();
         for (AnswerOption option : question.getAnswerOptions()) {
             options.add(AnswerOptionResponse.builder()
@@ -181,6 +207,8 @@ public class QuestionAuthoringService {
                 .taskArea(question.getTaskArea())
                 .difficulty(question.getDifficulty())
                 .isPublic(question.isPublic())
+                .reports(reportResponses)
+                .hiddenFromShared(question.isPublic() && reports.size() >= SharedQuestionService.REPORT_LIMIT)
                 .createdAt(question.getCreatedAt())
                 .updatedAt(question.getUpdatedAt())
                 .build();

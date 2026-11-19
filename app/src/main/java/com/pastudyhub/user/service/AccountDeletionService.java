@@ -19,8 +19,8 @@ import java.util.UUID;
  * <p>Two things are not simply deleted:
  * <ul>
  *   <li>Questions the user wrote that are part of other people's exams. Deleting
- *       them would break those results, so they lose their author and are taken out
- *       of every future exam instead.</li>
+ *       them would break those results, so they lose their author (marked
+ *       author_deleted) and are taken out of every future exam instead.</li>
  *   <li>Other people's own copies of the user's public decks. A copy belongs to the
  *       person who made it and is kept.</li>
  * </ul>
@@ -56,10 +56,12 @@ public class AccountDeletionService {
 
         // Questions the user wrote. The user's own exams are gone already, so any
         // exam still pointing at one of them belongs to somebody else.
-        run("UPDATE questions SET owner_id = NULL, is_active = FALSE, is_public = FALSE "
+        run("DELETE FROM question_reports WHERE reporter_id = ?", userId);
+        run("UPDATE questions SET owner_id = NULL, is_active = FALSE, is_public = FALSE, author_deleted = TRUE "
                 + "WHERE owner_id = ? AND ("
                 + "EXISTS (SELECT 1 FROM exam_questions eq WHERE eq.question_id = questions.id) "
                 + "OR EXISTS (SELECT 1 FROM exam_answers ea WHERE ea.question_id = questions.id))", userId);
+        run("DELETE FROM question_reports WHERE question_id IN (SELECT id FROM questions WHERE owner_id = ?)", userId);
         run("DELETE FROM answer_options WHERE question_id IN (SELECT id FROM questions WHERE owner_id = ?)", userId);
         run("DELETE FROM questions WHERE owner_id = ?", userId);
 

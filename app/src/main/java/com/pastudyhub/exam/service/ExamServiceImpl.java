@@ -19,6 +19,7 @@ import com.pastudyhub.exam.repository.AnswerOptionRepository;
 import com.pastudyhub.exam.repository.ExamAnswerRepository;
 import com.pastudyhub.exam.repository.ExamQuestionRepository;
 import com.pastudyhub.exam.repository.ExamSessionRepository;
+import com.pastudyhub.exam.repository.QuestionReportRepository;
 import com.pastudyhub.exam.repository.QuestionRepository;
 import com.pastudyhub.exam.repository.TaskAreaTotals;
 import com.pastudyhub.progress.dto.LogActivityRequest;
@@ -35,6 +36,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,12 +59,13 @@ public class ExamServiceImpl implements ExamService {
     private final AnswerOptionRepository answerOptionRepository;
     private final ExamMapper examMapper;
     private final ProgressService progressService;
+    private final QuestionReportRepository questionReportRepository;
 
     @Override
     @Transactional
     public ExamSessionResponse startExam(StartExamRequest request, UUID userId) {
         List<Question> pool = questionRepository.findExamPool(userId, request.isIncludeSharedQuestions(),
-                request.getCategoryFilter(), request.getDifficultyFilter());
+                SharedQuestionService.REPORT_LIMIT, request.getCategoryFilter(), request.getDifficultyFilter());
 
         List<Question> selected;
         try {
@@ -221,7 +224,26 @@ public class ExamServiceImpl implements ExamService {
         log.info("Exam completed: sessionId={}, userId={}, score={}/{} ({}%)",
                 sessionId, session.getUserId(), result.rawScore(), result.totalQuestions(), result.scorePercent());
 
-        return examMapper.toResultResponse(session, result, questions, answers);
+        return markReported(examMapper.toResultResponse(session, result, questions, answers), session.getUserId());
+    }
+
+    // Marks the shared questions the user has reported, so the results page shows
+    // "Reported" instead of the Report button
+    private ExamResultResponse markReported(ExamResultResponse response, UUID userId) {
+        List<UUID> shared = new ArrayList<>();
+        for (ExamAnswerDetailResponse detail : response.getAnswerDetails()) {
+            if (detail.getSource() == QuestionSource.ANOTHER_USER) {
+                shared.add(detail.getQuestionId());
+            }
+        }
+        if (shared.isEmpty()) {
+            return response;
+        }
+        Set<UUID> reported = new HashSet<>(questionReportRepository.findReportedQuestionIds(userId, shared));
+        for (ExamAnswerDetailResponse detail : response.getAnswerDetails()) {
+            detail.setReportedByYou(reported.contains(detail.getQuestionId()));
+        }
+        return response;
     }
 
     @Override
@@ -252,7 +274,7 @@ public class ExamServiceImpl implements ExamService {
         List<ExamAnswer> answers = examAnswerRepository.findByExamSessionId(sessionId);
         ScoringEngine engine = new ScoringEngine(questions, answers);
         ScoreResult result = engine.calculate();
-        return examMapper.toResultResponse(session, result, questions, answers);
+        return markReported(examMapper.toResultResponse(session, result, questions, answers), userId);
     }
 
     @Override

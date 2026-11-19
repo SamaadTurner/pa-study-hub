@@ -67,6 +67,11 @@ public class Question {
     @Column(name = "owner_id")
     private UUID ownerId;
 
+    /** True when the author closed their account (the owner is then null, like a starter question). */
+    @Column(name = "author_deleted", nullable = false)
+    @Builder.Default
+    private boolean authorDeleted = false;
+
     /** True when the owner shares the question with other users. */
     @Column(name = "is_public", nullable = false)
     @Builder.Default

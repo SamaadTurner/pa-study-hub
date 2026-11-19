@@ -9,8 +9,9 @@ public enum QuestionSource {
     ANOTHER_USER;
 
     public static QuestionSource of(Question question, UUID examTaker) {
+        // A question whose author closed their account also has no owner
         if (question.getOwnerId() == null) {
-            return STARTER;
+            return question.isAuthorDeleted() ? ANOTHER_USER : STARTER;
         }
         if (question.isWrittenBy(examTaker)) {
             return YOU;

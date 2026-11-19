@@ -34,4 +34,6 @@ public class ExamAnswerDetailResponse {
     private Integer timeSpentSeconds;
     /** Who wrote the question, so the results page can mark questions from other users. */
     private QuestionSource source;
+    /** True when the user taking the exam has reported this (shared) question. */
+    private boolean reportedByYou;
 }

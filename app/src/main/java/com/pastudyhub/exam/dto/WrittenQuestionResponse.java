@@ -32,6 +32,10 @@ public class WrittenQuestionResponse {
     private DifficultyLevel difficulty;
     @JsonProperty("isPublic")
     private boolean isPublic;
+    /** Reports from other users, oldest first. */
+    private List<QuestionReportResponse> reports;
+    /** True when a shared question has enough reports to be left out of other people's exams. */
+    private boolean hiddenFromShared;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

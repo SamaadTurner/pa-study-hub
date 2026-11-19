@@ -15,19 +15,44 @@ import java.util.UUID;
 public interface QuestionRepository extends JpaRepository<Question, UUID> {
 
     /**
-     * The questions an exam for this user can pick from: the starter questions, the
-     * user's own questions, and, if asked for, questions other users have shared.
+     * Which questions an exam for this user can pick from: the starter questions, the
+     * user's own questions, and, if asked for, questions other users shared that do
+     * not have too many reports. Shared by the pool query and the counts below.
      */
-    @Query("SELECT q FROM Question q WHERE q.isActive = true " +
-           "AND (q.ownerId IS NULL OR q.ownerId = :userId " +
-           "     OR (:includeShared = true AND q.isPublic = true)) " +
-           "AND (:category IS NULL OR q.category = :category) " +
-           "AND (:difficulty IS NULL OR q.difficulty = :difficulty)")
+    String POOL_CONDITION = "q.isActive = true "
+            + "AND (q.ownerId IS NULL OR q.ownerId = :userId "
+            + "     OR (:includeShared = true AND q.isPublic = true "
+            + "         AND (SELECT COUNT(r) FROM QuestionReport r WHERE r.question = q) < :reportLimit)) ";
+
+    @Query("SELECT q FROM Question q WHERE " + POOL_CONDITION
+            + "AND (:category IS NULL OR q.category = :category) "
+            + "AND (:difficulty IS NULL OR q.difficulty = :difficulty)")
     List<Question> findExamPool(
             @Param("userId") UUID userId,
             @Param("includeShared") boolean includeShared,
+            @Param("reportLimit") long reportLimit,
             @Param("category") QuestionCategory category,
             @Param("difficulty") DifficultyLevel difficulty);
+
+    // How many questions the pool has per category, for the exam setup page
+    @Query("SELECT new com.pastudyhub.exam.repository.CategoryCount(q.category, COUNT(q)) "
+            + "FROM Question q WHERE " + POOL_CONDITION + "GROUP BY q.category")
+    List<CategoryCount> countExamPoolByCategory(
+            @Param("userId") UUID userId,
+            @Param("includeShared") boolean includeShared,
+            @Param("reportLimit") long reportLimit);
+
+    // Questions other users shared, for the browse page, newest first
+    @Query("SELECT q FROM Question q WHERE q.isActive = true AND q.isPublic = true "
+            + "AND q.ownerId IS NOT NULL AND q.ownerId <> :userId "
+            + "AND (SELECT COUNT(r) FROM QuestionReport r WHERE r.question = q) < :reportLimit "
+            + "AND (:category IS NULL OR q.category = :category) "
+            + "ORDER BY q.createdAt DESC, q.id")
+    Page<Question> findSharedByOthers(
+            @Param("userId") UUID userId,
+            @Param("reportLimit") long reportLimit,
+            @Param("category") QuestionCategory category,
+            Pageable pageable);
 
     // The questions a user wrote and has not deleted, last changed first
     @Query("SELECT q FROM Question q WHERE q.isActive = true AND q.ownerId = :ownerId " +

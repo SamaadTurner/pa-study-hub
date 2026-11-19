@@ -1,8 +1,13 @@
 package com.pastudyhub.exam.controller;
 
+import com.pastudyhub.exam.dto.QuestionCountsResponse;
 import com.pastudyhub.exam.dto.QuestionRequest;
+import com.pastudyhub.exam.dto.ReportQuestionRequest;
+import com.pastudyhub.exam.dto.SharedQuestionResponse;
 import com.pastudyhub.exam.dto.WrittenQuestionResponse;
+import com.pastudyhub.exam.model.QuestionCategory;
 import com.pastudyhub.exam.service.QuestionAuthoringService;
+import com.pastudyhub.exam.service.SharedQuestionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,6 +28,7 @@ import java.util.UUID;
 public class QuestionController {
 
     private final QuestionAuthoringService questionAuthoringService;
+    private final SharedQuestionService sharedQuestionService;
 
     @GetMapping("/mine")
     @Operation(summary = "List the questions you wrote, last changed first")
@@ -66,5 +72,33 @@ public class QuestionController {
             @PathVariable UUID questionId,
             @RequestHeader("X-User-Id") UUID userId) {
         questionAuthoringService.deleteQuestion(questionId, userId);
+    }
+
+    @PostMapping("/{questionId}/reports")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Report a question another user shared (after it was in one of your finished exams)")
+    public void reportQuestion(
+            @PathVariable UUID questionId,
+            @Valid @RequestBody ReportQuestionRequest request,
+            @RequestHeader("X-User-Id") UUID userId) {
+        sharedQuestionService.report(questionId, userId, request);
+    }
+
+    @GetMapping("/shared")
+    @Operation(summary = "Browse questions other users shared, optionally one category")
+    public Page<SharedQuestionResponse> browseShared(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestParam(required = false) QuestionCategory category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return sharedQuestionService.browse(userId, category, page, size);
+    }
+
+    @GetMapping("/counts")
+    @Operation(summary = "How many questions your exams can pick from, per category")
+    public QuestionCountsResponse countExamPool(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestParam(defaultValue = "false") boolean includeShared) {
+        return sharedQuestionService.countExamPool(userId, includeShared);
     }
 }

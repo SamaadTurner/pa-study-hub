@@ -20,6 +20,12 @@ public interface ExamQuestionRepository extends JpaRepository<ExamQuestion, UUID
     // True once the question has been picked for any exam, finished or not
     boolean existsByQuestionId(UUID questionId);
 
+    // True when the question was part of one of the user's finished exams
+    @Query("SELECT COUNT(eq) > 0 FROM ExamQuestion eq WHERE eq.question.id = :questionId "
+            + "AND eq.examSession.userId = :userId "
+            + "AND eq.examSession.status = com.pastudyhub.exam.model.ExamStatus.COMPLETED")
+    boolean wasInFinishedExamOf(@Param("questionId") UUID questionId, @Param("userId") UUID userId);
+
     /**
      * For every task area, how many questions the user was asked in finished exams
      * and how many of those they got right. Unanswered questions have no answer row,

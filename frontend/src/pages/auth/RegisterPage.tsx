@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useNotification } from '@/contexts/NotificationContext'
 import type { ApiError } from '@/types'
 import Button from '@/components/common/Button'
+import GoogleSignIn from '@/components/auth/GoogleSignIn'
 
 interface FormState {
   email: string
@@ -275,11 +276,16 @@ export default function RegisterPage() {
             </Button>
           </form>
 
+          <GoogleSignIn mode="register" redirectTo="/dashboard" />
+
           <p className="text-center text-sm text-gray-500 mt-6">
             Already have an account?{' '}
             <Link to="/login" className="text-primary-600 font-medium hover:underline">
               Sign in
             </Link>
+          </p>
+          <p className="text-center text-xs text-gray-400 mt-3">
+            <Link to="/privacy" className="hover:underline">Privacy</Link>
           </p>
         </div>
       </div>

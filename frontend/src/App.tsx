@@ -1,4 +1,4 @@
-import { lazy } from 'react'
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { NotificationProvider } from '@/contexts/NotificationContext'
@@ -28,6 +28,7 @@ const ExamHistoryPage  = lazy(() => import('@/pages/exam/ExamHistoryPage'))
 const MyQuestionsPage  = lazy(() => import('@/pages/exam/MyQuestionsPage'))
 const QuestionEditorPage = lazy(() => import('@/pages/exam/QuestionEditorPage'))
 const AnalyticsPage    = lazy(() => import('@/pages/analytics/AnalyticsPage'))
+const PrivacyPage      = lazy(() => import('@/pages/legal/PrivacyPage'))
 
 export default function App() {
   return (
@@ -39,6 +40,8 @@ export default function App() {
               {/* Public routes */}
               <Route path="/login"    element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              {/* Lazy, but outside AppLayout, so it needs its own Suspense */}
+              <Route path="/privacy"  element={<Suspense fallback={null}><PrivacyPage /></Suspense>} />
 
               {/* Protected routes */}
               <Route element={<ProtectedRoute />}>

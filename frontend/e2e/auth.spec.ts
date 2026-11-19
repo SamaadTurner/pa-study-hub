@@ -39,6 +39,8 @@ test.describe('Accounts', () => {
     const user = newUser()
     await register(page, user)
     await page.getByRole('button', { name: 'Sign out' }).click()
+    // Sign out waits for the server to revoke the token, then goes to the login page
+    await expect(page).toHaveURL(/\/login$/)
 
     await logIn(page, user.email, 'Wr0ng!Passw0rd')
 
@@ -63,6 +65,8 @@ test.describe('Accounts', () => {
     const user = newUser()
     await register(page, user)
     await page.getByRole('button', { name: 'Sign out' }).click()
+    // Sign out waits for the server to revoke the token, then goes to the login page
+    await expect(page).toHaveURL(/\/login$/)
 
     for (let attempt = 0; attempt < 5; attempt++) {
       await logIn(page, user.email, 'Wr0ng!Passw0rd')
@@ -107,6 +111,8 @@ test.describe('Accounts', () => {
     const user = newUser()
     await register(page, user)
     await page.getByRole('button', { name: 'Sign out' }).click()
+    // Sign out waits for the server to revoke the token, then goes to the login page
+    await expect(page).toHaveURL(/\/login$/)
 
     await fillRegisterForm(page, user)
     await page.getByRole('button', { name: 'Create account' }).click()

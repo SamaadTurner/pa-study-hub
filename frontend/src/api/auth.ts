@@ -19,6 +19,32 @@ export async function register(req: RegisterRequest): Promise<{ user: User }> {
   return { user: data.user }
 }
 
+// ---- Continue with Google ------------------------------------------------------
+
+export interface GoogleStatus {
+  enabled: boolean
+  clientId: string | null
+}
+
+export async function getGoogleStatus(): Promise<GoogleStatus> {
+  const { data } = await apiClient.get<GoogleStatus>('/auth/google/status')
+  return data
+}
+
+// credential is the ID token Google's button hands to the page
+export async function googleSignIn(credential: string): Promise<{ user: User }> {
+  const { data } = await apiClient.post<AuthResponse>('/auth/google', { credential })
+  setTokens(data.accessToken, data.refreshToken)
+  return { user: data.user }
+}
+
+// Adds Google to an existing account, proven with that account's password
+export async function googleLink(credential: string, password: string): Promise<{ user: User }> {
+  const { data } = await apiClient.post<AuthResponse>('/auth/google/link', { credential, password })
+  setTokens(data.accessToken, data.refreshToken)
+  return { user: data.user }
+}
+
 // Tells the server to revoke the refresh token, so it can't be used to get new
 // access tokens after signing out (for example if it was copied from this browser).
 // Short timeout: signing out should not wait a minute for a sleeping server.

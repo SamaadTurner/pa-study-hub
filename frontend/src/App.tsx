@@ -25,6 +25,8 @@ const ExamSetupPage    = lazy(() => import('@/pages/exam/ExamSetupPage'))
 const ExamPage         = lazy(() => import('@/pages/exam/ExamPage'))
 const ExamResultsPage  = lazy(() => import('@/pages/exam/ExamResultsPage'))
 const ExamHistoryPage  = lazy(() => import('@/pages/exam/ExamHistoryPage'))
+const MyQuestionsPage  = lazy(() => import('@/pages/exam/MyQuestionsPage'))
+const QuestionEditorPage = lazy(() => import('@/pages/exam/QuestionEditorPage'))
 const AnalyticsPage    = lazy(() => import('@/pages/analytics/AnalyticsPage'))
 
 export default function App() {
@@ -49,8 +51,11 @@ export default function App() {
                   <Route path="/decks/:deckId/review"                 element={<ReviewPage />} />
                   <Route path="/decks/:deckId/cards/new"              element={<CardEditorPage />} />
                   <Route path="/decks/:deckId/cards/:cardId/edit"     element={<CardEditorPage />} />
-                  {/* exam/history must come before exam/:sessionId so it matches first */}
+                  {/* exam/history and exam/questions must come before exam/:sessionId so they match first */}
                   <Route path="/exam/history"                         element={<ExamHistoryPage />} />
+                  <Route path="/exam/questions"                       element={<MyQuestionsPage />} />
+                  <Route path="/exam/questions/new"                   element={<QuestionEditorPage />} />
+                  <Route path="/exam/questions/:questionId/edit"      element={<QuestionEditorPage />} />
                   <Route path="/exam"                                 element={<ExamSetupPage />} />
                   <Route path="/exam/:sessionId"                      element={<ExamPage />} />
                   <Route path="/exam/:sessionId/results"              element={<ExamResultsPage />} />

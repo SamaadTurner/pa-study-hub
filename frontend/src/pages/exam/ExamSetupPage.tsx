@@ -30,6 +30,7 @@ export default function ExamSetupPage() {
   const [customCount, setCustomCount]               = useState('')
   const [useCustomCount, setUseCustomCount]         = useState(false)
   const [followBlueprint, setFollowBlueprint]       = useState(false)
+  const [includeShared, setIncludeShared]           = useState(false)
   const [loading, setLoading]                       = useState(false)
   const [error, setError]                           = useState<string | null>(null)
 
@@ -50,6 +51,7 @@ export default function ExamSetupPage() {
         timeLimitMinutes: timeLimitMinutes || undefined,
         categoryFilter: category === ALL ? undefined : category,
         followBlueprint,
+        includeSharedQuestions: includeShared,
       })
       navigate(`/exam/${session.id}`)
     } catch (err) {
@@ -62,11 +64,16 @@ export default function ExamSetupPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Practice Exam</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Configure your exam and test your PANCE readiness
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Practice Exam</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Configure your exam and test your PANCE readiness
+          </p>
+        </div>
+        <Button variant="secondary" onClick={() => navigate('/exam/questions')}>
+          My Questions
+        </Button>
       </div>
 
       {/* Categories */}
@@ -186,6 +193,20 @@ export default function ExamSetupPage() {
             ))}
           </ul>
         )}
+        <label className="flex items-start gap-2.5 text-sm text-gray-700 cursor-pointer pt-3 border-t border-gray-100">
+          <input
+            type="checkbox"
+            checked={includeShared}
+            onChange={e => setIncludeShared(e.target.checked)}
+            className="mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          <span>
+            Include questions other users shared
+            <span className="block text-xs text-gray-500">
+              Written by other students and not checked by anyone. Your own questions are always included.
+            </span>
+          </span>
+        </label>
       </section>
 
       {/* Time Limit */}
@@ -234,7 +255,8 @@ export default function ExamSetupPage() {
           <p className="text-xs text-gray-400">
             {followBlueprint
               ? 'Questions picked to follow the 2025 PANCE blueprint task mix'
-              : 'Questions randomly selected from the PANCE question bank'}
+              : 'Questions picked at random from the starter questions and yours'}
+            {includeShared && ', plus shared questions'}
           </p>
         </div>
         <Button onClick={handleStart} loading={loading} size="lg">

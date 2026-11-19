@@ -95,6 +95,7 @@ export interface StartExamRequest {
   categoryFilter?: string
   difficultyFilter?: DifficultyLevel
   followBlueprint?: boolean  // pick questions in the blueprint's task area percentages
+  includeSharedQuestions?: boolean  // also pick questions other users wrote and shared
 }
 
 // The exam types below use the same field names as the backend's JSON.
@@ -139,6 +140,35 @@ export interface ExamAnswerDetail {
   isCorrect: boolean
   explanation: string
   timeSpentSeconds: number | null
+  source: QuestionSource
+}
+
+// Who wrote a question, seen from the user who took the exam
+export type QuestionSource = 'STARTER' | 'YOU' | 'ANOTHER_USER'
+
+// ---- Questions the user writes ----------------------------------------------
+
+export interface WrittenAnswerOption {
+  id?: string
+  text: string
+  isCorrect: boolean
+}
+
+export interface QuestionRequest {
+  clinicalVignette?: string | null
+  stem: string
+  answerOptions: WrittenAnswerOption[]
+  explanation: string
+  category: string
+  taskArea: TaskArea
+  difficulty: DifficultyLevel
+  isPublic: boolean
+}
+
+export interface WrittenQuestion extends QuestionRequest {
+  id: string
+  createdAt: string
+  updatedAt: string
 }
 
 // Right answers out of questions for one task area. Unanswered questions count as wrong.

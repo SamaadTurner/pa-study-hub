@@ -57,9 +57,15 @@ function QuestionReview({ detail, number, sessionId, onUsedAiRequest }: Question
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-baseline gap-2">
+        <div className="flex flex-wrap items-baseline gap-x-2">
           <span className="text-sm font-semibold text-gray-900">Question {number}</span>
           <span className="text-xs text-gray-500">{getTaskAreaLabel(detail.taskArea)}</span>
+          {detail.source === 'YOU' && (
+            <span className="text-xs text-gray-500">· Written by you</span>
+          )}
+          {detail.source === 'ANOTHER_USER' && (
+            <span className="text-xs text-amber-700">· Shared by another user, not checked</span>
+          )}
         </div>
         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
           {badgeText}

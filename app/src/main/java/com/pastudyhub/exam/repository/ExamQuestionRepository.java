@@ -17,6 +17,9 @@ public interface ExamQuestionRepository extends JpaRepository<ExamQuestion, UUID
 
     Optional<ExamQuestion> findByExamSessionIdAndQuestionId(UUID examSessionId, UUID questionId);
 
+    // True once the question has been picked for any exam, finished or not
+    boolean existsByQuestionId(UUID questionId);
+
     /**
      * For every task area, how many questions the user was asked in finished exams
      * and how many of those they got right. Unanswered questions have no answer row,

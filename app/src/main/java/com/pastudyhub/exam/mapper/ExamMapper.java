@@ -190,7 +190,12 @@ public class ExamMapper {
                 .completedAt(session.getCompletedAt())
                 // One entry per question of the exam, in exam order, answered or not
                 .answerDetails(questions.stream()
-                        .map(q -> toAnswerDetail(session.getId(), q, answerByQuestion.get(q.getId())))
+                        .map(q -> {
+                            ExamAnswerDetailResponse detail =
+                                    toAnswerDetail(session.getId(), q, answerByQuestion.get(q.getId()));
+                            detail.setSource(QuestionSource.of(q, session.getUserId()));
+                            return detail;
+                        })
                         .toList())
                 .build();
     }

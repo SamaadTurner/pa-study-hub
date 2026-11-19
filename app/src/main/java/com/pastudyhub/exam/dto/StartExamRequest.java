@@ -28,6 +28,13 @@ public class StartExamRequest {
     /** True picks questions in the PANCE blueprint task area percentages. */
     private boolean followBlueprint;
 
+    /**
+     * True also picks from questions other users wrote and shared. Off by default,
+     * because nobody checks those questions: the starter questions and the user's
+     * own questions are always in the pool.
+     */
+    private boolean includeSharedQuestions;
+
     /** 0 = untimed; positive = minutes */
     @Min(value = 0, message = "Time limit cannot be negative")
     @Max(value = 360, message = "Maximum 6-hour time limit")

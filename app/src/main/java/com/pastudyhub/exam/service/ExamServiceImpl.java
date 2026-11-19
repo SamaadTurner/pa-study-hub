@@ -59,7 +59,7 @@ public class ExamServiceImpl implements ExamService {
     @Override
     @Transactional
     public ExamSessionResponse startExam(StartExamRequest request, UUID userId) {
-        List<Question> pool = questionRepository.findActiveByFilters(
+        List<Question> pool = questionRepository.findExamPool(userId, request.isIncludeSharedQuestions(),
                 request.getCategoryFilter(), request.getDifficultyFilter());
 
         List<Question> selected;

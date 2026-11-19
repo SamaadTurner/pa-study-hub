@@ -12,7 +12,10 @@ import java.util.UUID;
 
 /**
  * A single multiple-choice question aligned to an NCCPA content blueprint category.
- * Questions are reused across exam sessions — they are never user-specific.
+ *
+ * <p>A starter question has no owner and can be used in anyone's exam. A question a
+ * user wrote has that user as its owner, and is only used in other users' exams when
+ * it is shared and they asked for shared questions.
  */
 @Entity
 @Table(name = "questions",
@@ -20,7 +23,8 @@ import java.util.UUID;
                 @Index(name = "idx_questions_category", columnList = "category"),
                 @Index(name = "idx_questions_difficulty", columnList = "difficulty"),
                 @Index(name = "idx_questions_task_area", columnList = "task_area"),
-                @Index(name = "idx_questions_is_active", columnList = "is_active")
+                @Index(name = "idx_questions_is_active", columnList = "is_active"),
+                @Index(name = "idx_questions_owner_id", columnList = "owner_id")
         })
 @Getter
 @Setter
@@ -59,6 +63,15 @@ public class Question {
     @Builder.Default
     private boolean isActive = true;
 
+    /** The user who wrote the question, or null for a starter question. */
+    @Column(name = "owner_id")
+    private UUID ownerId;
+
+    /** True when the owner shares the question with other users. */
+    @Column(name = "is_public", nullable = false)
+    @Builder.Default
+    private boolean isPublic = false;
+
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @OrderBy("orderIndex ASC")
     @Builder.Default
@@ -71,6 +84,10 @@ public class Question {
     @UpdateTimestamp
     @Column(nullable = false)
     private LocalDateTime updatedAt;
+
+    public boolean isWrittenBy(UUID userId) {
+        return ownerId != null && ownerId.equals(userId);
+    }
 
     /**
      * Returns the correct answer option, or null if none is marked correct.

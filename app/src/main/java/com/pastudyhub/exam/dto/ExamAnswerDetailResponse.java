@@ -1,6 +1,7 @@
 package com.pastudyhub.exam.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.pastudyhub.exam.model.QuestionSource;
 import com.pastudyhub.exam.model.TaskArea;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,4 +32,6 @@ public class ExamAnswerDetailResponse {
     private boolean isCorrect;
     private String explanation;
     private Integer timeSpentSeconds;
+    /** Who wrote the question, so the results page can mark questions from other users. */
+    private QuestionSource source;
 }

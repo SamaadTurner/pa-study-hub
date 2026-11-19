@@ -96,6 +96,10 @@ export function clearTokens() {
   localStorage.removeItem(REFRESH_KEY)
 }
 
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_KEY)
+}
+
 export function getAccessToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
 }

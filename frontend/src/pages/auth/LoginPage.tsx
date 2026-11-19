@@ -60,6 +60,12 @@ export default function LoginPage() {
         return
       }
 
+      // Too many failed logins for this email: the message says how long to wait
+      if (apiError?.status === 429) {
+        setErrors({ password: apiError.detail })
+        return
+      }
+
       // Handle any other errors
       notify('error', apiError?.detail || 'Login failed. Please try again.')
     } finally {

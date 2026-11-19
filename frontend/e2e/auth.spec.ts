@@ -46,6 +46,34 @@ test.describe('Accounts', () => {
     await expect(page).toHaveURL(/\/login$/)
   })
 
+  test('signing out revokes the refresh token on the server', async ({ page }) => {
+    await register(page, newUser())
+    const refreshToken = await page.evaluate(() => localStorage.getItem('pa_refresh_token'))
+    expect(refreshToken).toBeTruthy()
+
+    await page.getByRole('button', { name: 'Sign out' }).click()
+    await expect(page).toHaveURL(/\/login$/)
+
+    // A copy of the token taken before signing out no longer gets new tokens
+    const response = await page.request.post('/api/v1/auth/refresh', { data: { refreshToken } })
+    expect(response.status()).toBe(401)
+  })
+
+  test('after 5 wrong passwords the login is locked, even with the right password', async ({ page }) => {
+    const user = newUser()
+    await register(page, user)
+    await page.getByRole('button', { name: 'Sign out' }).click()
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await logIn(page, user.email, 'Wr0ng!Passw0rd')
+      await expect(page.getByText('Invalid email or password. Please try again.')).toBeVisible()
+    }
+
+    await logIn(page, user.email, user.password)
+    await expect(page.getByText('Too many failed logins. Try again in 15 minutes.')).toBeVisible()
+    await expect(page).toHaveURL(/\/login$/)
+  })
+
   test('pages behind the login send a visitor to the login page', async ({ page }) => {
     await page.goto('/decks')
     await expect(page).toHaveURL(/\/login$/)

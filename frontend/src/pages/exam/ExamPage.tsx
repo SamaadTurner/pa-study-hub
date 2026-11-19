@@ -108,7 +108,15 @@ export default function ExamPage() {
       setSavedPicks(prev => ({ ...prev, [question.id]: picked }))
       return true
     } catch (err) {
-      notify('error', (err as ApiError)?.detail ?? 'Failed to save your answer')
+      const apiError = err as ApiError
+      // 409: the exam is over on the server (the time ran out, or it was finished
+      // in another tab), so the results are all that is left to show
+      if (apiError?.status === 409) {
+        notify('warning', apiError.detail)
+        navigate(`/exam/${sessionId}/results`, { replace: true })
+        return false
+      }
+      notify('error', apiError?.detail ?? 'Failed to save your answer')
       return false
     } finally {
       setSaving(false)
@@ -127,6 +135,11 @@ export default function ExamPage() {
       await completeExam(sessionId)
       navigate(`/exam/${sessionId}/results`, { replace: true })
     } catch (err) {
+      // Already handed in by the server (for example when the time ran out)
+      if ((err as ApiError)?.status === 409) {
+        navigate(`/exam/${sessionId}/results`, { replace: true })
+        return
+      }
       notify('error', (err as ApiError)?.detail ?? 'Failed to finish the exam')
       setState('ready')
     }

@@ -7,7 +7,7 @@ import {
   ReactNode,
 } from 'react'
 import type { User, LoginRequest, RegisterRequest } from '@/types'
-import { login as apiLogin, register as apiRegister, getMe } from '@/api/auth'
+import { login as apiLogin, register as apiRegister, logout as apiLogout, getMe } from '@/api/auth'
 import { clearTokens, getAccessToken } from '@/api/client'
 
 interface AuthContextValue {
@@ -16,7 +16,7 @@ interface AuthContextValue {
   isLoading: boolean
   login: (req: LoginRequest) => Promise<void>
   register: (req: RegisterRequest) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   updateUser: (updates: Partial<User>) => void
 }
 
@@ -52,7 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user)
   }, [])
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    // Sign out in this browser even if the server can't be reached. The refresh
+    // token then stays valid on the server until it expires (7 days).
+    try {
+      await apiLogout()
+    } catch {
+      // nothing more to do here
+    }
     clearTokens()
     setUser(null)
     window.location.href = '/login'

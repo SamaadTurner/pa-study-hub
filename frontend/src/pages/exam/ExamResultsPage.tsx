@@ -9,6 +9,7 @@ import ExplainAnswer from '@/components/ai/ExplainAnswer'
 import { useAiStatus } from '@/hooks/useAiStatus'
 import { getCategoryLabel, CATEGORY_HEX_COLORS } from '@/utils/categoryColors'
 import { getTaskAreaLabel } from '@/utils/taskAreas'
+import ReportQuestion from '@/components/exams/ReportQuestion'
 import TaskAreaScores from '@/components/exams/TaskAreaScores'
 import { formatDuration } from '@/utils/formatDuration'
 import {
@@ -91,6 +92,10 @@ function QuestionReview({ detail, number, sessionId, onUsedAiRequest }: Question
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Explanation</p>
         <p className="text-sm text-gray-700 leading-relaxed">{detail.explanation}</p>
       </div>
+
+      {detail.source === 'ANOTHER_USER' && (
+        <ReportQuestion questionId={detail.questionId} alreadyReported={detail.reportedByYou} />
+      )}
 
       {onUsedAiRequest && (
         <ExplainAnswer

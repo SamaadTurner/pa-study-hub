@@ -27,6 +27,7 @@ const ExamResultsPage  = lazy(() => import('@/pages/exam/ExamResultsPage'))
 const ExamHistoryPage  = lazy(() => import('@/pages/exam/ExamHistoryPage'))
 const MyQuestionsPage  = lazy(() => import('@/pages/exam/MyQuestionsPage'))
 const QuestionEditorPage = lazy(() => import('@/pages/exam/QuestionEditorPage'))
+const SharedQuestionsPage = lazy(() => import('@/pages/exam/SharedQuestionsPage'))
 const AnalyticsPage    = lazy(() => import('@/pages/analytics/AnalyticsPage'))
 const PrivacyPage      = lazy(() => import('@/pages/legal/PrivacyPage'))
 const ProfilePage      = lazy(() => import('@/pages/profile/ProfilePage'))
@@ -58,6 +59,7 @@ export default function App() {
                   {/* exam/history and exam/questions must come before exam/:sessionId so they match first */}
                   <Route path="/exam/history"                         element={<ExamHistoryPage />} />
                   <Route path="/exam/questions"                       element={<MyQuestionsPage />} />
+                  <Route path="/exam/shared"                          element={<SharedQuestionsPage />} />
                   <Route path="/exam/questions/new"                   element={<QuestionEditorPage />} />
                   <Route path="/exam/questions/:questionId/edit"      element={<QuestionEditorPage />} />
                   <Route path="/exam"                                 element={<ExamSetupPage />} />

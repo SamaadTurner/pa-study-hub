@@ -107,6 +107,8 @@ describe('formFromQuestion', () => {
       taskArea: 'CLINICAL_INTERVENTION',
       difficulty: 'HARD',
       isPublic: true,
+      reports: [],
+      hiddenFromShared: false,
       createdAt: '2026-11-19T10:00:00',
       updatedAt: '2026-11-19T10:00:00',
     }

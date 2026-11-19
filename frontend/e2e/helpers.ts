@@ -206,16 +206,19 @@ export interface ExamChoices {
 // Pulmonology (10 each). Tests that use another category write their own questions.
 export async function startExam(page: Page, choices: ExamChoices) {
   await page.goto('/exam')
-  await page.getByLabel(choices.category, { exact: true }).check()
+  // Before the topic: topics with no questions of their own only become clickable
+  // once shared questions are included
+  if (choices.includeShared) {
+    await page.getByLabel(/Include questions other users shared/).check()
+  }
+  // The label is the topic with its question count, for example "Cardiology (10)"
+  await page.getByLabel(new RegExp(`^${choices.category}( \\(\\d+\\))?$`)).check()
   await page.getByRole('button', { name: String(choices.questions), exact: true }).click()
   if (choices.timeLimit) {
     await page.getByRole('button', { name: choices.timeLimit }).click()
   }
   if (choices.followBlueprint) {
     await page.getByLabel(/PANCE blueprint mix/).check()
-  }
-  if (choices.includeShared) {
-    await page.getByLabel(/Include questions other users shared/).check()
   }
   await page.getByRole('button', { name: /Start Exam/ }).click()
 

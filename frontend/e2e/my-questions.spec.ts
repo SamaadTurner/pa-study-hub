@@ -113,10 +113,7 @@ test.describe('Writing your own exam questions', () => {
 
     // Without shared questions there are none for psychiatry
     await page.goto('/exam')
-    await page.getByLabel('Psychiatry', { exact: true }).check()
-    await page.getByRole('button', { name: '5', exact: true }).click()
-    await page.getByRole('button', { name: /Start Exam/ }).click()
-    await expect(page.getByText(/Not enough questions available/)).toBeVisible()
+    await expect(page.getByLabel('Psychiatry (0)')).toBeDisabled()
 
     // With them the exam starts, and the results mark the questions as not checked
     await startExam(page, { category: 'Psychiatry', questions: 5, includeShared: true })

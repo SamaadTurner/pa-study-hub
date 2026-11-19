@@ -145,6 +145,7 @@ export interface ExamAnswerDetail {
   explanation: string
   timeSpentSeconds: number | null
   source: QuestionSource
+  reportedByYou: boolean  // only for questions shared by another user
 }
 
 // Who wrote a question, seen from the user who took the exam
@@ -169,8 +170,37 @@ export interface QuestionRequest {
   isPublic: boolean
 }
 
+export type ReportReason = 'WRONG_ANSWER' | 'UNCLEAR' | 'OTHER'
+
+// A report on one of your shared questions. Who sent it is never shown.
+export interface QuestionReport {
+  reason: ReportReason
+  note: string | null
+  createdAt: string
+}
+
+// A question another user shared, on the browse page
+export interface SharedQuestion {
+  id: string
+  clinicalVignette: string | null
+  stem: string
+  answerOptions: WrittenAnswerOption[]
+  explanation: string
+  category: string
+  taskArea: TaskArea
+  difficulty: DifficultyLevel
+}
+
+// How many questions an exam can pick from, per category (categories with none are left out)
+export interface QuestionCounts {
+  total: number
+  byCategory: Record<string, number>
+}
+
 export interface WrittenQuestion extends QuestionRequest {
   id: string
+  reports: QuestionReport[]
+  hiddenFromShared: boolean  // left out of other people's exams because of reports
   createdAt: string
   updatedAt: string
 }

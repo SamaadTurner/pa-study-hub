@@ -203,16 +203,21 @@ test.describe('Practice exams', () => {
     await expect(page.getByRole('heading', { name: 'Practice Exam' })).toBeVisible()
   })
 
-  test('a category without enough questions gives a message and no exam', async ({ page }) => {
+  test('topics without enough questions are shown before starting', async ({ page }) => {
     await register(page, newUser())
     await page.goto('/exam')
 
-    // There are no starter questions for dermatology
-    await page.getByLabel('Dermatology', { exact: true }).check()
-    await page.getByRole('button', { name: /Start Exam/ }).click()
+    // There are no starter questions for dermatology, so it can't be picked
+    await expect(page.getByLabel('Dermatology (0)')).toBeDisabled()
 
-    await expect(page.getByText(/Not enough questions available/)).toBeVisible()
-    await expect(page).toHaveURL(/\/exam$/)
+    // Cardiology has 10: asking for 20 says so and Start is off
+    await page.getByLabel('Cardiology (10)').check()
+    await page.getByRole('button', { name: '20', exact: true }).click()
+    await expect(page.getByText('Only 10 questions for this choice. Pick 10 or fewer, or another topic.')).toBeVisible()
+    await expect(page.getByRole('button', { name: /Start Exam/ })).toBeDisabled()
+
+    await page.getByRole('button', { name: '10', exact: true }).click()
+    await expect(page.getByRole('button', { name: /Start Exam/ })).toBeEnabled()
 
     await page.goto('/exam/history')
     await expect(page.getByText('No exams yet')).toBeVisible()

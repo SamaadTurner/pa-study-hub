@@ -9,7 +9,13 @@ import { ConfirmModal } from '@/components/common/Modal'
 import { useNotification } from '@/contexts/NotificationContext'
 import { getCategoryBadgeVariant, getCategoryLabel } from '@/utils/categoryColors'
 import { getTaskAreaLabel } from '@/utils/taskAreas'
-import type { ApiError, WrittenQuestion } from '@/types'
+import type { ApiError, ReportReason, WrittenQuestion } from '@/types'
+
+const REPORT_REASON_LABELS: Record<ReportReason, string> = {
+  WRONG_ANSWER: 'Marked answer is wrong',
+  UNCLEAR: 'Unclear',
+  OTHER: 'Other',
+}
 
 function shorten(text: string, length: number): string {
   return text.length > length ? `${text.slice(0, length)}…` : text
@@ -84,7 +90,10 @@ export default function MyQuestionsPage() {
               Your questions are part of every exam you start.
             </p>
           </div>
-          <Button onClick={() => navigate('/exam/questions/new')}>+ Write Question</Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => navigate('/exam/shared')}>Browse shared</Button>
+            <Button onClick={() => navigate('/exam/questions/new')}>+ Write Question</Button>
+          </div>
         </div>
       </div>
 
@@ -107,11 +116,34 @@ export default function MyQuestionsPage() {
                 </Badge>
                 <span className="text-xs text-gray-500">{getTaskAreaLabel(question.taskArea)}</span>
                 {question.isPublic && <Badge variant="teal">Shared</Badge>}
+                {question.reports.length > 0 && (
+                  <Badge variant="red">
+                    {question.reports.length} {question.reports.length === 1 ? 'report' : 'reports'}
+                  </Badge>
+                )}
               </div>
               <p className="text-sm font-medium text-gray-900 leading-relaxed">{shorten(question.stem, 200)}</p>
               <p className="text-xs text-gray-500 mt-1">
                 Right answer: {shorten(question.answerOptions.find(o => o.isCorrect)?.text ?? '', 80)}
               </p>
+              {question.reports.length > 0 && (
+                <div className="mt-3 bg-red-50 border border-red-100 rounded-lg p-3 text-xs text-gray-700 space-y-1">
+                  {question.hiddenFromShared && (
+                    <p className="font-medium text-red-700">
+                      Left out of other people's exams because of the reports. Editing it saves a new
+                      version without reports.
+                    </p>
+                  )}
+                  <ul className="space-y-1">
+                    {question.reports.map((report, index) => (
+                      <li key={index}>
+                        <span className="font-medium">{REPORT_REASON_LABELS[report.reason]}</span>
+                        {report.note && <span>: "{report.note}"</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="flex gap-2 mt-3">
                 <Button
                   variant="secondary"

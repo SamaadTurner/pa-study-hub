@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 344 backend tests, 112 frontend unit tests and 58 end-to-end browser tests
+the frontend. 364 backend tests, 112 frontend unit tests and 60 end-to-end browser tests
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -107,13 +107,13 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 344 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 364 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 98.0% of lines and 85.4% of branches (JaCoCo, without the code Lombok
+  They cover 97.6% of lines and 86.7% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
 - **Frontend:** 112 unit tests with Vitest and React Testing Library.
-- **End to end:** 58 Playwright tests that click through the real app: accounts, decks
+- **End to end:** 60 Playwright tests that click through the real app: accounts (including sign-out and the login lock), decks
   and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
@@ -258,6 +258,22 @@ or deleted. Shared questions are left out of exams unless the user asks for them
 nobody reviews them; the starter questions and your own are always in the pool. The
 question bank grows this way without the app writing medical content itself.
 
+**The server enforces exam time limits.** The page counts down, but a closed tab or a
+script could keep an exam open forever. A timed exam is handed in with the answers saved
+so far once its time plus 30 seconds of grace is over: whenever it is opened, answered,
+finished or left, and from a job that runs every minute (on a sleeping free server the job
+does not run, which is why the check on open is needed too). A late answer gets a 409 and
+the page moves to the results. A version column on the exam stops the job and the user from
+finishing it twice at the same moment.
+
+**Failed logins are limited per email, not per IP address.** Five failed logins in 15
+minutes lock that email until the 15 minutes are over, and the answer is a 429 with a
+`Retry-After` header. Emails without an account are locked the same way, so the lock does
+not reveal which emails exist. An IP limit is the usual companion, but behind Render the
+app cannot trust the client address: the static site forwards `/api` calls and a client
+can write its own `X-Forwarded-For`. An IP limit would then be easy to dodge or would lock
+everyone out at once. Signing out also revokes the refresh token on the server.
+
 **Hosting on free plans.** The backend runs on Render's free plan from the Dockerfile and
 the frontend is a Render static site (`render.yaml`). The static site passes `/api` on to
 the backend, so the browser only talks to one address and the backend needs no CORS
@@ -290,10 +306,8 @@ To turn it on locally, add `AI_API_KEY=<your Groq key>` to the backend command a
 
 ## Known limits
 
-- The time limit is enforced by the page, not the server. An exam that never calls
-  "finish" stays open.
-- Signing out clears the tokens in the browser but does not revoke the refresh token on
-  the server, so it stays valid for up to 7 days.
+- The login lock counts failures in memory, so a restart clears it, and it is per email
+  only: someone who knows your email can lock you out for 15 minutes.
 - There is no page for editing your profile or changing your password yet. The API for
   both exists and is tested.
 - Only 30 starter questions, in three topics. Users can add their own, but shared

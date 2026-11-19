@@ -51,6 +51,10 @@ services:
       # The daily limits (20 per user, 300 for the site) keep a free key from running out.
       - key: AI_API_KEY
         sync: false
+      # "Continue with Google". The client ID is public (Google's button puts it in
+      # the page), so it can live here. The client secret is never used.
+      - key: GOOGLE_CLIENT_ID
+        value: 104674216459-82m78lgjf8p3i5ug3ftes3u6kkserktt.apps.googleusercontent.com
       # The free plan has a small share of one CPU. These two options make the
       # JVM start faster with it, which matters because every wake-up is a start.
       - key: JAVA_TOOL_OPTIONS

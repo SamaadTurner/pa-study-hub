@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 364 backend tests, 112 frontend unit tests and 60 end-to-end browser tests
+the frontend. 382 backend tests, 112 frontend unit tests and 63 end-to-end browser tests
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -37,6 +37,9 @@ run in CI on every push.
   with 30 days of activity and accuracy by topic. Flashcards and exams both count.
   Exam results are also split by blueprint task, and the analytics page names your
   weakest one ("You miss pharmaceutical therapeutics questions 40% of the time").
+- **Continue with Google.** Sign in or sign up with a Google account, or add Google to an
+  existing account. Off unless the server has a Google client ID. A short
+  [privacy page](https://pa-study-hub.onrender.com/privacy) says what is stored.
 - **Optional AI help.** Paste notes and get suggested flashcards to review and edit
   before saving, or ask why your answer to an exam question was wrong. Off unless the
   server has an API key (see [AI features](#ai-features)).
@@ -107,13 +110,13 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 364 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 382 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 97.6% of lines and 86.7% of branches (JaCoCo, without the code Lombok
+  They cover 97.7% of lines and 86.3% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
 - **Frontend:** 112 unit tests with Vitest and React Testing Library.
-- **End to end:** 60 Playwright tests that click through the real app: accounts (including sign-out and the login lock), decks
+- **End to end:** 63 Playwright tests that click through the real app: accounts (including sign-out, the login lock and the Google sign-in screens), decks
   and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
@@ -274,6 +277,18 @@ app cannot trust the client address: the static site forwards `/api` calls and a
 can write its own `X-Forwarded-For`. An IP limit would then be easy to dodge or would lock
 everyone out at once. Signing out also revokes the refresh token on the server.
 
+**Google sign-in never links accounts by email alone.** The browser gets an ID token
+from Google's button and sends it to `POST /api/v1/auth/google`. The server checks the
+signature against Google's published keys, the issuer, the audience (the app's client ID),
+the expiry and that Google verified the email, then signs the user in with the app's own
+tokens. The first time, it makes an account with no password. If an account with that
+email already exists, it is not linked automatically: the app never confirms emails at
+sign-up, so someone could have registered another person's address first, and linking by
+email would hand that account to whoever owns the Google account, or the other way round.
+Instead the user types that account's password once (`/auth/google/link`, counted toward
+the login lock). Tests use a fake token checker; the checks on real tokens have their own
+unit tests with a locally made signing key.
+
 **Hosting on free plans.** The backend runs on Render's free plan from the Dockerfile and
 the frontend is a Render static site (`render.yaml`). The static site passes `/api` on to
 the backend, so the browser only talks to one address and the backend needs no CORS
@@ -306,6 +321,8 @@ To turn it on locally, add `AI_API_KEY=<your Groq key>` to the backend command a
 
 ## Known limits
 
+- An account made with Google has no password and cannot set one yet, and closing an
+  account only deactivates it (the data stays). There is no button for either.
 - The login lock counts failures in memory, so a restart clears it, and it is per email
   only: someone who knows your email can lock you out for 15 minutes.
 - There is no page for editing your profile or changing your password yet. The API for

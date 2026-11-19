@@ -1,0 +1,223 @@
+package com.pastudyhub.user.integration;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pastudyhub.BaseIntegrationTest;
+import com.pastudyhub.user.exception.InvalidTokenException;
+import com.pastudyhub.user.google.GoogleIdentity;
+import com.pastudyhub.user.google.GoogleTokenVerifier;
+import com.pastudyhub.user.integration.TestAccounts.Account;
+import com.pastudyhub.user.repository.UserRepository;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
+
+import java.util.Map;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * "Continue with Google" with a fake token checker: the credential sent is the
+ * text "token-for:<sub>:<email>", and the fake turns it into that identity.
+ * The checks on real Google tokens are in JwtGoogleTokenVerifierTest.
+ */
+@DisplayName("Google sign-in")
+@TestPropertySource(properties = "google.client-id=test-client.apps.googleusercontent.com")
+class GoogleSignInIntegrationTest extends BaseIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @MockBean
+    private GoogleTokenVerifier googleTokenVerifier;
+
+    @Test
+    @DisplayName("The status endpoint says Google sign-in is on and gives the client ID")
+    void status_enabled() throws Exception {
+        mockMvc.perform(get("/api/v1/auth/google/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.enabled").value(true))
+                .andExpect(jsonPath("$.clientId").value("test-client.apps.googleusercontent.com"));
+    }
+
+    @Test
+    @DisplayName("The first Google sign-in makes an account without a password, the next one finds it")
+    void firstSignIn_makesAccount() throws Exception {
+        String sub = "sub-" + UUID.randomUUID();
+        String email = "new-" + UUID.randomUUID() + "@gmail.com";
+        fakeGoogle(sub, email, "Riley", "Morgan");
+
+        MvcResult first = googleSignIn(sub, email)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
+                .andExpect(jsonPath("$.user.email").value(email))
+                .andExpect(jsonPath("$.user.firstName").value("Riley"))
+                .andReturn();
+        JsonNode body = objectMapper.readTree(first.getResponse().getContentAsString());
+
+        assertThat(userRepository.findByEmail(email)).get()
+                .satisfies(user -> {
+                    assertThat(user.getPasswordHash()).isNull();
+                    assertThat(user.getGoogleSubject()).isEqualTo(sub);
+                });
+
+        // The app's own tokens work like after a normal login
+        mockMvc.perform(get("/api/v1/users/me")
+                        .header("Authorization", "Bearer " + body.get("accessToken").asText()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(email));
+
+        googleSignIn(sub, email)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.id").value(body.get("user").get("id").asText()));
+    }
+
+    @Test
+    @DisplayName("Missing names from Google get a placeholder first name")
+    void missingNames() throws Exception {
+        String sub = "sub-" + UUID.randomUUID();
+        String email = "noname-" + UUID.randomUUID() + "@gmail.com";
+        fakeGoogle(sub, email, null, null);
+
+        googleSignIn(sub, email)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.firstName").value("Student"));
+    }
+
+    @Test
+    @DisplayName("An account made with Google cannot log in with a password")
+    void googleAccount_noPasswordLogin() throws Exception {
+        String sub = "sub-" + UUID.randomUUID();
+        String email = "gonly-" + UUID.randomUUID() + "@gmail.com";
+        fakeGoogle(sub, email, "Sam", "Lee");
+        googleSignIn(sub, email).andExpect(status().isOk());
+
+        login(email, TestAccounts.PASSWORD).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("A password account with the same email is not taken over: linking needs its password")
+    void existingEmail_needsPassword() throws Exception {
+        Account account = TestAccounts.register(mockMvc, objectMapper);
+        String sub = "sub-" + UUID.randomUUID();
+        fakeGoogle(sub, account.email(), "Riley", "Morgan");
+
+        googleSignIn(sub, account.email())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value(
+                        "An account with this email already exists. Enter its password once to add Google sign-in."));
+
+        link(sub, account.email(), "Wr0ng!Password").andExpect(status().isUnauthorized());
+        assertThat(userRepository.findByEmail(account.email()).get().getGoogleSubject()).isNull();
+
+        link(sub, account.email(), TestAccounts.PASSWORD)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.email").value(account.email()));
+
+        // From now on Google signs in directly, and the password still works too
+        googleSignIn(sub, account.email()).andExpect(status().isOk());
+        login(account.email(), TestAccounts.PASSWORD).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Wrong passwords when linking count toward the login lock")
+    void link_countsTowardLock() throws Exception {
+        Account account = TestAccounts.register(mockMvc, objectMapper);
+        String sub = "sub-" + UUID.randomUUID();
+        fakeGoogle(sub, account.email(), "Riley", "Morgan");
+
+        for (int i = 0; i < 5; i++) {
+            link(sub, account.email(), "Wr0ng!Password").andExpect(status().isUnauthorized());
+        }
+        link(sub, account.email(), TestAccounts.PASSWORD).andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    @DisplayName("An account linked to one Google account cannot be linked to another")
+    void link_otherGoogleAccount_refused() throws Exception {
+        Account account = TestAccounts.register(mockMvc, objectMapper);
+        String firstSub = "sub-" + UUID.randomUUID();
+        String secondSub = "sub-" + UUID.randomUUID();
+        fakeGoogle(firstSub, account.email(), "Riley", "Morgan");
+        fakeGoogle(secondSub, account.email(), "Riley", "Morgan");
+
+        link(firstSub, account.email(), TestAccounts.PASSWORD).andExpect(status().isOk());
+        link(secondSub, account.email(), TestAccounts.PASSWORD)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("This account is already linked to a different Google account."));
+    }
+
+    @Test
+    @DisplayName("An invalid Google token gets 401")
+    void invalidToken() throws Exception {
+        when(googleTokenVerifier.verify("broken"))
+                .thenThrow(new InvalidTokenException("Google sign-in could not be checked"));
+
+        mockMvc.perform(post("/api/v1/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"credential\": \"broken\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("A closed account cannot sign in with Google either")
+    void deactivated_refused() throws Exception {
+        String sub = "sub-" + UUID.randomUUID();
+        String email = "closed-" + UUID.randomUUID() + "@gmail.com";
+        fakeGoogle(sub, email, "Sam", "Lee");
+        MvcResult result = googleSignIn(sub, email).andExpect(status().isOk()).andReturn();
+        String accessToken = objectMapper.readTree(result.getResponse().getContentAsString())
+                .get("accessToken").asText();
+
+        mockMvc.perform(delete("/api/v1/users/me").header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().is2xxSuccessful());
+
+        googleSignIn(sub, email).andExpect(status().isForbidden());
+    }
+
+    // ---- helpers -------------------------------------------------------------
+
+    private void fakeGoogle(String sub, String email, String firstName, String lastName) {
+        when(googleTokenVerifier.verify("token-for:" + sub + ":" + email))
+                .thenReturn(new GoogleIdentity(sub, email, firstName, lastName));
+    }
+
+    private ResultActions googleSignIn(String sub, String email) throws Exception {
+        return mockMvc.perform(post("/api/v1/auth/google")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("credential", "token-for:" + sub + ":" + email))));
+    }
+
+    private ResultActions link(String sub, String email, String password) throws Exception {
+        return mockMvc.perform(post("/api/v1/auth/google/link")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(
+                        Map.of("credential", "token-for:" + sub + ":" + email, "password", password))));
+    }
+
+    private ResultActions login(String email, String password) throws Exception {
+        return mockMvc.perform(post("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("email", email, "password", password))));
+    }
+}

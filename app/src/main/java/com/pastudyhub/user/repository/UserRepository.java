@@ -33,4 +33,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      * @return true if a user with this email exists
      */
     boolean existsByEmail(String email);
+
+    Optional<User> findByGoogleSubject(String googleSubject);
 }

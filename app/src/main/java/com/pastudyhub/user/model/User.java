@@ -40,9 +40,14 @@ public class User {
 
     /**
      * BCrypt hash (strength 12). The raw password is NEVER stored or logged.
+     * Null for an account made with Google, which has no password.
      */
-    @Column(name = "password_hash", nullable = false, length = 72)
+    @Column(name = "password_hash", length = 72)
     private String passwordHash;
+
+    /** Google's id for the user ("sub" in the ID token), or null if Google sign-in is not linked. */
+    @Column(name = "google_subject", unique = true, length = 255)
+    private String googleSubject;
 
     @Column(name = "first_name", nullable = false, length = 50)
     private String firstName;

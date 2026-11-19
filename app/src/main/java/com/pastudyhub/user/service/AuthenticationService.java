@@ -42,4 +42,16 @@ public interface AuthenticationService {
      * @param refreshToken the refresh token to revoke
      */
     void logout(String refreshToken);
+
+    /** Whether Google sign-in is on, with the client ID for the button. */
+    GoogleStatusResponse googleStatus();
+
+    /**
+     * Sign in with a Google ID token. Makes a new account the first time.
+     * Throws GoogleLinkRequiredException when a password account has the same email.
+     */
+    AuthResponse signInWithGoogle(GoogleSignInRequest request);
+
+    /** Adds Google sign-in to the password account with the token's email, then signs in. */
+    AuthResponse linkGoogle(GoogleLinkRequest request);
 }

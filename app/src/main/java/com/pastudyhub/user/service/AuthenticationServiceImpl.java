@@ -2,6 +2,8 @@ package com.pastudyhub.user.service;
 
 import com.pastudyhub.user.dto.*;
 import com.pastudyhub.user.exception.*;
+import com.pastudyhub.user.google.GoogleIdentity;
+import com.pastudyhub.user.google.GoogleTokenVerifier;
 import com.pastudyhub.user.mapper.UserMapper;
 import com.pastudyhub.user.model.RefreshToken;
 import com.pastudyhub.user.model.User;
@@ -44,9 +46,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final PasswordPolicy passwordPolicy;
     private final UserMapper userMapper;
     private final LoginAttemptLimiter loginAttemptLimiter;
+    private final GoogleTokenVerifier googleTokenVerifier;
 
     @Value("${jwt.refresh-token-expiry-days:7}")
     private int refreshTokenExpiryDays;
+
+    // Empty means Google sign-in is off
+    @Value("${google.client-id:}")
+    private String googleClientId;
 
     @Override
     @Transactional
@@ -94,8 +101,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         // Unknown emails count as failures too. Otherwise the lock would only
         // happen for emails that have an account, which tells an attacker which do.
+        // An account made with Google has no password, so it never matches here
         User user = userRepository.findByEmail(normalizedEmail).orElse(null);
-        if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        if (user == null || user.getPasswordHash() == null
+                || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             loginAttemptLimiter.recordFailure(normalizedEmail);
             throw new InvalidCredentialsException();
         }
@@ -157,6 +166,92 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     refreshTokenRepository.save(token);
                     log.info("User logged out: userId={}", token.getUser().getId());
                 });
+    }
+
+    @Override
+    public GoogleStatusResponse googleStatus() {
+        boolean enabled = !googleClientId.isBlank();
+        return new GoogleStatusResponse(enabled, enabled ? googleClientId : null);
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse signInWithGoogle(GoogleSignInRequest request) {
+        GoogleIdentity google = verifyGoogleToken(request.getCredential());
+
+        // Already linked: the Google id is what counts, even if the email changed since
+        User linked = userRepository.findByGoogleSubject(google.subject()).orElse(null);
+        if (linked != null) {
+            return finishGoogleSignIn(linked);
+        }
+
+        // Same email as an account that exists. It is not linked automatically: the
+        // app never checks emails at sign-up, so someone could have registered this
+        // address before its owner did. Asking for that account's password once
+        // proves the person signing in with Google also owns the account.
+        if (userRepository.existsByEmail(google.email())) {
+            throw new GoogleLinkRequiredException();
+        }
+
+        User user = User.builder()
+                .email(google.email())
+                .passwordHash(null)
+                .googleSubject(google.subject())
+                .firstName(nameOrDefault(google.firstName(), "Student"))
+                .lastName(nameOrDefault(google.lastName(), ""))
+                .role(UserRole.STUDENT)
+                .build();
+        User saved = userRepository.save(user);
+        log.info("Account made with Google: id={}", saved.getId());
+        return finishGoogleSignIn(saved);
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse linkGoogle(GoogleLinkRequest request) {
+        GoogleIdentity google = verifyGoogleToken(request.getCredential());
+
+        // The password guess counts toward the same lock as a normal login
+        loginAttemptLimiter.checkAllowed(google.email());
+        User user = userRepository.findByEmail(google.email()).orElse(null);
+        if (user == null || user.getPasswordHash() == null
+                || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            loginAttemptLimiter.recordFailure(google.email());
+            throw new InvalidCredentialsException();
+        }
+        if (user.getGoogleSubject() != null && !user.getGoogleSubject().equals(google.subject())) {
+            throw new GoogleAccountMismatchException();
+        }
+        loginAttemptLimiter.recordSuccess(google.email());
+
+        user.setGoogleSubject(google.subject());
+        log.info("Google sign-in linked: id={}", user.getId());
+        return finishGoogleSignIn(user);
+    }
+
+    private GoogleIdentity verifyGoogleToken(String credential) {
+        if (googleClientId.isBlank()) {
+            throw new GoogleSignInDisabledException();
+        }
+        return googleTokenVerifier.verify(credential);
+    }
+
+    private AuthResponse finishGoogleSignIn(User user) {
+        if (!user.isActive()) {
+            throw new AccountDeactivatedException();
+        }
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
+        return buildAuthResponse(user);
+    }
+
+    // Names from Google can be missing or longer than the 50 characters the table allows
+    private String nameOrDefault(String name, String fallback) {
+        if (name == null || name.isBlank()) {
+            return fallback;
+        }
+        String trimmed = name.trim();
+        return trimmed.length() > 50 ? trimmed.substring(0, 50) : trimmed;
     }
 
     /**

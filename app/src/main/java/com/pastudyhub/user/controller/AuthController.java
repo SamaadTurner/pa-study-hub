@@ -102,4 +102,29 @@ public class AuthController {
     public void logout(@Valid @RequestBody RefreshTokenRequest request) {
         authenticationService.logout(request.getRefreshToken());
     }
+
+    @GetMapping("/google/status")
+    @Operation(summary = "Whether Google sign-in is on, with the client ID for the button")
+    public GoogleStatusResponse googleStatus() {
+        return authenticationService.googleStatus();
+    }
+
+    @PostMapping("/google")
+    @Operation(
+        summary = "Sign in with a Google ID token (makes an account the first time)",
+        responses = {
+            @ApiResponse(responseCode = "200", description = "Signed in"),
+            @ApiResponse(responseCode = "401", description = "The Google token is invalid or the email is not verified"),
+            @ApiResponse(responseCode = "409", description = "A password account has this email; link it first")
+        }
+    )
+    public AuthResponse signInWithGoogle(@Valid @RequestBody GoogleSignInRequest request) {
+        return authenticationService.signInWithGoogle(request);
+    }
+
+    @PostMapping("/google/link")
+    @Operation(summary = "Add Google sign-in to an existing account, proven with its password")
+    public AuthResponse linkGoogle(@Valid @RequestBody GoogleLinkRequest request) {
+        return authenticationService.linkGoogle(request);
+    }
 }

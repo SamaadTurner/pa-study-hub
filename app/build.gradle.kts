@@ -24,6 +24,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    // Checks Google ID tokens ("Continue with Google") against Google's public keys
+    implementation("org.springframework.security:spring-security-oauth2-jose")
 
     // Database
     implementation("org.flywaydb:flyway-core")

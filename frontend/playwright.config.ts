@@ -17,7 +17,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const gradle = path.join(repoRoot, process.platform === 'win32' ? 'gradlew.bat' : 'gradlew')
 
 // The specs that also run in WebKit and on an iPhone-sized screen
-const MAIN_FLOWS = /(^|[\\/])(auth|decks|review|exams|cloze)\.spec\.ts$/
+const MAIN_FLOWS = /(^|[\\/])(auth|decks|review|exams|cloze|picture)\.spec\.ts$/
 
 export default defineConfig({
   testDir: './e2e',

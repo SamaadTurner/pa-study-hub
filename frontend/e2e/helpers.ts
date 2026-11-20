@@ -211,8 +211,18 @@ export async function startExam(page: Page, choices: ExamChoices) {
   if (choices.includeShared) {
     await page.getByLabel(/Include questions other users shared/).check()
   }
-  // The label is the topic with its question count, for example "Cardiology (10)"
-  await page.getByLabel(new RegExp(`^${choices.category}( \\(\\d+\\))?$`)).check()
+  // On a phone the topics are a dropdown; on wider screens radio buttons labeled
+  // with the topic and its question count, for example "Cardiology (10)"
+  const topicSelect = page.locator('#exam-topic')
+  // The page loads on demand: wait for it before asking which picker it shows
+  await expect(page.getByRole('heading', { name: 'Practice Exam' })).toBeVisible()
+  if (await topicSelect.isVisible()) {
+    // The option values are the topic codes ("Cardiology" is CARDIOLOGY); "All categories" is empty
+    const value = choices.category === 'All categories' ? '' : choices.category.toUpperCase().replace(/ /g, '_')
+    await topicSelect.selectOption(value)
+  } else {
+    await page.getByLabel(new RegExp(`^${choices.category}( \\(\\d+\\))?$`)).check()
+  }
   await page.getByRole('button', { name: String(choices.questions), exact: true }).click()
   if (choices.timeLimit) {
     await page.getByRole('button', { name: choices.timeLimit }).click()

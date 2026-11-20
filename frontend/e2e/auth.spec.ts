@@ -78,6 +78,41 @@ test.describe('Accounts', () => {
     await expect(page).toHaveURL(/\/login$/)
   })
 
+  test('an expired access token is refreshed once, even when several requests fail together', async ({ page }) => {
+    await register(page, newUser())
+    // Spoil the access token, as if it had run out. The dashboard then loads
+    // several things at once and every one of them gets a 401.
+    await page.evaluate(() => localStorage.setItem('pa_access_token', 'expired'))
+    await page.goto('/dashboard')
+
+    // One shared refresh: the user stays signed in. Before, each request refreshed
+    // with the same token, the server took the second use for theft and signed
+    // the user out everywhere.
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+    await page.goto('/decks')
+    await expect(page).toHaveURL(/\/decks$/)
+  })
+
+  test('a signed-in student stays signed in while the server is waking up', async ({ page }) => {
+    await register(page, newUser())
+    // The first two "who am I" calls fail as if the sleeping server were not answering
+    let failures = 0
+    await page.route('**/api/v1/users/me', async route => {
+      if (failures < 2) {
+        failures++
+        await route.abort('timedout')
+      } else {
+        await route.continue()
+      }
+    })
+
+    await page.reload()
+    // The app waits and asks again instead of signing the student out
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible({ timeout: 20_000 })
+    await expect(page).toHaveURL(/\/dashboard$/)
+    expect(failures).toBe(2)
+  })
+
   test('pages behind the login send a visitor to the login page', async ({ page }) => {
     await page.goto('/decks')
     await expect(page).toHaveURL(/\/login$/)

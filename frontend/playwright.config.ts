@@ -16,6 +16,9 @@ import { fileURLToPath } from 'url'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const gradle = path.join(repoRoot, process.platform === 'win32' ? 'gradlew.bat' : 'gradlew')
 
+// The specs that also run in WebKit and on an iPhone-sized screen
+const MAIN_FLOWS = /(^|[\\/])(auth|decks|review|exams|cloze)\.spec\.ts$/
+
 export default defineConfig({
   testDir: './e2e',
 
@@ -35,6 +38,11 @@ export default defineConfig({
 
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // Most students will open the app on a phone, many on an iPhone, whose browsers
+    // all use Safari's engine (WebKit). These two run the main flows; the whole
+    // suite runs in Chromium.
+    { name: 'webkit', use: { ...devices['Desktop Safari'] }, testMatch: MAIN_FLOWS },
+    { name: 'iphone', use: { ...devices['iPhone 13'] }, testMatch: MAIN_FLOWS },
   ],
 
   webServer: [

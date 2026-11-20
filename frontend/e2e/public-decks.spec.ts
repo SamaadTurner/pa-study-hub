@@ -173,4 +173,27 @@ test.describe('Public decks', () => {
 
     await otherContext.close()
   })
+
+  test("a visitor on someone else's public deck can study and copy it, not change it", async ({ page, browser }) => {
+    const word = `visit${Date.now()}`
+    const ownerContext = await browser.newContext()
+    const ownerPage = await ownerContext.newPage()
+    await register(ownerPage, newUser('Jordan'))
+    await createDeckWithCards(ownerPage, `Deck ${word}`, [{ front: 'Owner question', back: 'Owner answer' }], { isPublic: true })
+    const deckUrl = ownerPage.url()
+    await ownerContext.close()
+
+    await register(page, newUser())
+    await page.goto(new URL(deckUrl).pathname)
+    await expect(page.getByText(/public deck shared by another student/)).toBeVisible()
+    await expect(page.getByRole('button', { name: '+ Add Card' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /^Study/ })).toBeVisible()
+    await page.getByText('Owner question').click()
+    await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Copy to my decks' }).click()
+    await expect(page.getByText('Deck copied to My Decks')).toBeVisible()
+    // The copy is the visitor's own: now cards can be added
+    await expect(page.getByRole('button', { name: '+ Add Card' })).toBeVisible()
+  })
 })

@@ -60,8 +60,9 @@ test.describe('Analytics', () => {
     await openAnalytics(page)
 
     await expect(statNumber(page, 'Study days')).toHaveText('1')
-    // Exam questions are not flashcards
+    // Exam questions are not flashcards; they have their own number
     await expect(statNumber(page, 'Cards reviewed')).toHaveText('0')
+    await expect(statNumber(page, 'Exam questions')).toHaveText('5')
 
     // Today's square used to stay grey when no flashcards were reviewed
     await expect(daySquares(page, /: 5 exam questions, \d+% accuracy$/)).toHaveCount(1)

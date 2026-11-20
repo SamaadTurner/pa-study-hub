@@ -15,7 +15,8 @@ async function setSecondsLeft(page: Page, seconds: number) {
       await route.continue()
       return
     }
-    const response = await route.fetch()
+    // allHeaders(): WebKit leaves the Authorization header out of the plain fetch()
+    const response = await route.fetch({ headers: await route.request().allHeaders() })
     const exam = await response.json()
     exam.timeRemainingSeconds = seconds
     await route.fulfill({ response, json: exam })
@@ -203,15 +204,22 @@ test.describe('Practice exams', () => {
     await expect(page.getByRole('heading', { name: 'Practice Exam' })).toBeVisible()
   })
 
-  test('topics without enough questions are shown before starting', async ({ page }) => {
+  test('topics without enough questions are shown before starting', async ({ page, isMobile }) => {
     await register(page, newUser())
     await page.goto('/exam')
+    await expect(page.getByRole('heading', { name: 'Practice Exam' })).toBeVisible()
 
-    // There are no starter questions for dermatology, so it can't be picked
-    await expect(page.getByLabel('Dermatology (0)')).toBeDisabled()
+    // There are no starter questions for dermatology, so it can't be picked.
+    // On a phone the topics are a dropdown, elsewhere radio buttons.
+    if (isMobile) {
+      await expect(page.locator('#exam-topic option[value="DERMATOLOGY"]')).toBeDisabled()
+      await page.locator('#exam-topic').selectOption('CARDIOLOGY')
+    } else {
+      await expect(page.getByLabel('Dermatology (0)')).toBeDisabled()
+      await page.getByLabel('Cardiology (10)').check()
+    }
 
     // Cardiology has 10: asking for 20 says so and Start is off
-    await page.getByLabel('Cardiology (10)').check()
     await page.getByRole('button', { name: '20', exact: true }).click()
     await expect(page.getByText('Only 10 questions for this choice. Pick 10 or fewer, or another topic.')).toBeVisible()
     await expect(page.getByRole('button', { name: /Start Exam/ })).toBeDisabled()

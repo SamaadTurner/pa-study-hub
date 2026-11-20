@@ -25,7 +25,6 @@ test.describe('Studying a deck', () => {
     await expect(page.getByRole('button', { name: 'Good' })).toBeHidden()
 
     await page.getByRole('button', { name: 'Reveal Answer', exact: true }).click()
-    await expect(page.getByRole('button', { name: /Card showing answer/ })).toBeVisible()
     await expect(page.getByText('Low-pitched diastolic rumble at the apex')).toBeVisible()
 
     await page.getByRole('button', { name: 'Good' }).click()

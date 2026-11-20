@@ -140,7 +140,7 @@ jobs:
     # Pinned: ubuntu-latest moved to Ubuntu 26.04, which Playwright 1.58 cannot
     # install Chromium on yet. Move back once Playwright supports it.
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -197,9 +197,10 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Install the browser for Playwright
+      - name: Install the browsers for Playwright
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        # WebKit for the Safari and iPhone runs of the main flows
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Run end-to-end tests
         working-directory: frontend

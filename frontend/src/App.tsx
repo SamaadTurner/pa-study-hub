@@ -8,6 +8,9 @@ import ErrorBoundary from '@/components/common/ErrorBoundary'
 
 import LoginPage        from '@/pages/auth/LoginPage'
 import RegisterPage     from '@/pages/auth/RegisterPage'
+import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
+import ConfirmEmailPage from '@/pages/auth/ConfirmEmailPage'
 
 // The login and register pages are part of the main bundle, because one of them
 // is the first thing a visitor sees. Every page behind the login is its own file
@@ -42,6 +45,10 @@ export default function App() {
               {/* Public routes */}
               <Route path="/login"    element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              {/* Opened from links in emails, signed in or not */}
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password"  element={<ResetPasswordPage />} />
+              <Route path="/confirm-email"   element={<ConfirmEmailPage />} />
               {/* Lazy, but outside AppLayout, so it needs its own Suspense */}
               <Route path="/privacy"  element={<Suspense fallback={null}><PrivacyPage /></Suspense>} />
 

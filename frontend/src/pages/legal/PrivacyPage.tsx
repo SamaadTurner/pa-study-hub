@@ -55,7 +55,9 @@ export default function PrivacyPage() {
               Nothing is sent unless you press one of those buttons.
             </li>
             <li>
-              The app runs on Render and the database on Neon, both in the US (Oregon).
+              The app runs on Render and the database on Neon, both in the US (Oregon). Emails from the app
+              (the sign-up confirmation and password reset links) are sent through Brevo, which gets your
+              email address and the email's text for that purpose.
             </li>
           </ul>
         </section>

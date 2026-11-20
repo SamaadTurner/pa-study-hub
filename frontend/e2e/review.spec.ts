@@ -4,7 +4,9 @@ import { newUser, register, createDeckWithCards } from './helpers'
 // Shows the answer of the card on screen and rates it
 async function flipAndRate(page: Page, rating: 'Again' | 'Hard' | 'Good' | 'Easy') {
   await page.getByRole('button', { name: 'Reveal Answer', exact: true }).click()
-  await page.getByRole('button', { name: rating }).click()
+  // The button's name starts with the rating ("Again Forgot completely"). Matching
+  // the start keeps "Again" from also finding the banner's "Send it again".
+  await page.getByRole('button', { name: new RegExp(`^${rating}`) }).click()
 }
 
 test.describe('Studying a deck', () => {

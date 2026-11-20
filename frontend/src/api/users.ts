@@ -38,3 +38,8 @@ export async function removeGoogle(): Promise<User> {
 export async function deleteAccount(confirmation: { password?: string; confirmEmail?: string }): Promise<void> {
   await apiClient.delete('/users/me', { data: confirmation })
 }
+
+// Sends the email confirmation link again (3 an hour)
+export async function resendConfirmation(): Promise<void> {
+  await apiClient.post('/users/me/confirmation-email')
+}

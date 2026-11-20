@@ -13,6 +13,7 @@ import {
   logout as apiLogout,
   googleSignIn as apiGoogleSignIn,
   googleLink as apiGoogleLink,
+  resetPassword as apiResetPassword,
   getMe,
 } from '@/api/auth'
 import { clearTokens, getAccessToken } from '@/api/client'
@@ -25,6 +26,7 @@ interface AuthContextValue {
   register: (req: RegisterRequest) => Promise<void>
   signInWithGoogle: (credential: string) => Promise<void>
   linkGoogle: (credential: string, password: string) => Promise<void>
+  resetPassword: (token: string, newPassword: string) => Promise<void>
   logout: () => Promise<void>
   updateUser: (updates: Partial<User>) => void
   // Signs out in this browser only, without calling the server (the account is gone)
@@ -73,6 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user)
   }, [])
 
+  const resetPassword = useCallback(async (token: string, newPassword: string) => {
+    const { user } = await apiResetPassword(token, newPassword)
+    setUser(user)
+  }, [])
+
   const logout = useCallback(async () => {
     // Sign out in this browser even if the server can't be reached. The refresh
     // token then stays valid on the server until it expires (7 days).
@@ -100,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user, isAuthenticated: !!user, isLoading, login, register, signInWithGoogle, linkGoogle, logout, updateUser, forgetSession,
+        user, isAuthenticated: !!user, isLoading, login, register, signInWithGoogle, linkGoogle, resetPassword, logout, updateUser, forgetSession,
       }}
     >
       {children}

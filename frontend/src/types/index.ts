@@ -10,6 +10,7 @@ export interface User {
   graduationYear?: number | null
   hasPassword: boolean    // false for an account made with Google that has no password yet
   googleLinked: boolean
+  emailVerified: boolean  // false until the confirmation link is used
 }
 
 export interface AuthTokens {

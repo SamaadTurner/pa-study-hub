@@ -45,6 +45,25 @@ export async function googleLink(credential: string, password: string): Promise<
   return { user: data.user }
 }
 
+// ---- Links sent by email ---------------------------------------------------------
+
+// "Forgot password". Returns the sentence to show, the same whether or not the email has an account.
+export async function requestPasswordReset(email: string): Promise<string> {
+  const { data } = await apiClient.post<{ message: string }>('/auth/password-reset/request', { email })
+  return data.message
+}
+
+// Sets the new password from a reset link and signs in
+export async function resetPassword(token: string, newPassword: string): Promise<{ user: User }> {
+  const { data } = await apiClient.post<AuthResponse>('/auth/password-reset/confirm', { token, newPassword })
+  setTokens(data.accessToken, data.refreshToken)
+  return { user: data.user }
+}
+
+export async function confirmEmail(token: string): Promise<void> {
+  await apiClient.post('/auth/confirm-email', { token })
+}
+
 // Tells the server to revoke the refresh token, so it can't be used to get new
 // access tokens after signing out (for example if it was copied from this browser).
 // Short timeout: signing out should not wait a minute for a sleeping server.

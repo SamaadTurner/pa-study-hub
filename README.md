@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 399 backend tests, 115 frontend unit tests and 72 end-to-end browser tests
+the frontend. 409 backend tests, 115 frontend unit tests and 76 end-to-end browser tests
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -42,6 +42,9 @@ run in CI on every push.
 - **Continue with Google.** Sign in or sign up with a Google account, or add Google to an
   existing account. Off unless the server has a Google client ID. A short
   [privacy page](https://pa-study-hub.onrender.com/privacy) says what is stored.
+- **Forgot password and email confirmation.** A reset link by email (one hour, works once),
+  and a confirmation link after signing up. A confirmed email lets Google sign-in link to the
+  account without asking for its password.
 - **Profile.** Change your details and password, set a password on an account made
   with Google, add or remove Google sign-in, and close your account, which deletes your
   data.
@@ -115,13 +118,13 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 399 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 409 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 97.8% of lines and 86.1% of branches (JaCoCo, without the code Lombok
+  They cover 96.8% of lines and 85.5% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
 - **Frontend:** 115 unit tests with Vitest and React Testing Library.
-- **End to end:** 72 Playwright tests that click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens and the profile page), decks
+- **End to end:** 76 Playwright tests that click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
   and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
@@ -300,6 +303,15 @@ Instead the user types that account's password once (`/auth/google/link`, counte
 the login lock). Tests use a fake token checker; the checks on real tokens have their own
 unit tests with a locally made signing key.
 
+**Emails go through Brevo's web API, and links are stored as hashes.** Render's free plan
+blocks the SMTP ports, so the app calls Brevo over HTTPS (`BrevoMailSender`, free plan, 300
+emails a day); without `MAIL_BREVO_API_KEY` emails are only logged, which is what tests and
+local runs use. A reset or confirmation link carries 32 random bytes; the database keeps
+only the SHA-256 hash, a link works once and until it expires, a new link retires the older
+ones, and a user gets at most 3 of each kind an hour. "Forgot password" answers the same
+whether or not an account uses the email. The login lock counts live in the database, so a
+restart (every wake-up on the free plan) no longer clears them.
+
 **Closing an account deletes its data.** One transaction removes the user's decks,
 cards, reviews, exams, activity, AI usage and own questions, in an order that never leaves
 a row pointing at a deleted one (plain SQL in `AccountDeletionService`, so it runs the same
@@ -340,8 +352,10 @@ To turn it on locally, add `AI_API_KEY=<your Groq key>` to the backend command a
 
 ## Known limits
 
-- The login lock counts failures in memory, so a restart clears it, and it is per email
-  only: someone who knows your email can lock you out for 15 minutes.
+- The login lock is per email only: someone who knows your email can lock you out for 15
+  minutes (the reset email unlocks it).
+- Emails come from a Brevo address, because a Gmail sender can't pass the checks receiving
+  servers run, so some may land in spam. A domain of our own would fix that.
 - Only 30 starter questions, in three topics. Users can add their own. Shared questions
   are only checked by other users' reports, not by an expert.
 

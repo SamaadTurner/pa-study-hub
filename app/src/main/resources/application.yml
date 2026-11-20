@@ -13,7 +13,11 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      # Flyway owns the schema. Hibernate used to compare every table with the
+      # entities at each start, which costs time on every wake-up of the free
+      # server; the PostgreSQL test run in CI does that check on each push
+      # (application-postgres.yml keeps ddl-auto: validate).
+      ddl-auto: none
     show-sql: false
     properties:
       hibernate:

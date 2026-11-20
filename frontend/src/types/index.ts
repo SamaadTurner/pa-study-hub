@@ -11,6 +11,7 @@ export interface User {
   hasPassword: boolean    // false for an account made with Google that has no password yet
   googleLinked: boolean
   emailVerified: boolean  // false until the confirmation link is used
+  timeZone?: string | null  // the zone streaks and goals use, from the device
 }
 
 export interface AuthTokens {

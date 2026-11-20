@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatDate, formatShortDate, formatRelativeDate, getGreeting } from '@/utils/formatDate'
+import { formatDate, formatShortDate, formatRelativeDate, getGreeting, parseServerDate } from '@/utils/formatDate'
 
 // Use date-only strings (no time component) so parseISO treats them as local midnight,
 // avoiding timezone-offset issues where UTC midnight can roll back to the previous day.
@@ -56,5 +56,22 @@ describe('getGreeting', () => {
   it('returns a valid greeting string', () => {
     const greeting = getGreeting()
     expect(['Good morning', 'Good afternoon', 'Good evening']).toContain(greeting)
+  })
+})
+
+describe('parseServerDate', () => {
+  it('reads a server time without a zone as UTC', () => {
+    expect(parseServerDate('2026-11-21T02:00:00').toISOString()).toBe('2026-11-21T02:00:00.000Z')
+    expect(parseServerDate('2026-11-21T02:00:00.507472').toISOString()).toBe('2026-11-21T02:00:00.507Z')
+  })
+
+  it('keeps a time that already has a zone', () => {
+    expect(parseServerDate('2026-11-21T02:00:00Z').toISOString()).toBe('2026-11-21T02:00:00.000Z')
+    expect(parseServerDate('2026-11-21T02:00:00+01:00').toISOString()).toBe('2026-11-21T01:00:00.000Z')
+  })
+
+  it('leaves a plain calendar date on that day', () => {
+    const date = parseServerDate('2026-11-20')
+    expect([date.getFullYear(), date.getMonth() + 1, date.getDate()]).toEqual([2026, 11, 20])
   })
 })

@@ -4,7 +4,7 @@ import { getExamHistory } from '@/api/exam'
 import type { ExamHistorySummary, ApiError } from '@/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import Button from '@/components/common/Button'
-import { formatDate } from '@/utils/formatDate'
+import { formatDate, parseServerDate } from '@/utils/formatDate'
 import { formatDuration } from '@/utils/formatDuration'
 import { getCategoryLabel } from '@/utils/categoryColors'
 
@@ -33,7 +33,7 @@ function examDate(exam: ExamHistorySummary): string {
 
 // Number to sort a row by. Exams without a score or duration go last.
 function sortValue(exam: ExamHistorySummary, key: SortKey): number {
-  if (key === 'completedAt')     return new Date(examDate(exam)).getTime()
+  if (key === 'completedAt')     return parseServerDate(examDate(exam)).getTime()
   if (key === 'scorePercent')    return exam.scorePercent ?? -1
   if (key === 'durationSeconds') return exam.durationSeconds ?? -1
   return exam.questionCount

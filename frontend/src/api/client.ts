@@ -14,10 +14,24 @@ const apiClient: AxiosInstance = axios.create({
 
 // ---- Request interceptor: attach JWT ----------------------------------------
 
+// The device's time zone, for example America/Los_Angeles. The server runs on UTC
+// and uses this for "today": streaks, the daily goal and due dates.
+export function deviceTimeZone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null
+  } catch {
+    return null
+  }
+}
+
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem(TOKEN_KEY)
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+  const zone = deviceTimeZone()
+  if (zone) {
+    config.headers['X-Time-Zone'] = zone
   }
   return config
 })

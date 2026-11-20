@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { addGoogle, changePassword, deleteAccount, removeGoogle, updateProfile } from '@/api/users'
+import { deviceTimeZone } from '@/api/client'
 import Button from '@/components/common/Button'
 import GoogleButton, { useGoogleClientId } from '@/components/auth/GoogleButton'
 import { useAuth } from '@/contexts/AuthContext'
@@ -163,6 +164,10 @@ export default function ProfilePage() {
             <input id="gradYear" inputMode="numeric" value={gradYear} onChange={e => setGradYear(e.target.value)} className={inputClass} />
           </div>
         </div>
+        <p className="text-sm text-gray-600">
+          Time zone: <span className="font-medium text-gray-800">{deviceTimeZone() ?? user.timeZone ?? 'UTC'}</span>.
+          Taken from this device; streaks, the daily goal and due dates follow it.
+        </p>
         {profileError && <p className="text-sm text-red-600" role="alert">{profileError}</p>}
         <Button type="submit" loading={savingProfile}>Save details</Button>
       </form>

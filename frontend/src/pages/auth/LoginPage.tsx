@@ -145,7 +145,7 @@ export default function LoginPage() {
               Create one
             </Link>
           </p>
-          <p className="text-center text-xs text-gray-400 mt-3">
+          <p className="text-center text-xs text-gray-500 mt-3">
             <Link to="/privacy" className="hover:underline">Privacy</Link>
           </p>
         </div>

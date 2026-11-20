@@ -28,6 +28,7 @@ interface ProgressDashboardResponse {
   totalStudyDays: number
   totalStudyMinutes?: number
   totalCardsReviewed: number
+  totalExamQuestions?: number
   overallAccuracy: number
   weakestCategory?: string
   categoryAccuracy: Record<string, number>
@@ -64,6 +65,7 @@ function mapProgressDashboard(response: ProgressDashboardResponse): ProgressDash
     longestStreak: response.longestStreak,
     totalStudyDays: response.totalStudyDays,
     totalCardsReviewed: response.totalCardsReviewed,
+    totalExamQuestions: response.totalExamQuestions ?? 0,
     overallAccuracy: response.overallAccuracy,
     categoryAccuracy: response.categoryAccuracy,
     last30DaysActivity: response.last30DaysActivity.map(mapDailyProgressPoint),

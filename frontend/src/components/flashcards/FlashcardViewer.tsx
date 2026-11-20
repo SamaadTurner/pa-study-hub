@@ -15,14 +15,13 @@ export default function FlashcardViewer({ card, isFlipped, onFlip }: Props) {
   return (
     <div className="w-full max-w-2xl mx-auto select-none">
       {/* Flip card container — CSS 3D flip */}
+      {/* Clicking or tapping the card flips it. It is not a button on purpose: the
+          hint button sits inside it, and keyboard users flip with Space or the
+          Reveal Answer button below. */}
       <div
         className="relative cursor-pointer"
         style={{ perspective: '1200px' }}
         onClick={onFlip}
-        role="button"
-        aria-label={isFlipped ? 'Card showing answer. Click to flip back.' : 'Card showing question. Click to reveal answer.'}
-        tabIndex={0}
-        onKeyDown={e => e.key === 'Enter' || e.key === ' ' ? onFlip() : undefined}
       >
         <div
           className="relative w-full transition-transform duration-500"
@@ -36,9 +35,16 @@ export default function FlashcardViewer({ card, isFlipped, onFlip }: Props) {
           <div
             className="absolute inset-0 bg-white border-2 border-gray-200 rounded-2xl
               shadow-lg flex flex-col items-center justify-center p-8 text-center"
-            style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
+            style={{
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              // Safari (every iPhone browser) still sends taps to a face turned away,
+              // so a tap on Show Hint hit the hidden answer side. The face that is
+              // turned away takes no taps or clicks.
+              pointerEvents: isFlipped ? 'none' : 'auto',
+            }}
           >
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-4">
               {isCloze ? 'Fill in the blank' : 'Question'}
             </p>
             <p className="text-xl font-medium text-gray-900 leading-relaxed">
@@ -60,7 +66,7 @@ export default function FlashcardViewer({ card, isFlipped, onFlip }: Props) {
             )}
 
             {!isFlipped && (
-              <p className="absolute bottom-4 text-xs text-gray-300">Click to reveal answer</p>
+              <p className="absolute bottom-4 text-xs text-gray-500">Click to reveal answer</p>
             )}
           </div>
 
@@ -72,9 +78,10 @@ export default function FlashcardViewer({ card, isFlipped, onFlip }: Props) {
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
               transform: 'rotateY(180deg)',
+              pointerEvents: isFlipped ? 'auto' : 'none',
             }}
           >
-            <p className="text-xs font-semibold text-primary-400 uppercase tracking-widest mb-4">
+            <p className="text-xs font-semibold text-primary-700 uppercase tracking-widest mb-4">
               Answer
             </p>
             {isCloze ? (

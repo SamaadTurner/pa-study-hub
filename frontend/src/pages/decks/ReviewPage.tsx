@@ -183,13 +183,13 @@ export default function ReviewPage() {
         </span>
         <button
           onClick={() => navigate(`/decks/${deckId}`)}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
+          className="text-gray-500 hover:text-gray-600 transition-colors"
         >
           ✕ Exit
         </button>
       </div>
 
-      <ProgressBar value={progressPct} size="sm" color="primary" />
+      <ProgressBar value={progressPct} size="sm" color="primary" ariaLabel="Cards studied in this session" />
 
       {/* Flashcard */}
       <FlashcardViewer
@@ -211,13 +211,13 @@ export default function ReviewPage() {
           >
             Reveal Answer
           </button>
-          <p className="text-xs text-gray-400 mt-2">or press Space / Enter</p>
+          <p className="text-xs text-gray-500 mt-2">or press Space / Enter</p>
         </div>
       )}
 
       {/* Keyboard shortcuts hint */}
       {isFlipped && (
-        <p className="text-center text-xs text-gray-400">
+        <p className="text-center text-xs text-gray-500">
           Keyboard: <kbd className="bg-gray-100 px-1 rounded">1</kbd> Again &nbsp;
           <kbd className="bg-gray-100 px-1 rounded">2</kbd> Hard &nbsp;
           <kbd className="bg-gray-100 px-1 rounded">3</kbd> Good &nbsp;

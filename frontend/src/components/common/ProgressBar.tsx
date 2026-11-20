@@ -2,6 +2,8 @@ interface Props {
   value: number      // 0–100
   max?: number       // defaults to 100
   label?: string
+  // Name for screen readers when no visible label is shown
+  ariaLabel?: string
   showPercent?: boolean
   color?: 'primary' | 'success' | 'warning' | 'danger'
   size?: 'sm' | 'md' | 'lg'
@@ -30,6 +32,7 @@ export default function ProgressBar({
   value,
   max = 100,
   label,
+  ariaLabel,
   showPercent = false,
   color,
   size = 'md',
@@ -52,6 +55,7 @@ export default function ProgressBar({
           className={`${barColor} ${SIZE_CLASSES[size]} rounded-full transition-all duration-500 ease-out`}
           style={{ width: `${pct}%` }}
           role="progressbar"
+          aria-label={label ?? ariaLabel ?? 'Progress'}
           aria-valuenow={value}
           aria-valuemin={0}
           aria-valuemax={max}

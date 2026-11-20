@@ -109,7 +109,27 @@ export default function ExamSetupPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">Category</h2>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {/* On a phone a dropdown, where the grid took 9 rows */}
+        <div className="sm:hidden">
+          <label htmlFor="exam-topic" className="sr-only">Topic</label>
+          <select
+            id="exam-topic"
+            value={category}
+            onChange={e => setCategory(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white
+              focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            {[ALL, ...ALL_CATEGORIES].map(cat => {
+              const count = countFor(cat)
+              return (
+                <option key={cat} value={cat} disabled={count === 0}>
+                  {cat === ALL ? 'All categories' : getCategoryLabel(cat)}{count !== null ? ` (${count})` : ''}
+                </option>
+              )
+            })}
+          </select>
+        </div>
+        <div className="hidden sm:grid grid-cols-3 gap-2">
           {[ALL, ...ALL_CATEGORIES].map(cat => {
             const checked = category === cat
             const count = countFor(cat)
@@ -119,7 +139,7 @@ export default function ExamSetupPage() {
                 key={cat}
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-colors text-sm
                   ${empty
-                    ? 'border-gray-100 text-gray-400 cursor-not-allowed'
+                    ? 'border-gray-100 text-gray-500 opacity-60 cursor-not-allowed'
                     : checked
                       ? 'border-primary-400 bg-primary-50 text-primary-900 cursor-pointer'
                       : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 cursor-pointer'
@@ -135,7 +155,7 @@ export default function ExamSetupPage() {
                 />
                 <span className="leading-tight">
                   {cat === ALL ? 'All categories' : getCategoryLabel(cat)}
-                  {count !== null && <span className="text-xs text-gray-400"> ({count})</span>}
+                  {count !== null && <span className="text-xs text-gray-600"> ({count})</span>}
                 </span>
               </label>
             )
@@ -292,7 +312,7 @@ export default function ExamSetupPage() {
               {timeLimitMinutes === 0 ? 'untimed' : `${timeLimitMinutes} min`}
             </span>
           </p>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-500">
             {followBlueprint
               ? 'Questions picked to follow the 2025 PANCE blueprint task mix'
               : 'Questions picked at random from the starter questions and yours'}

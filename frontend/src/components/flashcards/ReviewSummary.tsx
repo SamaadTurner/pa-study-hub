@@ -42,7 +42,7 @@ export default function ReviewSummary({
 
       {/* Accuracy */}
       <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <p className={`text-4xl font-bold ${accuracy >= 70 ? 'text-green-600' : 'text-orange-500'}`}>
+        <p className={`text-4xl font-bold ${accuracy >= 70 ? 'text-green-700' : 'text-orange-700'}`}>
           {accuracy}%
         </p>
         <p className="text-sm text-gray-500 mt-1">Accuracy ({correctCount}/{totalReviewed} correct)</p>
@@ -53,8 +53,8 @@ export default function ReviewSummary({
         <p className="text-sm font-semibold text-gray-700 mb-3">Rating Breakdown</p>
         <div className="grid grid-cols-4 gap-3">
           <RatingCell label="Again" count={ratingCounts.again} color="text-red-600" bg="bg-red-50" />
-          <RatingCell label="Hard"  count={ratingCounts.hard}  color="text-orange-600" bg="bg-orange-50" />
-          <RatingCell label="Good"  count={ratingCounts.good}  color="text-green-600" bg="bg-green-50" />
+          <RatingCell label="Hard"  count={ratingCounts.hard}  color="text-orange-700" bg="bg-orange-50" />
+          <RatingCell label="Good"  count={ratingCounts.good}  color="text-green-700" bg="bg-green-50" />
           <RatingCell label="Easy"  count={ratingCounts.easy}  color="text-blue-600" bg="bg-blue-50" />
         </div>
       </div>

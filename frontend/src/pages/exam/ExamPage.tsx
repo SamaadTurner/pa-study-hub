@@ -215,7 +215,7 @@ export default function ExamPage() {
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-gray-700">
             Question <span className="text-gray-900 font-bold">{currentIndex + 1}</span>
-            <span className="text-gray-400"> / {totalQuestions}</span>
+            <span className="text-gray-500"> / {totalQuestions}</span>
           </span>
           <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
             {getCategoryLabel(question.category)}
@@ -230,7 +230,7 @@ export default function ExamPage() {
           )}
           <button
             onClick={handleExit}
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors px-2 py-1"
+            className="text-xs text-gray-500 hover:text-gray-600 transition-colors px-2 py-1"
           >
             Exit
           </button>
@@ -238,8 +238,8 @@ export default function ExamPage() {
       </div>
 
       <div>
-        <ProgressBar value={progressPct} size="sm" color="primary" />
-        <p className="text-xs text-gray-400 mt-1">
+        <ProgressBar value={progressPct} size="sm" color="primary" ariaLabel="Questions answered" />
+        <p className="text-xs text-gray-500 mt-1">
           {answeredCount} of {totalQuestions} answered
         </p>
       </div>

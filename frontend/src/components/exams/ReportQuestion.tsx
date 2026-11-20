@@ -72,7 +72,7 @@ export default function ReportQuestion({ questionId, alreadyReported }: Props) {
       </fieldset>
       <div>
         <label htmlFor={`note-${questionId}`} className="block text-sm font-medium text-gray-700 mb-1">
-          Note for the author <span className="text-gray-400 font-normal">(optional)</span>
+          Note for the author <span className="text-gray-500 font-normal">(optional)</span>
         </label>
         <textarea id={`note-${questionId}`} rows={2} maxLength={300} value={note} onChange={e => setNote(e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />

@@ -15,7 +15,7 @@ export default function RecentActivity({ activity }: Props) {
     return (
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Recent Activity</h3>
-        <p className="text-sm text-gray-400 text-center py-4">No activity yet. Start studying!</p>
+        <p className="text-sm text-gray-500 text-center py-4">No activity yet. Start studying!</p>
       </div>
     )
   }
@@ -41,7 +41,7 @@ export default function RecentActivity({ activity }: Props) {
                 <span>⏱ {day.studyMinutes}m</span>
               )}
               {day.accuracy > 0 && (
-                <span className={`font-medium ${day.accuracy >= 70 ? 'text-green-600' : 'text-red-500'}`}>
+                <span className={`font-medium ${day.accuracy >= 70 ? 'text-green-700' : 'text-red-600'}`}>
                   {Math.round(day.accuracy)}%
                 </span>
               )}

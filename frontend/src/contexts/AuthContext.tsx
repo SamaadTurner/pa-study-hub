@@ -6,7 +6,7 @@ import {
   useCallback,
   ReactNode,
 } from 'react'
-import type { User, LoginRequest, RegisterRequest } from '@/types'
+import type { ApiError, User, LoginRequest, RegisterRequest } from '@/types'
 import {
   login as apiLogin,
   register as apiRegister,
@@ -35,23 +35,55 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+// While the server can't be reached at start-up: try again every 5 seconds, about a minute in all
+const RESTORE_ATTEMPTS = 12
+const RESTORE_WAIT_MS = 5_000
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // On mount, try to restore session from stored token
+  // On mount, try to restore the session from the stored token.
+  //
+  // Only a real "not signed in" answer (401 or 403, after the client already tried
+  // a token refresh) ends the session. Any other failure keeps it and tries again:
+  // the free server takes about a minute to wake up, and the first requests time
+  // out meanwhile. This used to clear the tokens on any error, which signed
+  // students out every time the server had been asleep.
   useEffect(() => {
-    const token = getAccessToken()
-    if (token) {
-      getMe()
-        .then(setUser)
-        .catch(() => {
-          clearTokens()
-          setUser(null)
-        })
-        .finally(() => setIsLoading(false))
-    } else {
+    if (!getAccessToken()) {
       setIsLoading(false)
+      return
+    }
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+
+    function restore(attempt: number) {
+      getMe()
+        .then(me => {
+          if (cancelled) return
+          setUser(me)
+          setIsLoading(false)
+        })
+        .catch((err: ApiError) => {
+          if (cancelled) return
+          if (err?.status === 401 || err?.status === 403) {
+            clearTokens()
+            setUser(null)
+            setIsLoading(false)
+          } else if (attempt < RESTORE_ATTEMPTS) {
+            timer = setTimeout(() => restore(attempt + 1), RESTORE_WAIT_MS)
+          } else {
+            // Still unreachable after about a minute: stop waiting, keep the tokens
+            setIsLoading(false)
+          }
+        })
+    }
+
+    restore(1)
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
     }
   }, [])
 

@@ -117,7 +117,7 @@ export default function SuggestCardsModal({ isOpen, onClose, remainingToday, onA
                 placeholder="Paste lecture notes or a textbook passage..."
                 className={textareaClass}
               />
-              <p className="text-xs text-gray-400 mt-1 text-right">
+              <p className="text-xs text-gray-500 mt-1 text-right">
                 {notes.length} / {MAX_NOTES_LENGTH}
               </p>
             </div>

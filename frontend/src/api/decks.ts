@@ -50,6 +50,7 @@ interface ReviewResponse {
 function mapDeck(response: DeckResponse): Deck {
   return {
     id: response.id,
+    userId: response.userId,
     title: response.title,
     description: response.description,
     category: response.category,

@@ -10,9 +10,9 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-gray-50 py-10 px-4">
       <article className="max-w-2xl mx-auto bg-white border border-gray-200 rounded-2xl p-8 space-y-6 text-sm text-gray-700 leading-relaxed">
         <div>
-          <Link to="/login" className="text-primary-600 hover:underline">← Back to sign in</Link>
+          <Link to="/login" className="text-primary-600 underline">← Back to sign in</Link>
           <h1 className="text-2xl font-bold text-gray-900 mt-3">Privacy</h1>
-          <p className="text-xs text-gray-400 mt-1">Last updated November 19, 2026</p>
+          <p className="text-xs text-gray-500 mt-1">Last updated November 19, 2026</p>
         </div>
 
         <p>
@@ -70,7 +70,7 @@ export default function PrivacyPage() {
             because they belong to other people: their own copies of decks you made public, and questions of
             yours that are part of their past exams (kept in those results without your name, and never used
             again). For any other question about your data, email{' '}
-            <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary-600 hover:underline">
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary-600 underline">
               {CONTACT_EMAIL}
             </a>.
           </p>

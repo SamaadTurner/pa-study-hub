@@ -70,7 +70,7 @@ export default function GoogleSignIn({ mode, redirectTo }: Props) {
     <div className="mt-6">
       <div className="flex items-center gap-3 mb-4">
         <div className="h-px flex-1 bg-gray-200" />
-        <span className="text-xs text-gray-400">or</span>
+        <span className="text-xs text-gray-500">or</span>
         <div className="h-px flex-1 bg-gray-200" />
       </div>
 

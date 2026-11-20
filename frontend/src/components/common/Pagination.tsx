@@ -40,7 +40,7 @@ export default function Pagination({
         {visible[0] > 0 && (
           <>
             <PagerButton onClick={() => onPageChange(0)}>1</PagerButton>
-            {visible[0] > 1 && <span className="px-2 text-gray-400">…</span>}
+            {visible[0] > 1 && <span className="px-2 text-gray-500">…</span>}
           </>
         )}
 
@@ -57,7 +57,7 @@ export default function Pagination({
         {visible[visible.length - 1] < totalPages - 1 && (
           <>
             {visible[visible.length - 1] < totalPages - 2 && (
-              <span className="px-2 text-gray-400">…</span>
+              <span className="px-2 text-gray-500">…</span>
             )}
             <PagerButton onClick={() => onPageChange(totalPages - 1)}>
               {totalPages}

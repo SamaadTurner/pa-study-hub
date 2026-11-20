@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useCards } from '@/hooks/useCards'
 import { useAiStatus } from '@/hooks/useAiStatus'
 import SuggestCardsModal from '@/components/ai/SuggestCardsModal'
-import { getDeck } from '@/api/decks'
+import { cloneDeck, getDeck } from '@/api/decks'
+import { useAuth } from '@/contexts/AuthContext'
 import type { Card, Deck } from '@/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import EmptyState from '@/components/common/EmptyState'
@@ -20,6 +21,8 @@ export default function DeckDetailPage() {
   const { deckId }  = useParams<{ deckId: string }>()
   const navigate    = useNavigate()
   const { notify }  = useNotification()
+  const { user }    = useAuth()
+  const [copying, setCopying] = useState(false)
 
   const { cards, loading, error, createCard, deleteCard } = useCards(deckId!)
   const ai = useAiStatus()
@@ -47,6 +50,24 @@ export default function DeckDetailPage() {
   const [deleteTarget, setDeleteTarget]   = useState<Card | null>(null)
   const [deleting, setDeleting]           = useState(false)
   const [expandedCard, setExpandedCard]   = useState<string | null>(null)
+
+  // Another user's public deck: it can be studied and copied, but only its owner
+  // can add, change or delete cards (the server refuses it for anyone else)
+  const isOwner = !!deck && !!user && deck.userId === user.id
+
+  async function handleCopy() {
+    if (!deckId) return
+    setCopying(true)
+    try {
+      const copy = await cloneDeck(deckId)
+      notify('success', 'Deck copied to My Decks')
+      navigate(`/decks/${copy.id}`)
+    } catch (err) {
+      notify('error', (err as ApiError)?.detail ?? 'Could not copy the deck')
+    } finally {
+      setCopying(false)
+    }
+  }
 
   async function handleDeleteCard() {
     if (!deleteTarget) return
@@ -99,10 +120,10 @@ export default function DeckDetailPage() {
           {deck?.description && (
             <p className="text-gray-500 text-sm mt-1">{deck.description}</p>
           )}
-          <p className="text-gray-400 text-xs mt-1">
+          <p className="text-gray-500 text-xs mt-1">
             {cards.length} {cards.length === 1 ? 'card' : 'cards'}
             {deck && deck.dueCardCount > 0 && (
-              <span className="text-orange-600 ml-2">· {deck.dueCardCount} due for review</span>
+              <span className="text-orange-700 ml-2">· {deck.dueCardCount} due for review</span>
             )}
           </p>
         </div>
@@ -116,31 +137,44 @@ export default function DeckDetailPage() {
             </Button>
           )}
           {/* Only there when the server has the AI features turned on */}
-          {ai.enabled && (
+          {isOwner && ai.enabled && (
             <Button variant="secondary" size="sm" onClick={() => setSuggestOpen(true)}>
               Suggest cards
             </Button>
           )}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => navigate(`/decks/${deckId}/cards/new`)}
-          >
-            + Add Card
-          </Button>
+          {isOwner ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate(`/decks/${deckId}/cards/new`)}
+            >
+              + Add Card
+            </Button>
+          ) : deck && (
+            <Button variant="secondary" size="sm" loading={copying} onClick={handleCopy}>
+              Copy to my decks
+            </Button>
+          )}
         </div>
       </div>
+
+      {deck && !isOwner && (
+        <p className="text-sm text-gray-700 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
+          This is a public deck shared by another student. You can study it as it is, or copy it to
+          your own decks to change it or add cards.
+        </p>
+      )}
 
       {/* Card list */}
       {cards.length === 0 ? (
         <EmptyState
           icon="📝"
           title="No cards yet"
-          message="Add your first card to start studying this deck."
-          action={{
+          message={isOwner ? 'Add your first card to start studying this deck.' : 'This deck has no cards yet.'}
+          action={isOwner ? {
             label: 'Add a Card',
             onClick: () => navigate(`/decks/${deckId}/cards/new`),
-          }}
+          } : undefined}
         />
       ) : (
         <div className="space-y-3">
@@ -155,7 +189,7 @@ export default function DeckDetailPage() {
                 onClick={() => setExpandedCard(expandedCard === card.id ? null : card.id)}
               >
                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <span className="text-xs text-gray-400 font-mono mt-0.5 flex-shrink-0">
+                  <span className="text-xs text-gray-500 font-mono mt-0.5 flex-shrink-0">
                     {String(idx + 1).padStart(2, '0')}
                   </span>
                   <p className="text-sm text-gray-900 font-medium leading-snug line-clamp-2">
@@ -171,9 +205,9 @@ export default function DeckDetailPage() {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {card.tags.length > 0 && (
-                    <span className="text-xs text-gray-400">{card.tags.length} tags</span>
+                    <span className="text-xs text-gray-500">{card.tags.length} tags</span>
                   )}
-                  <span className="text-gray-400 text-sm">
+                  <span className="text-gray-500 text-sm">
                     {expandedCard === card.id ? '▲' : '▼'}
                   </span>
                 </div>
@@ -215,13 +249,13 @@ export default function DeckDetailPage() {
                     </div>
                   )}
 
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-gray-500">
                     Next review: {formatRelativeDate(card.nextReviewDate)}
                     {' · '}Interval: {card.interval}d
                   </div>
 
-                  {/* Card actions */}
-                  <div className="flex gap-2 pt-1">
+                  {/* Card actions, for the owner only */}
+                  {isOwner && <div className="flex gap-2 pt-1">
                     <Button
                       size="sm"
                       variant="secondary"
@@ -236,7 +270,7 @@ export default function DeckDetailPage() {
                     >
                       Delete
                     </Button>
-                  </div>
+                  </div>}
                 </div>
               )}
             </div>

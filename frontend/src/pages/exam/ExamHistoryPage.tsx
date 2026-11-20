@@ -40,7 +40,7 @@ function sortValue(exam: ExamHistorySummary, key: SortKey): number {
 }
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span className="text-gray-300 ml-1">↕</span>
+  if (!active) return <span className="text-gray-500 ml-1">↕</span>
   return <span className="text-primary-600 ml-1">{dir === 'asc' ? '↑' : '↓'}</span>
 }
 
@@ -180,12 +180,12 @@ export default function ExamHistoryPage() {
                 <div className="col-span-1">
                   <p className="text-sm font-medium text-gray-900">{formatDate(examDate(exam))}</p>
                   {exam.categoryFilter && (
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-gray-500 mt-0.5">
                       {getCategoryLabel(exam.categoryFilter)}
                     </p>
                   )}
                   {exam.followsBlueprint && (
-                    <p className="text-xs text-gray-400 mt-0.5">PANCE blueprint mix</p>
+                    <p className="text-xs text-gray-500 mt-0.5">PANCE blueprint mix</p>
                   )}
                 </div>
                 <div className="text-right">

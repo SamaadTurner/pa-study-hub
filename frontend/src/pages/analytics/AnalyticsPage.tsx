@@ -36,7 +36,7 @@ function CategoryAccuracyChart({ data }: { data: Record<string, number> }) {
 
   if (chartData.length === 0) {
     return (
-      <p className="text-sm text-gray-400 text-center py-8">
+      <p className="text-sm text-gray-500 text-center py-8">
         No category data yet. Review some cards or finish a practice exam first.
       </p>
     )
@@ -87,7 +87,7 @@ function AccuracyTrendChart({ data }: { data: DailyProgressPoint[] }) {
 
   if (daysStudied < 2) {
     return (
-      <p className="text-sm text-gray-400 text-center py-8">
+      <p className="text-sm text-gray-500 text-center py-8">
         Not enough data yet. Study on two or more days to see a trend.
       </p>
     )
@@ -201,7 +201,7 @@ function ExamTaskAreaSection() {
     )
   } else if (!scores || scores.length === 0) {
     body = (
-      <p className="text-sm text-gray-400 text-center py-8">
+      <p className="text-sm text-gray-500 text-center py-8">
         No exam results yet. Finish a practice exam to see how you do on each task.
       </p>
     )
@@ -274,7 +274,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Overall stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white border border-gray-200 rounded-xl p-5 text-center">
           <p className="text-3xl font-bold text-gray-900">{Math.round(overallAcc)}%</p>
           <p className="text-xs text-gray-500 mt-1">Overall accuracy</p>
@@ -282,6 +282,10 @@ export default function AnalyticsPage() {
         <div className="bg-white border border-gray-200 rounded-xl p-5 text-center">
           <p className="text-3xl font-bold text-gray-900">{dashboard?.totalCardsReviewed ?? 0}</p>
           <p className="text-xs text-gray-500 mt-1">Cards reviewed</p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-xl p-5 text-center">
+          <p className="text-3xl font-bold text-gray-900">{dashboard?.totalExamQuestions ?? 0}</p>
+          <p className="text-xs text-gray-500 mt-1">Exam questions</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-5 text-center">
           <p className="text-3xl font-bold text-gray-900">{dashboard?.totalStudyDays ?? 0}</p>
@@ -294,7 +298,7 @@ export default function AnalyticsPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-gray-900">Study Activity, Last 30 Days</h2>
           {activity.length > 0 && (
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-500">
               {formatShortDate(activity[0].date)} to today, oldest first
             </span>
           )}
@@ -306,7 +310,7 @@ export default function AnalyticsPage() {
       <section className="bg-white border border-gray-200 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-gray-900">Accuracy Trend</h2>
-          <span className="text-xs text-gray-400">Red line = 70% passing threshold</span>
+          <span className="text-xs text-gray-500">Red line = 70% passing threshold</span>
         </div>
         <AccuracyTrendChart data={activity} />
       </section>
@@ -315,7 +319,7 @@ export default function AnalyticsPage() {
       <section className="bg-white border border-gray-200 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-gray-900">Accuracy by Category</h2>
-          <span className="text-xs text-gray-400">Red line = 70% threshold</span>
+          <span className="text-xs text-gray-500">Red line = 70% threshold</span>
         </div>
         <CategoryAccuracyChart data={dashboard?.categoryAccuracy ?? {}} />
       </section>

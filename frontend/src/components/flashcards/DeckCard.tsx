@@ -47,7 +47,7 @@ export default function DeckCard({ deck, onDelete, onEdit }: Props) {
         <div className="flex items-center gap-4 text-sm text-gray-500">
           <span>📚 {deck.cardCount} {deck.cardCount === 1 ? 'card' : 'cards'}</span>
           {deck.dueCardCount > 0 && (
-            <span className="text-orange-600 font-medium">
+            <span className="text-orange-700 font-medium">
               🔔 {deck.dueCardCount} due
             </span>
           )}
@@ -62,7 +62,7 @@ export default function DeckCard({ deck, onDelete, onEdit }: Props) {
             onClick={() => navigate(`/decks/${deck.id}/review`)}
             disabled={deck.cardCount === 0}
             className="flex-1 text-sm font-medium bg-primary-600 text-white rounded-lg
-              px-3 py-2 hover:bg-primary-700 disabled:bg-gray-200 disabled:text-gray-400
+              px-3 py-2 hover:bg-primary-700 disabled:bg-gray-200 disabled:text-gray-500
               disabled:cursor-not-allowed transition-colors text-center"
           >
             Study {deck.dueCardCount > 0 ? `(${deck.dueCardCount})` : ''}

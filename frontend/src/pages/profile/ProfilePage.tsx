@@ -152,13 +152,13 @@ export default function ProfilePage() {
           </div>
           <div>
             <label htmlFor="school" className="block text-sm font-medium text-gray-700 mb-1">
-              PA school <span className="text-gray-400 font-normal">(optional)</span>
+              PA school <span className="text-gray-500 font-normal">(optional)</span>
             </label>
             <input id="school" value={school} maxLength={200} onChange={e => setSchool(e.target.value)} className={inputClass} />
           </div>
           <div>
             <label htmlFor="gradYear" className="block text-sm font-medium text-gray-700 mb-1">
-              Graduation year <span className="text-gray-400 font-normal">(optional)</span>
+              Graduation year <span className="text-gray-500 font-normal">(optional)</span>
             </label>
             <input id="gradYear" inputMode="numeric" value={gradYear} onChange={e => setGradYear(e.target.value)} className={inputClass} />
           </div>

@@ -82,7 +82,7 @@ export default function DeckFormModal({ isOpen, onClose, onSubmit, editDeck }: P
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Title <span className="text-red-500">*</span>
+            Title <span className="text-red-600">*</span>
           </label>
           <input
             type="text"
@@ -95,7 +95,7 @@ export default function DeckFormModal({ isOpen, onClose, onSubmit, editDeck }: P
             maxLength={100}
           />
           {errors.title && <p className="mt-1 text-xs text-red-600">{errors.title}</p>}
-          <p className="mt-1 text-xs text-gray-400">{form.title.length}/100</p>
+          <p className="mt-1 text-xs text-gray-500">{form.title.length}/100</p>
         </div>
 
         <div>
@@ -115,7 +115,7 @@ export default function DeckFormModal({ isOpen, onClose, onSubmit, editDeck }: P
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Category <span className="text-red-500">*</span>
+            Category <span className="text-red-600">*</span>
           </label>
           <select
             value={form.category}

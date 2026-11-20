@@ -52,7 +52,7 @@ export default function ReviewRatingButtons({ onRate, disabled = false }: Props)
               disabled:cursor-not-allowed active:scale-95 ${btn.colorClasses}`}
           >
             <span>{btn.label}</span>
-            <span className="text-xs font-normal opacity-70">{btn.description}</span>
+            <span className="text-xs font-normal">{btn.description}</span>
           </button>
         ))}
       </div>

@@ -9,7 +9,9 @@ export interface ProfileUpdate {
 }
 
 export async function updateProfile(update: ProfileUpdate): Promise<User> {
-  const { data } = await apiClient.put<User>('/users/me', update)
+  // The server keeps fields that are left out, so an empty year is sent as "clear it"
+  const body = update.graduationYear === null ? { ...update, clearGraduationYear: true } : update
+  const { data } = await apiClient.put<User>('/users/me', body)
   return data
 }
 

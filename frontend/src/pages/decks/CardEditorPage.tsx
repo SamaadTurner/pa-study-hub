@@ -197,7 +197,7 @@ export default function CardEditorPage() {
         {isCloze ? (
           <div>
             <label htmlFor="cloze-text" className="block text-sm font-semibold text-gray-700 mb-1">
-              Text with blanks <span className="text-red-500">*</span>
+              Text with blanks <span className="text-red-600">*</span>
             </label>
             <p className="text-xs text-gray-500 mb-2">
               Select the words to hide and press Make blank, or type {'{{c1::answer}}'}. Each number becomes its own
@@ -237,7 +237,7 @@ export default function CardEditorPage() {
         ) : (
           <div>
             <label htmlFor="card-front" className="block text-sm font-semibold text-gray-700 mb-1">
-              Question (Front) <span className="text-red-500">*</span>
+              Question (Front) <span className="text-red-600">*</span>
             </label>
             <textarea
               id="card-front"
@@ -251,15 +251,15 @@ export default function CardEditorPage() {
               maxLength={2000}
             />
             {errors.front && <p className="mt-1 text-xs text-red-600">{errors.front}</p>}
-            <p className="mt-1 text-xs text-gray-400">{form.front.length}/2000</p>
+            <p className="mt-1 text-xs text-gray-500">{form.front.length}/2000</p>
           </div>
         )}
 
         {/* Back, or a cloze card's extra notes */}
         <div>
           <label htmlFor="card-back" className="block text-sm font-semibold text-gray-700 mb-1">
-            {isCloze ? <>Extra notes <span className="text-gray-400 font-normal">(optional, shown with the answer)</span></>
-              : <>Answer (Back) <span className="text-red-500">*</span></>}
+            {isCloze ? <>Extra notes <span className="text-gray-500 font-normal">(optional, shown with the answer)</span></>
+              : <>Answer (Back) <span className="text-red-600">*</span></>}
           </label>
           <textarea
             id="card-back"
@@ -279,7 +279,7 @@ export default function CardEditorPage() {
         {!isCloze && (
           <div>
             <label htmlFor="card-hint" className="block text-sm font-medium text-gray-700 mb-1">
-              Hint <span className="text-gray-400 font-normal">(optional)</span>
+              Hint <span className="text-gray-500 font-normal">(optional)</span>
             </label>
             <input
               id="card-hint"
@@ -297,7 +297,7 @@ export default function CardEditorPage() {
         {/* Tags */}
         <div>
           <label htmlFor="card-tags" className="block text-sm font-medium text-gray-700 mb-1">
-            Tags <span className="text-gray-400 font-normal">(optional, comma-separated)</span>
+            Tags <span className="text-gray-500 font-normal">(optional, comma-separated)</span>
           </label>
           <input
             id="card-tags"

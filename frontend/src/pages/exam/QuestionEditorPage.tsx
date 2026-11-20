@@ -139,7 +139,7 @@ export default function QuestionEditorPage() {
       <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
         <div>
           <label htmlFor="vignette" className="block text-sm font-medium text-gray-700 mb-1">
-            Patient scenario <span className="text-gray-400 font-normal">(optional)</span>
+            Patient scenario <span className="text-gray-500 font-normal">(optional)</span>
           </label>
           <textarea
             id="vignette"
@@ -155,7 +155,7 @@ export default function QuestionEditorPage() {
 
         <div>
           <label htmlFor="stem" className="block text-sm font-semibold text-gray-700 mb-1">
-            Question <span className="text-red-500">*</span>
+            Question <span className="text-red-600">*</span>
           </label>
           <textarea
             id="stem"
@@ -171,7 +171,7 @@ export default function QuestionEditorPage() {
 
         <fieldset>
           <legend className="block text-sm font-semibold text-gray-700 mb-1">
-            Answer options <span className="text-red-500">*</span>
+            Answer options <span className="text-red-600">*</span>
           </legend>
           <p className="text-xs text-gray-500 mb-3">
             Mark the right one. Exams show the options in a random order.
@@ -200,7 +200,7 @@ export default function QuestionEditorPage() {
                     type="button"
                     onClick={() => setForm(current => removeOption(current, index))}
                     aria-label={`Remove option ${LETTERS[index]}`}
-                    className="px-2 py-1 text-gray-400 hover:text-red-600 text-lg leading-none"
+                    className="px-2 py-1 text-gray-500 hover:text-red-600 text-lg leading-none"
                   >
                     ×
                   </button>
@@ -222,7 +222,7 @@ export default function QuestionEditorPage() {
 
         <div>
           <label htmlFor="explanation" className="block text-sm font-semibold text-gray-700 mb-1">
-            Explanation <span className="text-red-500">*</span>
+            Explanation <span className="text-red-600">*</span>
           </label>
           <textarea
             id="explanation"
@@ -239,7 +239,7 @@ export default function QuestionEditorPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="category" className="block text-sm font-semibold text-gray-700 mb-1">
-              Category <span className="text-red-500">*</span>
+              Category <span className="text-red-600">*</span>
             </label>
             <select
               id="category"
@@ -257,7 +257,7 @@ export default function QuestionEditorPage() {
 
           <div>
             <label htmlFor="taskArea" className="block text-sm font-semibold text-gray-700 mb-1">
-              Task area <span className="text-red-500">*</span>
+              Task area <span className="text-red-600">*</span>
             </label>
             <select
               id="taskArea"

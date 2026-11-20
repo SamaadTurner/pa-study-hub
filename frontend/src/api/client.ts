@@ -22,6 +22,29 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config
 })
 
+// ---- Token refresh, once for many requests -----------------------------------
+
+// When the access token runs out, a page that loads several things at once gets
+// several 401s at the same moment. Each used to start its own refresh with the
+// same refresh token. The server rotates the token on the first use and treats a
+// second use as theft, so it revoked every session and the user was thrown out to
+// the login page. Now requests that fail together wait for one shared refresh.
+let refreshing: Promise<string> | null = null
+
+function refreshOnce(refreshToken: string): Promise<string> {
+  if (!refreshing) {
+    refreshing = axios
+      .post<{ accessToken: string; refreshToken: string }>(`${BASE_URL}/auth/refresh`, { refreshToken })
+      .then(({ data }) => {
+        localStorage.setItem(TOKEN_KEY, data.accessToken)
+        localStorage.setItem(REFRESH_KEY, data.refreshToken)
+        return data.accessToken
+      })
+      .finally(() => { refreshing = null })
+  }
+  return refreshing
+}
+
 // ---- Response interceptor: normalize errors ---------------------------------
 
 apiClient.interceptors.response.use(
@@ -40,11 +63,8 @@ apiClient.interceptors.response.use(
       if (refreshToken) {
         originalRequest._retry = true
         try {
-          // Backend returns: { accessToken, refreshToken, user }
-          const { data } = await axios.post<{ accessToken: string; refreshToken: string }>(`${BASE_URL}/auth/refresh`, { refreshToken })
-          localStorage.setItem(TOKEN_KEY, data.accessToken)
-          localStorage.setItem(REFRESH_KEY, data.refreshToken)
-          originalRequest.headers.Authorization = `Bearer ${data.accessToken}`
+          const accessToken = await refreshOnce(refreshToken)
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`
           return apiClient(originalRequest)
         } catch {
           // Refresh failed — clear tokens and redirect

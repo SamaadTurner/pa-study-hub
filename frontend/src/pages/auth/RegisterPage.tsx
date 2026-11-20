@@ -201,10 +201,10 @@ export default function RegisterPage() {
                     const met = req.test(form.password)
                     return (
                       <div key={req.label} className="flex items-center gap-1">
-                        <span className={`text-xs ${met ? 'text-green-600' : 'text-gray-400'}`}>
+                        <span className={`text-xs ${met ? 'text-green-700' : 'text-gray-500'}`}>
                           {met ? '✓' : '○'}
                         </span>
-                        <span className={`text-xs ${met ? 'text-green-700' : 'text-gray-400'}`}>
+                        <span className={`text-xs ${met ? 'text-green-700' : 'text-gray-500'}`}>
                           {req.label}
                         </span>
                       </div>
@@ -241,7 +241,7 @@ export default function RegisterPage() {
             {/* Optional PA school info */}
             <div>
               <label htmlFor="paSchoolName" className="block text-sm font-medium text-gray-700 mb-1">
-                PA School <span className="text-gray-400 font-normal">(optional)</span>
+                PA School <span className="text-gray-500 font-normal">(optional)</span>
               </label>
               <input
                 id="paSchoolName"
@@ -272,7 +272,7 @@ export default function RegisterPage() {
               Sign in
             </Link>
           </p>
-          <p className="text-center text-xs text-gray-400 mt-3">
+          <p className="text-center text-xs text-gray-500 mt-3">
             <Link to="/privacy" className="hover:underline">Privacy</Link>
           </p>
         </div>

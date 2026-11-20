@@ -35,6 +35,7 @@ export interface RegisterRequest {
 
 export interface Deck {
   id: string
+  userId?: string  // the owner; another user's public deck can be studied and copied, not changed
   title: string
   description: string
   category: string
@@ -269,6 +270,7 @@ export interface ProgressDashboard {
   longestStreak: number
   totalStudyDays: number
   totalCardsReviewed: number
+  totalExamQuestions: number  // questions in finished practice exams
   overallAccuracy: number
   categoryAccuracy: Record<string, number>
   last30DaysActivity: DailyProgressPoint[]

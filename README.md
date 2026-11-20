@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 423 backend tests, 121 frontend unit tests and 84 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
+the frontend. 434 backend tests, 129 frontend unit tests and 87 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -24,9 +24,13 @@ run in CI on every push.
   `{{c1::answer}}` or `{{c1::answer::hint}}` (or select words and press Make blank). Each
   blank number becomes its own card that hides only that blank, so each fact gets its own
   review schedule. The AI can suggest fill-in-the-blank cards too.
+- **Picture cards.** Upload an anatomy diagram, an ECG strip or an X-ray and drag boxes
+  over the parts to learn (or use Add box and the arrow keys). Every box becomes a card:
+  the picture is shown with that box highlighted and the others covered, and revealing it
+  uncovers the part and shows its label. Works with touch on phones.
 - **Spaced repetition.** Studying a deck shows the cards that are due. You flip a card
-  and rate it Again, Hard, Good or Easy, and the SM-2 algorithm decides when it comes
-  back (see [How cards are scheduled](#how-cards-are-scheduled)).
+  and rate it Again, Hard, Good or Easy, and the FSRS algorithm decides when it comes
+  back; SM-2 can be switched back on (see [How cards are scheduled](#how-cards-are-scheduled)).
 - **Public decks.** Search every public deck by title or description, filter by topic,
   and copy one into your own decks.
 - **Practice exams.** Pick a topic, 5 to 30 questions and an optional time limit. You
@@ -122,13 +126,13 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 423 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 434 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 96.9% of lines and 86.4% of branches (JaCoCo, without the code Lombok
+  They cover 96.4% of lines and 86.3% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
-- **Frontend:** 121 unit tests with Vitest and React Testing Library.
-- **End to end:** 84 Playwright tests in Chromium; the account, deck, study, exam and fill-in-the-blank tests (42) also run in WebKit (desktop Safari) and on an iPhone 13 screen. They click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
+- **Frontend:** 129 unit tests with Vitest and React Testing Library.
+- **End to end:** 87 Playwright tests in Chromium; the account, deck, study, exam, fill-in-the-blank and picture card tests (45) also run in WebKit (desktop Safari) and on an iPhone 13 screen. They click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
   and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
@@ -329,6 +333,20 @@ the server took for theft and signed the user out (one shared refresh now); and 
 signed a student out whenever checking the saved session failed for any reason, including a
 sleeping server, instead of only on a real 401 (it now waits and tries again for a minute).
 
+**Pictures are stored in the database, not in a storage service.** Render's free server
+loses its disk on every restart, so pictures need a home elsewhere. A bucket (Cloudflare R2,
+Backblaze B2) is the usual choice and scales further, but it adds an account, keys and a
+second thing to run, and it would stop `docker compose up` from working with nothing else.
+Instead the browser shrinks each picture to at most 1600 pixels and saves it as JPEG
+(usually 100 to 300 KB, and the photo's metadata such as GPS location is dropped), and the
+server keeps it in a `bytea` column. The server checks the bytes itself (PNG or JPEG
+signature, size read from the header only, at most 4000 pixels a side, at most 1 MB), caps
+each user at 100 pictures and the whole site at 500 MB (Neon's free plan has 1 GB), and
+deletes pictures no card uses after a day. Pictures are served only to their owner or to
+someone who can see a deck that uses them; the browser fetches them with the sign-in token
+and caches them for the session. `CardImageService` is the only class that touches the
+bytes, so moving them to a bucket later means changing that one class.
+
 **A public deck that goes away is not lost for the students using it.** Other students can
 study a public deck without copying it. When the owner deletes it, or their account, each of
 them gets a private copy with their review schedules and history moved to the copied cards
@@ -398,6 +416,8 @@ To turn it on locally, add `AI_API_KEY=<your Groq key>` to the backend command a
   minutes (the reset email unlocks it).
 - Emails come from a Brevo address, because a Gmail sender can't pass the checks receiving
   servers run, so some may land in spam. A domain of our own would fix that.
+- The boxes of a picture card can't be changed after saving (the question, notes and tags
+  can); delete its cards and make them again.
 - Only 30 starter questions, in three topics. Users can add their own. Shared questions
   are only checked by other users' reports, not by an expert.
 

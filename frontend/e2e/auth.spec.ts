@@ -48,17 +48,48 @@ test.describe('Accounts', () => {
     await expect(page).toHaveURL(/\/login$/)
   })
 
-  test('signing out revokes the refresh token on the server', async ({ page }) => {
+  test('the refresh token is a cookie the page cannot read, and signing out revokes it', async ({ page, context }) => {
+    const signUp = page.waitForResponse(r => r.url().endsWith('/api/v1/auth/register'))
     await register(page, newUser())
-    const refreshToken = await page.evaluate(() => localStorage.getItem('pa_refresh_token'))
-    expect(refreshToken).toBeTruthy()
+    // What the server sends (WebKit on Windows does not report SameSite back to the test)
+    const setCookie = (await (await signUp).allHeaders())['set-cookie']
+    expect(setCookie).toMatch(/pa_refresh=[^;]+/)
+    expect(setCookie).toContain('HttpOnly')
+    expect(setCookie).toContain('SameSite=Strict')
+    expect(setCookie).toContain('Path=/api/v1/auth')
+    // Not in storage and not visible to scripts: only the browser holds it
+    expect(await page.evaluate(() => localStorage.getItem('pa_refresh_token'))).toBeNull()
+    expect(await page.evaluate(() => document.cookie)).not.toContain('pa_refresh')
+    const cookie = (await context.cookies()).find(c => c.name === 'pa_refresh')
+    expect(cookie).toBeTruthy()
+    expect(cookie!.httpOnly).toBe(true)
 
     await page.getByRole('button', { name: 'Sign out' }).click()
     await expect(page).toHaveURL(/\/login$/)
+    // The browser deleted it
+    expect((await context.cookies()).find(c => c.name === 'pa_refresh')).toBeUndefined()
 
     // A copy of the token taken before signing out no longer gets new tokens
-    const response = await page.request.post('/api/v1/auth/refresh', { data: { refreshToken } })
+    const response = await page.request.post('/api/v1/auth/refresh', { headers: { Cookie: `pa_refresh=${cookie!.value}` } })
     expect(response.status()).toBe(401)
+  })
+
+  test('a student signed in with an older version of the app moves to the cookie without signing in again', async ({ page, context }) => {
+    await register(page, newUser())
+    // Rebuild the old state: the refresh token in storage, no cookie, an expired access token
+    const cookie = (await context.cookies()).find(c => c.name === 'pa_refresh')!
+    await context.clearCookies()
+    await page.evaluate(token => {
+      localStorage.setItem('pa_refresh_token', token)
+      localStorage.setItem('pa_access_token', 'expired')
+    }, cookie.value)
+
+    await page.goto('/decks')
+    await expect(page).toHaveURL(/\/decks$/)
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+    // The old copy is gone and the cookie took its place
+    expect(await page.evaluate(() => localStorage.getItem('pa_refresh_token'))).toBeNull()
+    expect((await context.cookies()).some(c => c.name === 'pa_refresh')).toBe(true)
   })
 
   test('after 5 wrong passwords the login is locked, even with the right password', async ({ page }) => {

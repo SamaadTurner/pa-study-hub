@@ -5,6 +5,7 @@ import com.pastudyhub.flashcard.dto.ClozeCardsRequest;
 import com.pastudyhub.flashcard.model.CardImage;
 import com.pastudyhub.flashcard.engine.OcclusionBoxes;
 import com.pastudyhub.flashcard.dto.ImageCardsRequest;
+import com.pastudyhub.flashcard.dto.UpdatePictureCardsRequest;
 import com.pastudyhub.flashcard.dto.CreateCardRequest;
 import com.pastudyhub.flashcard.engine.ClozeText;
 import com.pastudyhub.flashcard.exception.CardNotFoundException;
@@ -28,8 +29,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -164,6 +169,7 @@ public class CardServiceImpl {
                 ? DEFAULT_IMAGE_PROMPT : request.getPrompt().trim();
         String extra = request.getExtra() == null ? "" : request.getExtra().trim();
         String boxes = OcclusionBoxes.toJson(request.getBoxes());
+        UUID pictureGroup = UUID.randomUUID();
         int position = cardRepository.findLastPositionInDeck(deckId);
         List<CardResponse> created = new ArrayList<>();
         for (int number = 1; number <= request.getBoxes().size(); number++) {
@@ -176,6 +182,7 @@ public class CardServiceImpl {
                     .clozeIndex(number)
                     .imageId(image.getId())
                     .occlusionBoxes(boxes)
+                    .pictureGroup(pictureGroup)
                     .positionInDeck(position)
                     .build();
             if (request.getTags() != null) {
@@ -185,6 +192,94 @@ public class CardServiceImpl {
         }
         log.info("Picture cards created: {} in deckId={}", created.size(), deckId);
         return created;
+    }
+
+    /**
+     * Changes the boxes (and the question, notes and tags) of all cards of one picture.
+     *
+     * <p>A box that keeps its card keeps that card's review history, even when it was
+     * moved or is now in another place in the list: the card simply asks for the box's
+     * new number. A new box gets a new card at the end of the deck. A card whose box
+     * is gone is deleted.
+     */
+    @Transactional
+    public List<CardResponse> updatePictureCards(UUID cardId, UpdatePictureCardsRequest request, UUID userId) {
+        Card card = cardRepository.findByIdAndNotDeleted(cardId)
+                .orElseThrow(() -> new CardNotFoundException(cardId));
+        Deck deck = card.getDeck();
+        if (!deck.getUserId().equals(userId)) {
+            throw new UnauthorizedDeckAccessException();
+        }
+        if (card.getCardType() != CardType.IMAGE) {
+            throw new InvalidCardException("Only picture cards have boxes");
+        }
+        String problem = OcclusionBoxes.problem(request.plainBoxes());
+        if (problem != null) {
+            throw new InvalidCardException(problem);
+        }
+
+        // The cards of this picture. One made before picture groups existed stands alone.
+        Map<UUID, Card> groupById = new HashMap<>();
+        if (card.getPictureGroup() == null) {
+            card.setPictureGroup(UUID.randomUUID());
+        } else {
+            cardRepository.findPictureGroup(deck.getId(), card.getPictureGroup())
+                    .forEach(member -> groupById.put(member.getId(), member));
+        }
+        groupById.put(card.getId(), card);
+
+        List<UpdatePictureCardsRequest.EditedBox> edited = request.getBoxes();
+        Set<UUID> kept = new HashSet<>();
+        for (int i = 0; i < edited.size(); i++) {
+            UUID boxCard = edited.get(i).cardId();
+            if (boxCard != null && (!groupById.containsKey(boxCard) || !kept.add(boxCard))) {
+                throw new InvalidCardException("Box " + (i + 1) + " belongs to a card that is not part of this picture");
+            }
+        }
+
+        String prompt = request.getPrompt() == null || request.getPrompt().isBlank()
+                ? DEFAULT_IMAGE_PROMPT : request.getPrompt().trim();
+        String extra = request.getExtra() == null ? "" : request.getExtra().trim();
+        String boxes = OcclusionBoxes.toJson(request.plainBoxes());
+        int position = cardRepository.findLastPositionInDeck(deck.getId());
+        List<CardResponse> result = new ArrayList<>();
+        for (int i = 0; i < edited.size(); i++) {
+            UUID boxCard = edited.get(i).cardId();
+            Card target;
+            if (boxCard != null) {
+                target = groupById.get(boxCard);
+            } else {
+                position++;
+                target = Card.builder()
+                        .deck(deck)
+                        .cardType(CardType.IMAGE)
+                        .imageId(card.getImageId())
+                        .pictureGroup(card.getPictureGroup())
+                        .positionInDeck(position)
+                        .build();
+            }
+            target.setFront(prompt);
+            target.setBack(extra);
+            target.setClozeIndex(i + 1);
+            target.setOcclusionBoxes(boxes);
+            if (request.getTags() != null) {
+                target.setTagsList(request.getTags());
+            }
+            Card saved = cardRepository.saveAndFlush(target);
+            result.add(cardMapper.toResponse(saved,
+                    reviewScheduleRepository.findByCardIdAndUserId(saved.getId(), userId).orElse(null)));
+        }
+
+        // Cards whose box was removed
+        for (Card member : groupById.values()) {
+            if (!kept.contains(member.getId())) {
+                member.setDeleted(true);
+                cardRepository.save(member);
+            }
+        }
+        log.info("Picture cards updated: {} boxes, {} removed, group={}",
+                edited.size(), groupById.size() - kept.size(), card.getPictureGroup());
+        return result;
     }
 
     @Transactional

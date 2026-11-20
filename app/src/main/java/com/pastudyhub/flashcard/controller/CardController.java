@@ -4,6 +4,7 @@ import com.pastudyhub.flashcard.dto.CardResponse;
 import com.pastudyhub.flashcard.dto.CreateCardRequest;
 import com.pastudyhub.flashcard.dto.ClozeCardsRequest;
 import com.pastudyhub.flashcard.dto.ImageCardsRequest;
+import com.pastudyhub.flashcard.dto.UpdatePictureCardsRequest;
 import com.pastudyhub.flashcard.service.CardServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -68,6 +69,15 @@ public class CardController {
             @Valid @RequestBody ImageCardsRequest request,
             @RequestHeader("X-User-Id") UUID userId) {
         return cardService.createImageCards(deckId, request, userId);
+    }
+
+    @PutMapping("/cards/{cardId}/picture")
+    @Operation(summary = "Change the boxes, question, notes and tags of all cards of one picture")
+    public List<CardResponse> updatePictureCards(
+            @PathVariable UUID cardId,
+            @Valid @RequestBody UpdatePictureCardsRequest request,
+            @RequestHeader("X-User-Id") UUID userId) {
+        return cardService.updatePictureCards(cardId, request, userId);
     }
 
     @PutMapping("/cards/{cardId}")

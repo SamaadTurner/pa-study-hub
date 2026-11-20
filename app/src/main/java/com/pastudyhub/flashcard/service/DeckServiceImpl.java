@@ -201,6 +201,7 @@ public class DeckServiceImpl implements DeckService {
                     .clozeIndex(sourceCard.getClozeIndex())
                     .imageId(sourceCard.getImageId())
                     .occlusionBoxes(sourceCard.getOcclusionBoxes())
+                    .pictureGroup(sourceCard.getPictureGroup())
                     .hint(sourceCard.getHint())
                     .imageUrl(sourceCard.getImageUrl())
                     .tags(sourceCard.getTags())

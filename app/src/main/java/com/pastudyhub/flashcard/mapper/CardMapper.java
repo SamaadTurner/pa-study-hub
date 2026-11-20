@@ -48,6 +48,7 @@ public class CardMapper {
                 .hint(card.getHint())
                 .imageUrl(card.getImageUrl())
                 .imageId(card.getImageId())
+                .pictureGroup(card.getPictureGroup())
                 .boxes(card.getCardType() == CardType.IMAGE ? OcclusionBoxes.fromJson(card.getOcclusionBoxes()) : null)
                 .tags(card.getTagsList())
                 .reviewSchedule(scheduleInfo)

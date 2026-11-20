@@ -36,6 +36,11 @@ public interface CardRepository extends JpaRepository<Card, UUID> {
             + "AND c.deck.isDeleted = false AND (c.deck.isPublic = true OR c.deck.userId = :viewerId)")
     boolean existsVisibleCardWithImage(@Param("imageId") UUID imageId, @Param("viewerId") UUID viewerId);
 
+    /** The live cards of one picture in one deck, in box order. */
+    @Query("SELECT c FROM Card c WHERE c.deck.id = :deckId AND c.pictureGroup = :pictureGroup "
+            + "AND c.isDeleted = false ORDER BY c.clozeIndex")
+    List<Card> findPictureGroup(@Param("deckId") UUID deckId, @Param("pictureGroup") UUID pictureGroup);
+
     @Query("SELECT c FROM Card c WHERE c.id = :id AND c.isDeleted = false")
     Optional<Card> findByIdAndNotDeleted(@Param("id") UUID id);
 

@@ -30,6 +30,8 @@ public class CardResponse {
     private UUID imageId;
     /** For a picture card: all boxes; clozeIndex says which one this card asks for. */
     private List<OcclusionBox> boxes;
+    /** For a picture card: shared by all cards of the same picture in this deck. */
+    private UUID pictureGroup;
     private List<String> tags;
     private ReviewScheduleInfo reviewSchedule;
     private LocalDateTime createdAt;

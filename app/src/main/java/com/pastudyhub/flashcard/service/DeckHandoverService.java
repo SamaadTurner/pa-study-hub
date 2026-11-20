@@ -77,6 +77,7 @@ public class DeckHandoverService {
                     .clozeIndex(card.getClozeIndex())
                     .imageId(card.getImageId())
                     .occlusionBoxes(card.getOcclusionBoxes())
+                    .pictureGroup(card.getPictureGroup())
                     .hint(card.getHint())
                     .imageUrl(card.getImageUrl())
                     .tags(card.getTags())

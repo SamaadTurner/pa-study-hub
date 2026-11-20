@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.flashcard.repository.CardImageRepository;
+import com.pastudyhub.flashcard.repository.ReviewScheduleRepository;
 import com.pastudyhub.flashcard.service.CardImageService;
 import com.pastudyhub.user.service.AccountDeletionService;
 import org.junit.jupiter.api.DisplayName;
@@ -61,6 +62,9 @@ class PictureCardsIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private ReviewScheduleRepository reviewScheduleRepository;
 
     @Test
     @DisplayName("A picture with two boxes makes two cards; the owner can load the picture")
@@ -238,6 +242,106 @@ class PictureCardsIntegrationTest extends BaseIntegrationTest {
         getImage(other, shared).andExpect(status().isOk());
     }
 
+    @Test
+    @DisplayName("Editing the boxes keeps the cards (and their history) of boxes that stay, adds and removes the rest")
+    void editBoxes() throws Exception {
+        UUID user = UUID.randomUUID();
+        String deckId = createDeck(user, false);
+        String imageId = parse(upload(user, png(20, 20), "a.png", "image/png")).get("id").asText();
+        List<Map<String, Object>> three = List.of(
+                Map.of("x", 0.0, "y", 0.0, "width", 0.2, "height", 0.2, "label", "One"),
+                Map.of("x", 0.3, "y", 0.3, "width", 0.2, "height", 0.2, "label", "Two"),
+                Map.of("x", 0.6, "y", 0.6, "width", 0.2, "height", 0.2, "label", "Three"));
+        JsonNode cards = parse(createImageCards(user, deckId, imageId, "Old question", three));
+        String first = cards.get(0).get("id").asText();
+        String second = cards.get(1).get("id").asText();
+        String third = cards.get(2).get("id").asText();
+        assertThat(cards.get(0).get("pictureGroup").asText()).isEqualTo(cards.get(2).get("pictureGroup").asText());
+
+        // Box two is studied, so it has a schedule
+        mockMvc.perform(post("/api/v1/cards/{id}/review", second).header("Authorization", bearerToken(user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"quality\": 4}"))
+                .andExpect(status().isOk());
+
+        // Two moves to the front, a new box, one stays; three is removed
+        List<Map<String, Object>> edited = List.of(
+                box(0.4, 0.4, "Two, moved", second),
+                box(0.8, 0.0, "Brand new", null),
+                box(0.0, 0.0, "One", first));
+        updatePicture(user, second, "New question", edited)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[0].id").value(second))
+                .andExpect(jsonPath("$[0].clozeIndex").value(1))
+                .andExpect(jsonPath("$[0].reviewSchedule").exists())
+                .andExpect(jsonPath("$[1].clozeIndex").value(2))
+                .andExpect(jsonPath("$[2].id").value(first))
+                .andExpect(jsonPath("$[2].clozeIndex").value(3))
+                .andExpect(jsonPath("$[2].front").value("New question"))
+                .andExpect(jsonPath("$[2].boxes[0].label").value("Two, moved"));
+
+        JsonNode list = getJson(user, "/api/v1/decks/" + deckId + "/cards").get("content");
+        assertThat(list).hasSize(3);
+        assertThat(list.findValuesAsText("id")).doesNotContain(third).contains(first, second);
+        assertThat(reviewScheduleRepository.findByCardIdAndUserId(UUID.fromString(second), user)).isPresent();
+    }
+
+    @Test
+    @DisplayName("Box edits are refused for strangers, other cards, unknown card ids and empty box lists")
+    void editBoxesChecks() throws Exception {
+        UUID user = UUID.randomUUID();
+        String deckId = createDeck(user, false);
+        String imageId = parse(upload(user, png(10, 10), "a.png", "image/png")).get("id").asText();
+        JsonNode cards = parse(createImageCards(user, deckId, imageId, null, TWO_BOXES));
+        String first = cards.get(0).get("id").asText();
+        JsonNode otherPicture = parse(createImageCards(user, deckId, imageId, null, TWO_BOXES));
+        String fromOtherPicture = otherPicture.get(0).get("id").asText();
+
+        updatePicture(user, first, null, List.of())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Draw at least one box over the part to hide"));
+        updatePicture(user, first, null, List.of(box(0.1, 0.1, "", fromOtherPicture)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Box 1 belongs to a card that is not part of this picture"));
+        updatePicture(user, first, null, List.of(box(0.1, 0.1, "", first), box(0.5, 0.5, "", first)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Box 2 belongs to a card that is not part of this picture"));
+        updatePicture(UUID.randomUUID(), first, null, List.of(box(0.1, 0.1, "", first)))
+                .andExpect(status().isForbidden());
+
+        String basic = parse(mockMvc.perform(post("/api/v1/decks/{id}/cards", deckId).header("Authorization", bearerToken(user))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("front", "Q", "back", "A"))))).get("id").asText();
+        updatePicture(user, basic, null, List.of(box(0.1, 0.1, "", null)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Only picture cards have boxes"));
+
+        // The other picture's cards are untouched by an edit of the first
+        updatePicture(user, first, null, List.of(box(0.1, 0.1, "", first))).andExpect(status().isOk());
+        assertThat(getJson(user, "/api/v1/decks/" + deckId + "/cards").get("content")).hasSize(4);
+    }
+
+    @Test
+    @DisplayName("Editing the boxes of a copied deck leaves the original alone")
+    void editCopy() throws Exception {
+        UUID owner = UUID.randomUUID();
+        UUID other = UUID.randomUUID();
+        String deckId = createDeck(owner, true);
+        String imageId = parse(upload(owner, png(10, 10), "a.png", "image/png")).get("id").asText();
+        createImageCards(owner, deckId, imageId, null, TWO_BOXES).andExpect(status().isCreated());
+        String copyId = parse(mockMvc.perform(post("/api/v1/decks/{id}/clone", deckId)
+                .header("Authorization", bearerToken(other)))).get("id").asText();
+        String copiedCard = getJson(other, "/api/v1/decks/" + copyId + "/cards").get("content").get(0).get("id").asText();
+
+        updatePicture(other, copiedCard, null, List.of(box(0.1, 0.1, "Mine", copiedCard))).andExpect(status().isOk());
+
+        assertThat(getJson(other, "/api/v1/decks/" + copyId + "/cards").get("content")).hasSize(1);
+        JsonNode original = getJson(owner, "/api/v1/decks/" + deckId + "/cards").get("content");
+        assertThat(original).hasSize(2);
+        assertThat(original.get(0).get("boxes")).hasSize(2);
+    }
+
     // ---- helpers -------------------------------------------------------------
 
     private static byte[] png(int width, int height) throws Exception {
@@ -260,6 +364,27 @@ class PictureCardsIntegrationTest extends BaseIntegrationTest {
         return mockMvc.perform(multipart("/api/v1/images")
                 .file(new MockMultipartFile("file", name, type, bytes))
                 .header("Authorization", bearerToken(user)));
+    }
+
+    private static Map<String, Object> box(double x, double y, String label, String cardId) {
+        Map<String, Object> box = new HashMap<>();
+        box.put("x", x);
+        box.put("y", y);
+        box.put("width", 0.1);
+        box.put("height", 0.1);
+        box.put("label", label);
+        box.put("cardId", cardId);
+        return box;
+    }
+
+    private ResultActions updatePicture(UUID user, String cardId, String prompt, List<Map<String, Object>> boxes)
+            throws Exception {
+        Map<String, Object> body = new HashMap<>();
+        body.put("boxes", boxes);
+        body.put("prompt", prompt);
+        return mockMvc.perform(put("/api/v1/cards/{id}/picture", cardId).header("Authorization", bearerToken(user))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)));
     }
 
     private ResultActions getImage(UUID user, String imageId) throws Exception {

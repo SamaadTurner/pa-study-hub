@@ -71,6 +71,10 @@ public class Card {
     @Column(name = "occlusion_boxes", length = 10000)
     private String occlusionBoxes;
 
+    /** For a picture card: the same for every card of one picture in this deck. */
+    @Column(name = "picture_group")
+    private UUID pictureGroup;
+
     @Column(name = "hint", length = 500)
     private String hint;
 

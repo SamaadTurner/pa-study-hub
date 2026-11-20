@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 409 backend tests, 115 frontend unit tests and 76 end-to-end browser tests
+the frontend. 410 backend tests, 115 frontend unit tests and 76 end-to-end browser tests
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -118,16 +118,18 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 409 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 410 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 96.8% of lines and 85.5% of branches (JaCoCo, without the code Lombok
+  They cover 96.8% of lines and 85.4% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
 - **Frontend:** 115 unit tests with Vitest and React Testing Library.
 - **End to end:** 76 Playwright tests that click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
   and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
+- **Load test:** k6 (`perf/`), run by hand against a local backend; results under
+  "One query for a whole deck list".
 - **CI** has four jobs: backend tests, frontend tests with lint and build, end-to-end
   tests, and a Docker Compose run of the whole stack.
 
@@ -319,6 +321,26 @@ on H2 and PostgreSQL). Two kinds of rows survive because they belong to someone 
 other people's copies of the user's public decks, and the user's questions that are part
 of other people's past exams (they lose their author and leave every future exam). It
 needs the password, or the email typed out for an account that only uses Google.
+
+**One query for a whole deck list, measured with k6.** `perf/main-pages.js` is a k6 load test
+of the pages a student opens on the way to studying (deck list, dashboard, one deck, its
+cards, its study queue); `perf/seed.mjs` fills a local database with one user, 100 decks
+of 20 cards and some reviews. It showed the deck list was far slower than the rest: it ran
+three count queries per deck, 300 for a list of 100. One grouped query now returns every
+deck's card count and cards to study (a left join from cards to the user's review
+schedules, grouped by deck), and a test checks the list still matches the single deck's
+numbers. Results on a laptop (20 virtual users for 30 seconds, both runs the first 30
+seconds after a fresh start, backend and PostgreSQL on the same machine):
+
+| | Before | After |
+| --- | --- | --- |
+| Deck list (100 decks), median | 226 ms | 16 ms |
+| Deck list (100 decks), 95th percentile | 335 ms | 39 ms |
+| All five pages, requests per second | 223 | 943 |
+
+The other pages got faster too (dashboard median 39 to 14 ms), because the server was no
+longer busy with the deck list. Run it with `node perf/seed.mjs` and `k6 run
+perf/main-pages.js` against a local backend, never the live site.
 
 **Hosting on free plans.** The backend runs on Render's free plan from the Dockerfile and
 the frontend is a Render static site (`render.yaml`). The static site passes `/api` on to

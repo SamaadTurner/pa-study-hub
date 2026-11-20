@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 437 backend tests, 129 frontend unit tests and 88 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
+the frontend. 442 backend tests, 132 frontend unit tests and 90 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -127,13 +127,13 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 437 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 442 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 96.4% of lines and 86.2% of branches (JaCoCo, without the code Lombok
+  They cover 96.5% of lines and 86.5% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
-- **Frontend:** 129 unit tests with Vitest and React Testing Library.
-- **End to end:** 88 Playwright tests in Chromium; the account, deck, study, exam, fill-in-the-blank and picture card tests (46) also run in WebKit (desktop Safari) and on an iPhone 13 screen. They click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
+- **Frontend:** 132 unit tests with Vitest and React Testing Library.
+- **End to end:** 90 Playwright tests in Chromium; the account, deck, study, exam, fill-in-the-blank and picture card tests (46) also run in WebKit (desktop Safari) and on an iPhone 13 screen. They click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
   and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
@@ -333,6 +333,18 @@ no taps); requests that failed together each refreshed the session with the same
 the server took for theft and signed the user out (one shared refresh now); and the app
 signed a student out whenever checking the saved session failed for any reason, including a
 sleeping server, instead of only on a real 401 (it now waits and tries again for a minute).
+
+**"Today" is the student's day, not the server's.** The server runs on UTC, so for a
+student in Seattle everything after 4 pm used to count toward the next day: a streak could
+break, the daily goal filled up on the wrong day and cards came due early. The browser now
+sends its time zone (`X-Time-Zone`, for example `America/Los_Angeles`) with every request.
+`UserClock` saves it on the account (only real zone names, so daylight saving is handled)
+and every "today" uses it: logging activity, streaks, the goal, the 30-day chart, due cards
+and next review dates. An exam the server hands in after its time ran out counts on the day
+it ended where the student is. Stored times stay UTC everywhere (the app sets the JVM to UTC,
+so a laptop in another zone behaves like the server), and the frontend reads times without a
+zone as UTC. The AI daily limit still resets at midnight UTC, as the app says, because the
+provider's limits are counted that way.
 
 **Pictures are stored in the database, not in a storage service.** Render's free server
 loses its disk on every restart, so pictures need a home elsewhere. A bucket (Cloudflare R2,

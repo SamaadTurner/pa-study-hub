@@ -1,5 +1,7 @@
 package com.pastudyhub.ai.dto;
 
+import com.pastudyhub.flashcard.model.CardType;
+
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -19,4 +21,7 @@ public class GenerateFlashcardsRequest {
     @Min(value = 1, message = "Ask for at least 1 card")
     @Max(value = 10, message = "Ask for at most 10 cards at a time")
     private int count = 5;
+
+    /** BASIC (question and answer, the default) or CLOZE (fill in the blank). */
+    private CardType cardType = CardType.BASIC;
 }

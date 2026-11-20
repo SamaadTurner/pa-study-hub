@@ -60,7 +60,7 @@ public class AiController {
     public FlashcardsResponse generateFlashcards(
             @RequestHeader("X-User-Id") UUID userId,
             @Valid @RequestBody GenerateFlashcardsRequest request) {
-        return new FlashcardsResponse(flashcardGenerator.generate(userId, request.getNotes(), request.getCount()));
+        return new FlashcardsResponse(flashcardGenerator.generate(userId, request.getNotes(), request.getCount(), request.getCardType()));
     }
 
     @PostMapping("/exams/{sessionId}/questions/{questionId}/explanation")

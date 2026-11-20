@@ -2,6 +2,7 @@ package com.pastudyhub.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pastudyhub.ai.dto.GeneratedCard;
+import com.pastudyhub.flashcard.model.CardType;
 import com.pastudyhub.ai.usage.AiLimitReachedException;
 import com.pastudyhub.ai.usage.AiUsageLimiter;
 import org.junit.jupiter.api.DisplayName;
@@ -199,5 +200,35 @@ class FlashcardGeneratorTest {
         assertThatThrownBy(() -> generator.generate(user, "notes", 3))
                 .isInstanceOf(AiLimitReachedException.class);
         assertThat(chatClient.lastUserPrompt).isNull();
+    }
+
+    @Test
+    @DisplayName("Fill-in-the-blank: asks for blanks and keeps only texts that pass the cloze check")
+    void clozeCards() {
+        chatClient.reply = """
+                {"cards": [
+                  {"text": "{{c1::Epinephrine}} is first line for anaphylaxis", "extra": "Given intramuscularly"},
+                  {"text": "No blank in this sentence", "extra": ""},
+                  {"text": "{{c1::Furosemide}} acts on the {{c2::loop of Henle}}"}
+                ]}
+                """;
+
+        List<GeneratedCard> cards = generator.generate(user, "my notes", 5, CardType.CLOZE);
+
+        assertThat(chatClient.lastSystemPrompt).contains("{{c1::term}}");
+        assertThat(chatClient.lastUserPrompt).contains("fill-in-the-blank");
+        assertThat(cards).containsExactly(
+                new GeneratedCard("{{c1::Epinephrine}} is first line for anaphylaxis", "Given intramuscularly", CardType.CLOZE),
+                new GeneratedCard("{{c1::Furosemide}} acts on the {{c2::loop of Henle}}", "", CardType.CLOZE));
+    }
+
+    @Test
+    @DisplayName("Fill-in-the-blank: an answer without a single usable blank is an error")
+    void clozeCards_noneUsable() {
+        chatClient.reply = "{\"cards\": [{\"text\": \"Plain sentence\"}]}";
+
+        assertThatThrownBy(() -> generator.generate(user, "notes", 3, CardType.CLOZE))
+                .isInstanceOf(AiResponseException.class)
+                .hasMessage("The AI answer did not contain any usable fill-in-the-blank cards.");
     }
 }

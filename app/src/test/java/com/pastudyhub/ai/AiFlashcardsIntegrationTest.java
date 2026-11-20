@@ -88,6 +88,23 @@ class AiFlashcardsIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("Fill-in-the-blank suggestions come back marked as cloze cards; plain ones as basic")
+    void clozeSuggestions() throws Exception {
+        when(chatClient.complete(anyString(), contains("fill-in-the-blank flashcards")))
+                .thenReturn("{\"cards\": [{\"text\": \"{{c1::Digoxin}} slows AV conduction\", \"extra\": \"\"}]}");
+
+        generate("{\"notes\": \"Digoxin slows AV conduction.\", \"count\": 1, \"cardType\": \"CLOZE\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cards[0].front").value("{{c1::Digoxin}} slows AV conduction"))
+                .andExpect(jsonPath("$.cards[0].cardType").value("CLOZE"));
+
+        when(chatClient.complete(anyString(), contains("Write 1 flashcards")))
+                .thenReturn("{\"cards\": [{\"front\": \"Q\", \"back\": \"A\"}]}");
+        generate("{\"notes\": \"Some notes\", \"count\": 1}")
+                .andExpect(jsonPath("$.cards[0].cardType").value("BASIC"));
+    }
+
+    @Test
     @DisplayName("The count defaults to 5")
     void defaultCount() throws Exception {
         when(chatClient.complete(anyString(), contains("Write 5 flashcards")))

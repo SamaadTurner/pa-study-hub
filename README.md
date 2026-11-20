@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 410 backend tests, 115 frontend unit tests and 76 end-to-end browser tests
+the frontend. 417 backend tests, 121 frontend unit tests and 77 end-to-end browser tests
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -20,6 +20,10 @@ run in CI on every push.
 
 - **Flashcard decks.** Create decks and cards, filed under 17 topics from the NCCPA
   exam blueprint (cardiology, pharmacology, and so on). Decks can be private or public.
+- **Fill-in-the-blank cards.** Write a sentence with blanks in Anki's syntax,
+  `{{c1::answer}}` or `{{c1::answer::hint}}` (or select words and press Make blank). Each
+  blank number becomes its own card that hides only that blank, so each fact gets its own
+  review schedule.
 - **Spaced repetition.** Studying a deck shows the cards that are due. You flip a card
   and rate it Again, Hard, Good or Easy, and the SM-2 algorithm decides when it comes
   back (see [How cards are scheduled](#how-cards-are-scheduled)).
@@ -118,13 +122,13 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 410 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 417 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 96.8% of lines and 85.4% of branches (JaCoCo, without the code Lombok
+  They cover 96.9% of lines and 85.6% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
-- **Frontend:** 115 unit tests with Vitest and React Testing Library.
-- **End to end:** 76 Playwright tests that click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
+- **Frontend:** 121 unit tests with Vitest and React Testing Library.
+- **End to end:** 77 Playwright tests that click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
   and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.

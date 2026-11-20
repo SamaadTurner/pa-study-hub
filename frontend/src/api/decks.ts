@@ -32,6 +32,7 @@ interface CardResponse {
   clozeIndex?: number | null
   imageId?: string | null
   boxes?: OcclusionBox[] | null
+  pictureGroup?: string | null
   hint?: string
   imageUrl?: string
   tags: string[]
@@ -75,6 +76,7 @@ function mapCard(response: CardResponse): Card {
     clozeIndex: response.clozeIndex ?? null,
     imageId: response.imageId ?? null,
     boxes: response.boxes ?? [],
+    pictureGroup: response.pictureGroup ?? null,
     hint: response.hint,
     tags: response.tags || [],
     easeFactor: response.reviewSchedule?.easeFactor ?? 2.5,
@@ -193,6 +195,16 @@ export async function createImageCards(
   payload: { imageId: string; prompt?: string; extra?: string; boxes: OcclusionBox[]; tags?: string[] },
 ): Promise<Card[]> {
   const { data } = await apiClient.post<CardResponse[]>(`/decks/${deckId}/image-cards`, payload)
+  return data.map(mapCard)
+}
+
+// Changes the boxes of all cards of one picture. A box with a cardId keeps that card
+// (and its study history); one without gets a new card; cards left out are deleted.
+export async function updatePictureCards(
+  cardId: string,
+  payload: { prompt?: string; extra?: string; tags?: string[]; boxes: (OcclusionBox & { cardId?: string })[] },
+): Promise<Card[]> {
+  const { data } = await apiClient.put<CardResponse[]>(`/cards/${cardId}/picture`, payload)
   return data.map(mapCard)
 }
 

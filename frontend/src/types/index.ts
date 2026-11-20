@@ -70,6 +70,7 @@ export interface Card {
   clozeIndex: number | null  // for a cloze card, the blank number it asks for (picture card: the box number)
   imageId: string | null     // picture cards only
   boxes: OcclusionBox[]      // picture cards only
+  pictureGroup: string | null  // picture cards only: the same for every card of one picture
   hint?: string
   tags: string[]
   easeFactor: number

@@ -7,10 +7,11 @@ import {
   type Point,
 } from '@/utils/occlusion'
 
-interface Props {
+// B is OcclusionBox or a box with more fields (the card it belongs to); those are kept
+interface Props<B extends OcclusionBox> {
   imageUrl: string
-  boxes: OcclusionBox[]
-  onChange: (boxes: OcclusionBox[]) => void
+  boxes: B[]
+  onChange: (boxes: B[]) => void
 }
 
 // What a pointer that is down is doing: drawing a new box, or moving one
@@ -25,11 +26,20 @@ const STEP = 0.01
  * box, drag a box to move it. Without a mouse: Add box, then the arrow keys move
  * the selected box, Shift and the arrows change its size, Delete removes it.
  */
-export default function PictureBoxEditor({ imageUrl, boxes, onChange }: Props) {
+export default function PictureBoxEditor<B extends OcclusionBox>({ imageUrl, boxes, onChange }: Props<B>) {
   const surfaceRef = useRef<HTMLDivElement>(null)
-  const [drag, setDrag] = useState<Drag | null>(null)
+  // The drag in progress. Kept in a ref because pointer events can come faster than
+  // React renders: with state, a quick flick could end before the start was seen and
+  // the box was lost. The state copy only draws the dashed preview.
+  const dragRef = useRef<Drag | null>(null)
+  const [drag, setDragState] = useState<Drag | null>(null)
   const [selected, setSelected] = useState<number | null>(null)
   const full = boxes.length >= MAX_BOXES
+
+  function setDrag(next: Drag | null) {
+    dragRef.current = next
+    setDragState(next)
+  }
 
   function pointer(event: PointerEvent): Point {
     return pointIn(surfaceRef.current!.getBoundingClientRect(), event.clientX, event.clientY)
@@ -53,22 +63,25 @@ export default function PictureBoxEditor({ imageUrl, boxes, onChange }: Props) {
   }
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current
     if (!drag) return
     const now = pointer(event)
     if (drag.kind === 'draw') {
       setDrag({ ...drag, current: now })
     } else {
       const moved = moveBox(drag.original, now.x - drag.start.x, now.y - drag.start.y)
-      onChange(boxes.map((box, i) => (i === drag.index ? moved : box)))
+      onChange(boxes.map((box, i) => (i === drag.index ? { ...box, x: moved.x, y: moved.y } : box)))
     }
   }
 
-  function handlePointerUp() {
+  function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current
     if (drag?.kind === 'draw') {
-      const box = boxFromPoints(drag.start, drag.current)
+      // Up to where the pointer was let go, even if no move event came in between
+      const box = boxFromPoints(drag.start, pointer(event))
       // A tap on the picture is not a box
       if (isBigEnough(box)) {
-        onChange([...boxes, { ...box, label: '' }])
+        onChange([...boxes, { ...box, label: '' } as B])
         setSelected(boxes.length)
       }
     }
@@ -85,7 +98,7 @@ export default function PictureBoxEditor({ imageUrl, boxes, onChange }: Props) {
       const [dx, dy] = moves[event.key]
       const box = boxes[selected]
       const changed = event.shiftKey ? resizeBox(box, dx, dy) : moveBox(box, dx, dy)
-      onChange(boxes.map((b, i) => (i === selected ? changed : b)))
+      onChange(boxes.map((b, i) => (i === selected ? { ...b, ...changed } : b)))
     } else if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault()
       remove(selected)
@@ -93,7 +106,7 @@ export default function PictureBoxEditor({ imageUrl, boxes, onChange }: Props) {
   }
 
   function addBox() {
-    onChange([...boxes, { ...centeredBox(), label: '' }])
+    onChange([...boxes, { ...centeredBox(), label: '' } as B])
     setSelected(boxes.length)
     surfaceRef.current?.focus({ preventScroll: true })
   }

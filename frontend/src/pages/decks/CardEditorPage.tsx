@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { createCard, createClozeCards, createImageCards, updateCard, getCards, uploadPicture } from '@/api/decks'
+import { createCard, createClozeCards, createImageCards, updateCard, updatePictureCards, getCards, uploadPicture } from '@/api/decks'
 import type { Card, CardType, OcclusionBox } from '@/types'
 import Button from '@/components/common/Button'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import ClozeView from '@/components/flashcards/ClozeView'
 import PictureBoxEditor from '@/components/flashcards/PictureBoxEditor'
-import PictureWithBoxes from '@/components/flashcards/PictureWithBoxes'
+import { usePicture } from '@/hooks/usePicture'
 import { shrinkPicture } from '@/utils/pictures'
 import { useNotification } from '@/contexts/NotificationContext'
 import { clozeNumbers, clozeProblem, nextClozeNumber, wrapAsBlank } from '@/utils/cloze'
@@ -27,6 +27,10 @@ interface FieldErrors {
   picture?: string
 }
 
+// A box in the editor. Boxes of a saved picture know their card, so a moved box
+// keeps its card and study history.
+type EditorBox = OcclusionBox & { cardId?: string }
+
 // A picture chosen in the editor, already made small, not uploaded yet
 interface LocalPicture {
   blob: Blob
@@ -45,7 +49,7 @@ export default function CardEditorPage() {
   const [clozeIndex, setClozeIndex] = useState<number | null>(null)
   // Picture cards: the new picture and its boxes, or an existing card's saved picture
   const [picture, setPicture]   = useState<LocalPicture | null>(null)
-  const [boxes, setBoxes]       = useState<OcclusionBox[]>([])
+  const [boxes, setBoxes]       = useState<EditorBox[]>([])
   const [savedImageId, setSavedImageId] = useState<string | null>(null)
   const [preparing, setPreparing] = useState(false)
   const [errors, setErrors]     = useState<FieldErrors>({})
@@ -55,6 +59,7 @@ export default function CardEditorPage() {
 
   const isCloze = cardType === 'CLOZE'
   const isPicture = cardType === 'IMAGE'
+  const savedPicture = usePicture(isEditing && isPicture ? savedImageId : null)
 
   // The local preview URL is freed when the picture changes or the page closes
   useEffect(() => {
@@ -99,7 +104,14 @@ export default function CardEditorPage() {
           setCardType(card.cardType)
           setClozeIndex(card.clozeIndex)
           setSavedImageId(card.imageId)
-          setBoxes(card.boxes)
+          if (card.cardType === 'IMAGE') {
+            // Each box with the card that asks for it. A box whose card was deleted
+            // on its own is left out, so it disappears from the picture on save.
+            const group = cards.filter(c => c.cardType === 'IMAGE' && c.pictureGroup === card.pictureGroup)
+            setBoxes(card.boxes
+              .map((box, i) => ({ ...box, cardId: group.find(c => c.clozeIndex === i + 1)?.id }))
+              .filter(box => box.cardId))
+          }
         }
       })
       .catch(() => {
@@ -119,7 +131,7 @@ export default function CardEditorPage() {
       // The question is optional on a picture card; a default is used
       if (form.front.length > 2000) next.front = 'Must be 2000 characters or less'
       if (!isEditing && !picture) next.picture = 'Choose a picture first'
-      else if (!isEditing && boxes.length === 0) next.picture = 'Draw at least one box over the part to hide'
+      else if (boxes.length === 0) next.picture = 'Draw at least one box over the part to hide'
     } else if (!form.front.trim()) next.front = isCloze ? 'The text is required' : 'Question is required'
     else if (form.front.length > 2000) next.front = 'Must be 2000 characters or less'
     else if (isCloze) {
@@ -160,6 +172,15 @@ export default function CardEditorPage() {
     setSaving(true)
     try {
       const tags = parseTags(form.tagsRaw)
+      if (isEditing && cardId && isPicture) {
+        const updated = await updatePictureCards(cardId, {
+          prompt: form.front.trim(), extra: form.back.trim(), tags,
+          boxes: boxes.map(box => ({ ...box, label: box.label?.trim() ?? '' })),
+        })
+        notify('success', updated.length === 1 ? 'Picture card updated!' : `${updated.length} picture cards updated!`)
+        navigate(`/decks/${deckId}`)
+        return
+      }
       if (isEditing && cardId) {
         await updateCard(cardId, {
           front: form.front.trim(),
@@ -253,10 +274,18 @@ export default function CardEditorPage() {
             </p>
             {isEditing ? (
               <>
-                <PictureWithBoxes imageId={savedImageId} boxes={boxes} activeIndex={clozeIndex} revealed={false} />
-                <p className="mt-2 text-xs text-gray-600">
-                  This card asks for box {clozeIndex}. You can change the question, notes and tags here.
+                <p className="mb-2 text-xs text-gray-600">
+                  Changes here apply to every card of this picture (this one asks for box {clozeIndex}). A box you
+                  move keeps its study history; removing a box deletes its card, and a new box adds a card.
                 </p>
+                {savedPicture.url ? (
+                  <PictureBoxEditor imageUrl={savedPicture.url} boxes={boxes}
+                    onChange={next => { setBoxes(next); setErrors(e => ({ ...e, picture: undefined })) }} />
+                ) : (
+                  <p className="text-sm text-gray-600">
+                    {savedPicture.failed ? 'The picture could not be loaded.' : 'Loading picture...'}
+                  </p>
+                )}
               </>
             ) : (
               <>

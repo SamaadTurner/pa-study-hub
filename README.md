@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 447 backend tests, 135 frontend unit tests and 91 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
+the frontend. 451 backend tests, 138 frontend unit tests and 92 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -127,13 +127,13 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 447 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 451 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 96.5% of lines and 86.7% of branches (JaCoCo, without the code Lombok
+  They cover 96.6% of lines and 86.4% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
-- **Frontend:** 135 unit tests with Vitest and React Testing Library.
-- **End to end:** 91 Playwright tests in Chromium; the account, deck, study, exam, fill-in-the-blank and picture card tests (47) also run in WebKit (desktop Safari) and on an iPhone 13 screen. They click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
+- **Frontend:** 138 unit tests with Vitest and React Testing Library.
+- **End to end:** 92 Playwright tests in Chromium; the account, deck, study, exam, fill-in-the-blank and picture card tests (48) also run in WebKit (desktop Safari) and on an iPhone 13 screen. They click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
   and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
@@ -433,9 +433,22 @@ perf/main-pages.js` against a local backend, never the live site.
 the frontend is a Render static site (`render.yaml`). The static site passes `/api` on to
 the backend, so the browser only talks to one address and the backend needs no CORS
 setup. The database is a free Neon PostgreSQL in the same region (Oregon), because
-Render's free database is deleted after 30 days. The cost of free is the one-minute wake-up
-after an idle period; the app tells the user the server is starting instead of showing an
-error.
+Render's free database is deleted after 30 days. The cost of free is the wake-up after 15
+idle minutes, so it is made as short and as clear as possible instead of being hidden with a
+keep-alive ping (Render's staff call pinging a free service to keep it awake abuse of the free
+plan):
+
+- The Docker image runs the app from an unpacked classpath with a class data sharing archive
+  made by a training run while the image is built (`spring.context.exit=onRefresh`, no
+  database needed: Flyway off and Hibernate told not to read database metadata). Each start
+  maps the archive instead of loading and checking thousands of classes. CI checks with
+  `-Xshare:on` that the archive can be used.
+- Hibernate no longer compares every table with the entities at start; Flyway owns the schema
+  and the PostgreSQL test run in CI does that check on every push.
+- Measured locally on one CPU core, time to ready went from 6.2 s (packed jar) to 3.2 s.
+- Every page calls the server as soon as it opens, so the wake-up starts while the student is
+  still typing, and any request that waits more than 4 seconds shows a banner that says the
+  server is waking up and counts the seconds.
 
 ## AI features
 

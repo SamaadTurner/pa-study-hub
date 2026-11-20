@@ -2,6 +2,9 @@ package com.pastudyhub.flashcard.service;
 
 import com.pastudyhub.flashcard.dto.CardResponse;
 import com.pastudyhub.flashcard.dto.ClozeCardsRequest;
+import com.pastudyhub.flashcard.model.CardImage;
+import com.pastudyhub.flashcard.engine.OcclusionBoxes;
+import com.pastudyhub.flashcard.dto.ImageCardsRequest;
 import com.pastudyhub.flashcard.dto.CreateCardRequest;
 import com.pastudyhub.flashcard.engine.ClozeText;
 import com.pastudyhub.flashcard.exception.CardNotFoundException;
@@ -44,6 +47,10 @@ public class CardServiceImpl {
     private final DeckRepository deckRepository;
     private final ReviewScheduleRepository reviewScheduleRepository;
     private final CardMapper cardMapper;
+    private final CardImageService cardImageService;
+
+    // Shown above the picture when the student did not write a question
+    static final String DEFAULT_IMAGE_PROMPT = "What is under the highlighted box?";
 
     @Transactional(readOnly = true)
     public Page<CardResponse> getCardsForDeck(UUID deckId, UUID userId, int page, int size) {
@@ -135,6 +142,51 @@ public class CardServiceImpl {
         return created;
     }
 
+    /**
+     * Makes the cards of one picture: one card per box, in box order, at the end of
+     * the deck. Every card keeps the picture and all boxes; when it is studied, its
+     * own box is the one to name.
+     */
+    @Transactional
+    public List<CardResponse> createImageCards(UUID deckId, ImageCardsRequest request, UUID userId) {
+        Deck deck = deckRepository.findByIdAndNotDeleted(deckId)
+                .orElseThrow(() -> new DeckNotFoundException(deckId));
+        if (!deck.getUserId().equals(userId)) {
+            throw new UnauthorizedDeckAccessException();
+        }
+        String problem = OcclusionBoxes.problem(request.getBoxes());
+        if (problem != null) {
+            throw new InvalidCardException(problem);
+        }
+        CardImage image = cardImageService.findOwn(request.getImageId(), userId);
+
+        String prompt = request.getPrompt() == null || request.getPrompt().isBlank()
+                ? DEFAULT_IMAGE_PROMPT : request.getPrompt().trim();
+        String extra = request.getExtra() == null ? "" : request.getExtra().trim();
+        String boxes = OcclusionBoxes.toJson(request.getBoxes());
+        int position = cardRepository.findLastPositionInDeck(deckId);
+        List<CardResponse> created = new ArrayList<>();
+        for (int number = 1; number <= request.getBoxes().size(); number++) {
+            position++;
+            Card card = Card.builder()
+                    .deck(deck)
+                    .front(prompt)
+                    .back(extra)
+                    .cardType(CardType.IMAGE)
+                    .clozeIndex(number)
+                    .imageId(image.getId())
+                    .occlusionBoxes(boxes)
+                    .positionInDeck(position)
+                    .build();
+            if (request.getTags() != null) {
+                card.setTagsList(request.getTags());
+            }
+            created.add(cardMapper.toResponse(cardRepository.saveAndFlush(card), null));
+        }
+        log.info("Picture cards created: {} in deckId={}", created.size(), deckId);
+        return created;
+    }
+
     @Transactional
     public CardResponse updateCard(UUID cardId, CreateCardRequest request, UUID userId) {
         Card card = cardRepository.findByIdAndNotDeleted(cardId)
@@ -150,7 +202,7 @@ public class CardServiceImpl {
                 throw new InvalidCardException("This card asks for blank c" + card.getClozeIndex()
                         + ", so the text needs a {{c" + card.getClozeIndex() + "::...}} blank");
             }
-        } else if (request.getBack() != null && request.getBack().isBlank()) {
+        } else if (card.getCardType() == CardType.BASIC && request.getBack() != null && request.getBack().isBlank()) {
             throw new InvalidCardException("Card back (answer) is required");
         }
         if (request.getFront() != null) card.setFront(request.getFront().trim());

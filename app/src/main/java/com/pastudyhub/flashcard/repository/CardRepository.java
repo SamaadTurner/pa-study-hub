@@ -31,6 +31,11 @@ public interface CardRepository extends JpaRepository<Card, UUID> {
     /**
      * Find a specific non-deleted card.
      */
+    /** True when the picture is on a card in a deck this user may see (their own, or a public one). */
+    @Query("SELECT COUNT(c) > 0 FROM Card c WHERE c.imageId = :imageId AND c.isDeleted = false "
+            + "AND c.deck.isDeleted = false AND (c.deck.isPublic = true OR c.deck.userId = :viewerId)")
+    boolean existsVisibleCardWithImage(@Param("imageId") UUID imageId, @Param("viewerId") UUID viewerId);
+
     @Query("SELECT c FROM Card c WHERE c.id = :id AND c.isDeleted = false")
     Optional<Card> findByIdAndNotDeleted(@Param("id") UUID id);
 

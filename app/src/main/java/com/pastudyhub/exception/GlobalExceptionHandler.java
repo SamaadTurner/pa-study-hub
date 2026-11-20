@@ -10,6 +10,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.net.URI;
 import java.time.Instant;
@@ -68,6 +69,16 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT, "This was changed at the same time by another request. Reload and try again.");
         problem.setTitle(HttpStatus.CONFLICT.getReasonPhrase());
         problem.setType(URI.create(ERROR_TYPE_BASE + HttpStatus.CONFLICT.value()));
+        problem.setProperty("timestamp", Instant.now().toString());
+        return problem;
+    }
+
+    // An upload over the multipart limit never reaches the controller
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ProblemDetail handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.PAYLOAD_TOO_LARGE, "The picture is larger than 1 MB");
+        problem.setTitle(HttpStatus.PAYLOAD_TOO_LARGE.getReasonPhrase());
+        problem.setType(URI.create(ERROR_TYPE_BASE + HttpStatus.PAYLOAD_TOO_LARGE.value()));
         problem.setProperty("timestamp", Instant.now().toString());
         return problem;
     }

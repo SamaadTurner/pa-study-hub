@@ -1,5 +1,8 @@
 package com.pastudyhub.flashcard.mapper;
 
+import com.pastudyhub.flashcard.engine.OcclusionBoxes;
+import com.pastudyhub.flashcard.model.CardType;
+
 import com.pastudyhub.flashcard.dto.CardResponse;
 import com.pastudyhub.flashcard.dto.CreateCardRequest;
 import com.pastudyhub.flashcard.model.Card;
@@ -44,6 +47,8 @@ public class CardMapper {
                 .back(card.getBack())
                 .hint(card.getHint())
                 .imageUrl(card.getImageUrl())
+                .imageId(card.getImageId())
+                .boxes(card.getCardType() == CardType.IMAGE ? OcclusionBoxes.fromJson(card.getOcclusionBoxes()) : null)
                 .tags(card.getTagsList())
                 .reviewSchedule(scheduleInfo)
                 .createdAt(card.getCreatedAt())

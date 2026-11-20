@@ -54,6 +54,10 @@ public class AccountDeletionService {
         run("DELETE FROM review_schedules WHERE user_id = ? OR card_id IN (" + CARDS_OF_USER + ")", userId, userId);
         run("DELETE FROM cards WHERE deck_id IN (SELECT id FROM decks WHERE user_id = ?)", userId);
         run("DELETE FROM decks WHERE user_id = ?", userId);
+        // Pictures: gone unless a card of someone else (a copy) still uses them; those lose their owner
+        run("DELETE FROM card_images WHERE owner_id = ? AND NOT EXISTS "
+                + "(SELECT 1 FROM cards c WHERE c.image_id = card_images.id)", userId);
+        run("UPDATE card_images SET owner_id = NULL WHERE owner_id = ?", userId);
 
         // Exams the user took
         run("DELETE FROM exam_answers WHERE exam_session_id IN (" + EXAMS_OF_USER + ")", userId);

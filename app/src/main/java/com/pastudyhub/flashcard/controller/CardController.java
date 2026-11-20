@@ -3,6 +3,7 @@ package com.pastudyhub.flashcard.controller;
 import com.pastudyhub.flashcard.dto.CardResponse;
 import com.pastudyhub.flashcard.dto.CreateCardRequest;
 import com.pastudyhub.flashcard.dto.ClozeCardsRequest;
+import com.pastudyhub.flashcard.dto.ImageCardsRequest;
 import com.pastudyhub.flashcard.service.CardServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -57,6 +58,16 @@ public class CardController {
             @Valid @RequestBody ClozeCardsRequest request,
             @RequestHeader("X-User-Id") UUID userId) {
         return cardService.createClozeCards(deckId, request, userId);
+    }
+
+    @PostMapping("/decks/{deckId}/image-cards")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Add picture cards: one card per box drawn over an uploaded picture")
+    public List<CardResponse> createImageCards(
+            @PathVariable UUID deckId,
+            @Valid @RequestBody ImageCardsRequest request,
+            @RequestHeader("X-User-Id") UUID userId) {
+        return cardService.createImageCards(deckId, request, userId);
     }
 
     @PutMapping("/cards/{cardId}")

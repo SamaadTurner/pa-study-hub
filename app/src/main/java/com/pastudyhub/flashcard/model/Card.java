@@ -56,9 +56,20 @@ public class Card {
     @Builder.Default
     private CardType cardType = CardType.BASIC;
 
-    /** For a cloze card: the number of the blank it asks for (c1 = 1). Null for basic cards. */
+    /**
+     * For a cloze card: the number of the blank it asks for (c1 = 1). For a picture
+     * card: the number of the box it asks for (1 = the first box). Null for basic cards.
+     */
     @Column(name = "cloze_index")
     private Integer clozeIndex;
+
+    /** For a picture card: the uploaded picture (card_images). */
+    @Column(name = "image_id")
+    private UUID imageId;
+
+    /** For a picture card: all of the picture's boxes as JSON (see OcclusionBoxes). */
+    @Column(name = "occlusion_boxes", length = 10000)
+    private String occlusionBoxes;
 
     @Column(name = "hint", length = 500)
     private String hint;

@@ -26,6 +26,10 @@ public class CardResponse {
     /** For a cloze card, the blank number it asks for. */
     private Integer clozeIndex;
     private String imageUrl;
+    /** For a picture card: the picture to load from /api/v1/images/{imageId}. */
+    private UUID imageId;
+    /** For a picture card: all boxes; clozeIndex says which one this card asks for. */
+    private List<OcclusionBox> boxes;
     private List<String> tags;
     private ReviewScheduleInfo reviewSchedule;
     private LocalDateTime createdAt;

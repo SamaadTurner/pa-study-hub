@@ -91,6 +91,50 @@ test.describe('Picture cards', () => {
     await expectNoViolations(page, 'picture card answer')
   })
 
+  test('the boxes of saved picture cards can be changed later', async ({ page }) => {
+    await register(page, newUser())
+    const title = `Edit boxes ${Date.now()}`
+    await createDeck(page, title)
+    await openDeck(page, title)
+    const deckUrl = page.url()
+    await startPictureCard(page)
+    await choosePicture(page)
+    await drawBox(page, [0.1, 0.1], [0.4, 0.4])
+    await drawBox(page, [0.6, 0.6], [0.9, 0.9])
+    await page.getByLabel('Answer for box 1').fill('Left atrium')
+    await page.getByLabel('Answer for box 2').fill('Wrong part')
+    await page.getByRole('button', { name: 'Save Cards' }).click()
+    await expect(page.getByText('Picture, box 2')).toBeVisible()
+
+    // Study the first card once, so it has history
+    await page.getByRole('button', { name: /Study/ }).first().click()
+    await page.getByRole('button', { name: 'Reveal Answer' }).click()
+    await page.getByRole('button', { name: /^Good/ }).click()
+
+    // Edit: remove box 2, add a new one with a label
+    await page.goto(new URL(deckUrl).pathname)
+    await page.getByText('Left atrium').first().click()
+    await page.getByRole('button', { name: 'Edit', exact: true }).click()
+    await expect(page.getByText(/Changes here apply to every card of this picture/)).toBeVisible()
+    await expect(page.getByAltText('The picture to cover')).toBeVisible()
+    await expect(page.getByLabel('Answer for box 2')).toHaveValue('Wrong part')
+    await page.getByRole('button', { name: 'Remove box 2' }).click()
+    await drawBox(page, [0.55, 0.1], [0.85, 0.3])
+    await page.getByLabel('Answer for box 2').fill('Right atrium')
+    await page.getByRole('button', { name: 'Save Changes' }).click()
+
+    await expect(page.getByText('2 picture cards updated!')).toBeVisible()
+    await expect(page.getByText('Wrong part')).toBeHidden()
+    await expect(page.getByText('Right atrium')).toBeVisible()
+    await expect(page.getByText('Left atrium')).toBeVisible()
+    // The studied card kept its schedule: only the new card is due now
+    await page.getByRole('button', { name: /Study/ }).first().click()
+    await page.getByRole('button', { name: 'Reveal Answer' }).click()
+    await expect(page.getByText('Answer: Right atrium')).toBeVisible()
+    await page.getByRole('button', { name: /^Good/ }).click()
+    await expect(page.getByText('Answer: Left atrium')).toBeHidden()
+  })
+
   test('a picture and at least one box are needed, and only pictures are taken', async ({ page }) => {
     await register(page, newUser())
     const title = `Checks ${Date.now()}`

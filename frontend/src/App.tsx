@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { NotificationProvider } from '@/contexts/NotificationContext'
+import ServerWakeBanner from '@/components/common/ServerWakeBanner'
 import ProtectedRoute from '@/components/common/ProtectedRoute'
 import AppLayout from '@/components/layout/AppLayout'
 import ErrorBoundary from '@/components/common/ErrorBoundary'
@@ -39,6 +40,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        <ServerWakeBanner />
         <AuthProvider>
           <NotificationProvider>
             <Routes>

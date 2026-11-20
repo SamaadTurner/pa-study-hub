@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios'
 import type { ApiError } from '@/types'
-import { isServerUnreachable, SERVER_UNREACHABLE_MESSAGE } from '@/utils/serverStatus'
+import { isServerUnreachable, SERVER_UNREACHABLE_MESSAGE, slowRequests } from '@/utils/serverStatus'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 const TOKEN_KEY  = 'pa_access_token'
@@ -26,7 +26,15 @@ export function deviceTimeZone(): string | null {
   }
 }
 
-apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+// Remembers which waiting request is which, so the banner knows when all are done
+type TrackedConfig = InternalAxiosRequestConfig & { _slowId?: number }
+
+function finishTracking(config: TrackedConfig | undefined) {
+  if (config?._slowId !== undefined) slowRequests.end(config._slowId)
+}
+
+apiClient.interceptors.request.use((config: TrackedConfig) => {
+  config._slowId = slowRequests.start()
   const token = localStorage.getItem(TOKEN_KEY)
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
@@ -67,8 +75,12 @@ function refreshOnce(): Promise<string> {
 // ---- Response interceptor: normalize errors ---------------------------------
 
 apiClient.interceptors.response.use(
-  response => response,
+  response => {
+    finishTracking(response.config as TrackedConfig)
+    return response
+  },
   async (error: AxiosError) => {
+    finishTracking(error.config as TrackedConfig)
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
 
     // A 401 from the login or register call means the details were wrong, not that

@@ -1,5 +1,6 @@
 package com.pastudyhub.user.controller;
 
+import com.pastudyhub.user.botcheck.BotCheck;
 import com.pastudyhub.user.dto.*;
 import com.pastudyhub.user.security.RefreshTokenCookie;
 import com.pastudyhub.user.service.AccountEmailService;
@@ -28,6 +29,7 @@ public class AuthController {
 
     private final AuthenticationService authenticationService;
     private final RefreshTokenCookie refreshTokenCookie;
+    private final BotCheck botCheck;
     private final AccountEmailService accountEmailService;
 
     /**
@@ -131,6 +133,16 @@ public class AuthController {
         }
         String fromBody = body == null ? null : body.getRefreshToken();
         return fromBody == null || fromBody.isBlank() ? null : fromBody;
+    }
+
+    /** What the sign-up form needs for the bot check: the public site key, or null when it is off. */
+    public record BotCheckResponse(String turnstileSiteKey) {
+    }
+
+    @GetMapping("/bot-check")
+    @Operation(summary = "The site key for the sign-up bot check (Cloudflare Turnstile), or null when it is off")
+    public BotCheckResponse botCheckConfig() {
+        return new BotCheckResponse(botCheck.siteKey());
     }
 
     @GetMapping("/google/status")

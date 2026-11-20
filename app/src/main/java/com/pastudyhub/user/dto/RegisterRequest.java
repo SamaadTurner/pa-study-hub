@@ -37,4 +37,8 @@ public class RegisterRequest {
     @Min(value = 2020, message = "Graduation year must be 2020 or later")
     @Max(value = 2040, message = "Graduation year must be 2040 or earlier")
     private Integer graduationYear;
+
+    /** The token from the bot check widget (Cloudflare Turnstile); needed when the check is on. */
+    @Size(max = 2048)
+    private String botCheckToken;
 }

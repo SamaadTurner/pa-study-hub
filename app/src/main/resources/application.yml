@@ -60,6 +60,13 @@ auth:
     per-hour: ${SIGNUP_LIMIT_PER_HOUR:30}
     per-day: ${SIGNUP_LIMIT_PER_DAY:200}
 
+# Cloudflare Turnstile on the sign-up form (see BotCheck). Off unless both are set.
+# The site key is public; the secret key stays on the server.
+bot-check:
+  turnstile:
+    site-key: ${TURNSTILE_SITE_KEY:}
+    secret-key: ${TURNSTILE_SECRET_KEY:}
+
 # Which scheduler sets the next review date: sm2 or fsrs (see SchedulingProperties).
 # Both run on every review, so switching keeps every card's history.
 scheduling:

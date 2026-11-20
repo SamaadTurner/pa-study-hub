@@ -60,6 +60,10 @@ class GoogleSignInIntegrationTest extends BaseIntegrationTest {
     @MockBean
     private com.pastudyhub.user.security.SignupLimiter signupLimiter;
 
+    // Off-like by default (lets everything through, no site key)
+    @MockBean
+    private com.pastudyhub.user.botcheck.BotCheck botCheck;
+
     @Autowired
     private MailSender mailSender;
 
@@ -281,6 +285,33 @@ class GoogleSignInIntegrationTest extends BaseIntegrationTest {
             googleSignIn(sub, existingEmail).andExpect(status().isOk());
         } finally {
             org.mockito.Mockito.reset(signupLimiter);
+        }
+    }
+
+    @Test
+    @DisplayName("With the bot check on, sign-up needs a token Cloudflare accepts; the form gets the site key")
+    void botCheckOnSignUp() throws Exception {
+        when(botCheck.siteKey()).thenReturn("site-key-123");
+        org.mockito.Mockito.doThrow(new com.pastudyhub.user.exception.BotCheckFailedException())
+                .when(botCheck).verify(org.mockito.ArgumentMatchers.argThat(token -> !"good-token".equals(token)));
+        try {
+            mockMvc.perform(get("/api/v1/auth/bot-check"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.turnstileSiteKey").value("site-key-123"));
+
+            String email = "bot-check-" + java.util.UUID.randomUUID() + "@example.com";
+            Map<String, Object> form = new java.util.HashMap<>(Map.of("email", email, "password", "Str0ng!Passw0rd",
+                    "firstName", "A", "lastName", "B"));
+            mockMvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(form)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.detail").value("Please complete the check that you're not a robot, then try again."));
+            form.put("botCheckToken", "good-token");
+            mockMvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(form)))
+                    .andExpect(status().isCreated());
+        } finally {
+            org.mockito.Mockito.reset(botCheck);
         }
     }
 

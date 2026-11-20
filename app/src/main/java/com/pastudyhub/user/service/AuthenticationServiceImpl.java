@@ -1,5 +1,6 @@
 package com.pastudyhub.user.service;
 
+import com.pastudyhub.user.botcheck.BotCheck;
 import com.pastudyhub.user.dto.*;
 import com.pastudyhub.user.exception.*;
 import com.pastudyhub.user.google.GoogleIdentity;
@@ -52,6 +53,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final GoogleTokenVerifier googleTokenVerifier;
     private final EmailLinkService emailLinkService;
     private final SignupLimiter signupLimiter;
+    private final BotCheck botCheck;
 
     @Value("${jwt.refresh-token-expiry-days:7}")
     private int refreshTokenExpiryDays;
@@ -63,6 +65,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        // First, so a script learns nothing (not even whether an email is taken)
+        // without getting past the check
+        botCheck.verify(request.getBotCheckToken());
         String normalizedEmail = request.getEmail().toLowerCase().trim();
 
         // Check for duplicate email

@@ -42,7 +42,9 @@ export default function PrivacyPage() {
               no card uses are deleted after a day.
             </li>
             <li>
-              In your browser: the sign-in tokens, in local storage, until you sign out.
+              In your browser, until you sign out: a short-lived sign-in token (15 minutes) in local
+              storage, and a longer one (7 days) in a cookie that the page&apos;s scripts can&apos;t read.
+              No tracking or advertising cookies.
             </li>
           </ul>
         </section>
@@ -60,7 +62,8 @@ export default function PrivacyPage() {
               Nothing is sent unless you press one of those buttons.
             </li>
             <li>
-              The app runs on Render and the database on Neon, both in the US (Oregon). Emails from the app
+              The page loads its font from Google Fonts, so Google sees your IP address when the font
+              loads. The app runs on Render and the database on Neon, both in the US (Oregon). Emails from the app
               (the sign-up confirmation and password reset links) are sent through Brevo, which gets your
               email address and the email's text for that purpose.
             </li>

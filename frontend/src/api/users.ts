@@ -18,11 +18,11 @@ export async function updateProfile(update: ProfileUpdate): Promise<User> {
 // Changing the password signs out every other device. The server sends new tokens
 // for this browser, so it stays signed in.
 export async function changePassword(currentPassword: string | null, newPassword: string): Promise<User> {
-  const { data } = await apiClient.put<{ accessToken: string; refreshToken: string; user: User }>(
+  const { data } = await apiClient.put<{ accessToken: string; user: User }>(
     '/users/me/password',
     { currentPassword, newPassword },
   )
-  setTokens(data.accessToken, data.refreshToken)
+  setTokens(data.accessToken)
   return data.user
 }
 

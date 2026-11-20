@@ -1,21 +1,21 @@
-import apiClient, { getRefreshToken, setTokens } from './client'
+import apiClient, { getLegacyRefreshToken, setTokens } from './client'
 import type { LoginRequest, RegisterRequest, User } from '@/types'
 
 interface AuthResponse {
   accessToken: string
-  refreshToken: string
+  // The refresh token comes as an HttpOnly cookie, not in the JSON
   user: User
 }
 
 export async function login(req: LoginRequest): Promise<{ user: User }> {
   const { data } = await apiClient.post<AuthResponse>('/auth/login', req)
-  setTokens(data.accessToken, data.refreshToken)
+  setTokens(data.accessToken)
   return { user: data.user }
 }
 
 export async function register(req: RegisterRequest): Promise<{ user: User }> {
   const { data } = await apiClient.post<AuthResponse>('/auth/register', req)
-  setTokens(data.accessToken, data.refreshToken)
+  setTokens(data.accessToken)
   return { user: data.user }
 }
 
@@ -34,14 +34,14 @@ export async function getGoogleStatus(): Promise<GoogleStatus> {
 // credential is the ID token Google's button hands to the page
 export async function googleSignIn(credential: string): Promise<{ user: User }> {
   const { data } = await apiClient.post<AuthResponse>('/auth/google', { credential })
-  setTokens(data.accessToken, data.refreshToken)
+  setTokens(data.accessToken)
   return { user: data.user }
 }
 
 // Adds Google to an existing account, proven with that account's password
 export async function googleLink(credential: string, password: string): Promise<{ user: User }> {
   const { data } = await apiClient.post<AuthResponse>('/auth/google/link', { credential, password })
-  setTokens(data.accessToken, data.refreshToken)
+  setTokens(data.accessToken)
   return { user: data.user }
 }
 
@@ -56,7 +56,7 @@ export async function requestPasswordReset(email: string): Promise<string> {
 // Sets the new password from a reset link and signs in
 export async function resetPassword(token: string, newPassword: string): Promise<{ user: User }> {
   const { data } = await apiClient.post<AuthResponse>('/auth/password-reset/confirm', { token, newPassword })
-  setTokens(data.accessToken, data.refreshToken)
+  setTokens(data.accessToken)
   return { user: data.user }
 }
 
@@ -68,9 +68,10 @@ export async function confirmEmail(token: string): Promise<void> {
 // access tokens after signing out (for example if it was copied from this browser).
 // Short timeout: signing out should not wait a minute for a sleeping server.
 export async function logout(): Promise<void> {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return
-  await apiClient.post('/auth/logout', { refreshToken }, { timeout: 5_000 })
+  // The cookie goes along by itself and the server deletes it; a token left over
+  // from an older version is sent in the body
+  const legacy = getLegacyRefreshToken()
+  await apiClient.post('/auth/logout', legacy ? { refreshToken: legacy } : {}, { timeout: 5_000 })
 }
 
 export async function getMe(): Promise<User> {

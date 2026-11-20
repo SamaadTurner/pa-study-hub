@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import securityHeaders from './security-headers.json'
 
 export default defineConfig({
   plugins: [react()],
@@ -17,6 +18,13 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  // `npm run preview` serves the production build with the same security headers
+  // as the live site, so the Content-Security-Policy can be checked locally. The
+  // dev server leaves them out: its hot reload needs inline scripts.
+  preview: {
+    port: 4173,
+    headers: securityHeaders,
   },
   test: {
     globals: true,

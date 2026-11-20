@@ -4,7 +4,9 @@ import { isServerUnreachable, SERVER_UNREACHABLE_MESSAGE } from '@/utils/serverS
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 const TOKEN_KEY  = 'pa_access_token'
-const REFRESH_KEY = 'pa_refresh_token'
+// The refresh token now lives in an HttpOnly cookie the page can't read. Older
+// versions kept it here; one left over is handed to the server once and removed.
+const LEGACY_REFRESH_KEY = 'pa_refresh_token'
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -45,13 +47,16 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 // the login page. Now requests that fail together wait for one shared refresh.
 let refreshing: Promise<string> | null = null
 
-function refreshOnce(refreshToken: string): Promise<string> {
+function refreshOnce(): Promise<string> {
   if (!refreshing) {
+    // The browser sends the cookie by itself (same site). A token left over from an
+    // older version goes in the body this one time.
+    const legacy = localStorage.getItem(LEGACY_REFRESH_KEY)
     refreshing = axios
-      .post<{ accessToken: string; refreshToken: string }>(`${BASE_URL}/auth/refresh`, { refreshToken })
+      .post<{ accessToken: string }>(`${BASE_URL}/auth/refresh`, legacy ? { refreshToken: legacy } : {})
       .then(({ data }) => {
         localStorage.setItem(TOKEN_KEY, data.accessToken)
-        localStorage.setItem(REFRESH_KEY, data.refreshToken)
+        localStorage.removeItem(LEGACY_REFRESH_KEY)
         return data.accessToken
       })
       .finally(() => { refreshing = null })
@@ -73,11 +78,11 @@ apiClient.interceptors.response.use(
 
     // 401 + not already retried → try refresh
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
-      const refreshToken = localStorage.getItem(REFRESH_KEY)
-      if (refreshToken) {
+      // Signed in (an access token, or a left-over refresh token): try the cookie
+      if (getAccessToken() || localStorage.getItem(LEGACY_REFRESH_KEY)) {
         originalRequest._retry = true
         try {
-          const accessToken = await refreshOnce(refreshToken)
+          const accessToken = await refreshOnce()
           originalRequest.headers.Authorization = `Bearer ${accessToken}`
           return apiClient(originalRequest)
         } catch {
@@ -120,18 +125,20 @@ apiClient.interceptors.response.use(
 
 // ---- Token helpers ----------------------------------------------------------
 
-export function setTokens(access: string, refresh: string) {
+// Only the access token is kept; the refresh token arrived as an HttpOnly cookie
+export function setTokens(access: string) {
   localStorage.setItem(TOKEN_KEY, access)
-  localStorage.setItem(REFRESH_KEY, refresh)
+  localStorage.removeItem(LEGACY_REFRESH_KEY)
 }
 
 export function clearTokens() {
   localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(REFRESH_KEY)
+  localStorage.removeItem(LEGACY_REFRESH_KEY)
 }
 
-export function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_KEY)
+// A refresh token left in storage by an older version of the app, if any
+export function getLegacyRefreshToken(): string | null {
+  return localStorage.getItem(LEGACY_REFRESH_KEY)
 }
 
 export function getAccessToken(): string | null {

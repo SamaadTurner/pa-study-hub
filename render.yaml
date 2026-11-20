@@ -51,6 +51,12 @@ services:
       # The daily limits (20 per user, 300 for the site) keep a free key from running out.
       - key: AI_API_KEY
         sync: false
+      # Emails (password reset, email confirmation) through Brevo. Set both in the
+      # dashboard; without the key emails are only logged.
+      - key: MAIL_BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM_ADDRESS
+        sync: false
       # "Continue with Google". The client ID is public (Google's button puts it in
       # the page), so it can live here. The client secret is never used.
       - key: GOOGLE_CLIENT_ID

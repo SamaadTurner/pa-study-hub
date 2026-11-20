@@ -200,7 +200,8 @@ export interface QuestionCounts {
 export interface WrittenQuestion extends QuestionRequest {
   id: string
   reports: QuestionReport[]
-  hiddenFromShared: boolean  // left out of other people's exams because of reports
+  earlierReportCount: number  // reports the earlier versions had; they still count
+  hiddenFromShared: boolean   // left out of other people's exams because of reports
   createdAt: string
   updatedAt: string
 }

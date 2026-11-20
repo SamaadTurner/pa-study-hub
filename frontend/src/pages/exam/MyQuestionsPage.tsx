@@ -126,12 +126,18 @@ export default function MyQuestionsPage() {
               <p className="text-xs text-gray-500 mt-1">
                 Right answer: {shorten(question.answerOptions.find(o => o.isCorrect)?.text ?? '', 80)}
               </p>
-              {question.reports.length > 0 && (
+              {(question.reports.length > 0 || question.earlierReportCount > 0) && (
                 <div className="mt-3 bg-red-50 border border-red-100 rounded-lg p-3 text-xs text-gray-700 space-y-1">
                   {question.hiddenFromShared && (
                     <p className="font-medium text-red-700">
-                      Left out of other people's exams because of the reports. Editing it saves a new
-                      version without reports.
+                      Left out of other people's exams because of the reports. Fixing it saves a new
+                      version that comes back, but the reports still count: one more report hides it again.
+                    </p>
+                  )}
+                  {question.earlierReportCount > 0 && (
+                    <p>
+                      {question.earlierReportCount} {question.earlierReportCount === 1 ? 'report' : 'reports'} on
+                      earlier versions, still counted.
                     </p>
                   )}
                   <ul className="space-y-1">

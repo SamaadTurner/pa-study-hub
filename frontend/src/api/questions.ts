@@ -44,10 +44,11 @@ export async function reportQuestion(questionId: string, reason: ReportReason, n
 // One page of the questions other users shared, newest first
 export async function getSharedQuestions(
   category: string | null,
+  search: string,
   page: number,
 ): Promise<PaginatedResponse<SharedQuestion>> {
   const { data } = await apiClient.get<PaginatedResponse<SharedQuestion>>('/questions/shared', {
-    params: { category: category ?? undefined, page, size: 20 },
+    params: { category: category ?? undefined, search: search.trim() || undefined, page, size: 20 },
   })
   return data
 }

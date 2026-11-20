@@ -82,7 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // nothing more to do here
     }
     clearTokens()
-    setUser(null)
+    // Only the full page load to /login, which starts the app clean. Clearing the
+    // user here as well made the app jump to /login first and reload a moment
+    // later, so a click in between was lost.
     window.location.href = '/login'
   }, [])
 

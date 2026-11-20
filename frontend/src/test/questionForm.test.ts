@@ -108,6 +108,7 @@ describe('formFromQuestion', () => {
       difficulty: 'HARD',
       isPublic: true,
       reports: [],
+      earlierReportCount: 0,
       hiddenFromShared: false,
       createdAt: '2026-11-19T10:00:00',
       updatedAt: '2026-11-19T10:00:00',

@@ -144,6 +144,21 @@ test.describe('Accounts', () => {
     expect(failures).toBe(2)
   })
 
+  test('a slow answer shows the waking-up banner until it arrives', async ({ page }) => {
+    await register(page, newUser())
+    // Hold the dashboard's data for 6 seconds, as a sleeping server would
+    await page.route('**/api/v1/progress/dashboard', async route => {
+      await new Promise(resolve => setTimeout(resolve, 6_000))
+      await route.continue()
+    })
+    await page.goto('/dashboard')
+    const banner = page.getByRole('status').filter({ hasText: 'Waking up the server' })
+    await expect(banner).toBeVisible({ timeout: 6_000 })
+    await expect(banner).toContainText('takes up to a minute')
+    // Gone once the answer is in
+    await expect(banner).toBeHidden({ timeout: 10_000 })
+  })
+
   test('pages behind the login send a visitor to the login page', async ({ page }) => {
     await page.goto('/decks')
     await expect(page).toHaveURL(/\/login$/)

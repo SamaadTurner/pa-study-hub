@@ -244,6 +244,13 @@ jobs:
       - name: The frontend serves the page
         run: curl -sf http://localhost:3000/ | grep -q '<div id="root">'
 
+      # -Xshare:on makes the JVM stop with an error if it can't use the class data
+      # archive made while building the image (with -Xshare:auto, the normal mode,
+      # it would quietly start without it and every wake-up would be slow again)
+      - name: The backend image's class data archive can be used
+        run: |
+          docker compose exec -T app java -Xshare:on -XX:SharedArchiveFile=app.jsa -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -cp "application.jar:lib/*" -version
+
       - name: The page has the security headers, and sign-in sets an HttpOnly cookie
         run: |
           set -e

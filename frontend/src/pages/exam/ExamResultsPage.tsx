@@ -175,19 +175,19 @@ export default function ExamResultsPage() {
         <div className="flex items-center justify-center gap-8 text-sm">
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">{result.rawScore}/{result.totalQuestions}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Correct</p>
+            <p className="text-xs text-gray-600 mt-0.5">Correct</p>
           </div>
           <div className="w-px h-10 bg-current opacity-20" />
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">{formatDuration(result.durationSeconds)}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Total time</p>
+            <p className="text-xs text-gray-600 mt-0.5">Total time</p>
           </div>
           <div className="w-px h-10 bg-current opacity-20" />
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">
               {formatDuration(Math.round(result.avgTimePerQuestionSeconds))}
             </p>
-            <p className="text-xs text-gray-500 mt-0.5">Avg / answer</p>
+            <p className="text-xs text-gray-600 mt-0.5">Avg / answer</p>
           </div>
         </div>
       </div>

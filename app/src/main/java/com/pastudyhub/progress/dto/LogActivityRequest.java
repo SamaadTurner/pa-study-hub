@@ -1,5 +1,6 @@
 package com.pastudyhub.progress.dto;
 
+import java.time.LocalDate;
 import com.pastudyhub.progress.model.ActivityType;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -37,4 +38,7 @@ public class LogActivityRequest {
 
     @Min(0)
     private int totalCount;
+
+    /** The user's calendar day the activity counts for. Null means today where the user is. */
+    private LocalDate activityDate;
 }

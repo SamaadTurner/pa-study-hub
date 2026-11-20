@@ -34,6 +34,7 @@ public class UserMapper {
                 .role(user.getRole().name())
                 .paSchoolName(user.getPaSchoolName())
                 .graduationYear(user.getGraduationYear())
+                .timeZone(user.getTimeZone())
                 .studyRemindersEnabled(user.isStudyRemindersEnabled())
                 .preferredStudyTime(user.getPreferredStudyTime())
                 .avatarUrl(user.getAvatarUrl())

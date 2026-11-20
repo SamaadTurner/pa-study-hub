@@ -13,6 +13,7 @@ import com.pastudyhub.flashcard.repository.CardRepository;
 import com.pastudyhub.flashcard.repository.DeckCardCounts;
 import com.pastudyhub.flashcard.repository.DeckRepository;
 import com.pastudyhub.flashcard.repository.ReviewScheduleRepository;
+import com.pastudyhub.user.time.UserClock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -45,6 +46,7 @@ public class DeckServiceImpl implements DeckService {
     private final DeckMapper deckMapper;
     private final DeckHandoverService deckHandoverService;
     private final CardMapper cardMapper;
+    private final UserClock userClock;
 
     @Override
     @Transactional(readOnly = true)
@@ -54,7 +56,7 @@ public class DeckServiceImpl implements DeckService {
         Map<UUID, DeckCardCounts> counts = new HashMap<>();
         if (decks.hasContent()) {
             List<UUID> deckIds = decks.getContent().stream().map(Deck::getId).toList();
-            for (DeckCardCounts count : cardRepository.countForDeckList(deckIds, userId, LocalDate.now())) {
+            for (DeckCardCounts count : cardRepository.countForDeckList(deckIds, userId, userClock.today(userId))) {
                 counts.put(count.deckId(), count);
             }
         }
@@ -248,7 +250,7 @@ public class DeckServiceImpl implements DeckService {
     // Cards to study today: the ones that are due plus the ones never reviewed.
     // This has to match what ReviewServiceImpl.getCardsForReview hands out.
     private int countCardsToReview(UUID deckId, UUID userId) {
-        int due = reviewScheduleRepository.countDueForReview(deckId, userId, LocalDate.now());
+        int due = reviewScheduleRepository.countDueForReview(deckId, userId, userClock.today(userId));
         int neverReviewed = cardRepository.countNeverReviewed(deckId, userId);
         return due + neverReviewed;
     }

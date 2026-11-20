@@ -24,6 +24,8 @@ public class UserResponse {
     private String role;
     private String paSchoolName;
     private Integer graduationYear;
+    /** The time zone streaks and goals use (from the user's browser); null until known. */
+    private String timeZone;
     private boolean studyRemindersEnabled;
     private String preferredStudyTime;
     private String avatarUrl;

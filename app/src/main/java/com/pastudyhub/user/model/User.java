@@ -73,6 +73,10 @@ public class User {
     @Column(name = "graduation_year")
     private Integer graduationYear;
 
+    /** The time zone the user's browser reports, for example America/Los_Angeles. See UserClock. */
+    @Column(name = "time_zone", length = 64)
+    private String timeZone;
+
     /**
      * When true, the app may send push/email reminders at preferredStudyTime.
      */

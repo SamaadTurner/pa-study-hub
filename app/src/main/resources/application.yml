@@ -19,6 +19,9 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+        # Times go to and from the database as UTC
+        jdbc:
+          time_zone: UTC
 
   # Pictures are at most 1 MB (checked in CardImageService); a little room for the form
   servlet:

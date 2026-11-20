@@ -79,6 +79,8 @@ tasks.register<JavaExec>("evaluateSchedulers") {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // Same clock as the server (UTC), whatever the machine's own time zone is
+    systemProperty("user.timezone", "UTC")
     finalizedBy(tasks.named("jacocoTestReport"))
 }
 

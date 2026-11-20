@@ -8,6 +8,7 @@ import com.pastudyhub.progress.model.ActivityType;
 import com.pastudyhub.progress.model.DailyGoal;
 import com.pastudyhub.progress.repository.ActivityLogRepository;
 import com.pastudyhub.progress.repository.DailyGoalRepository;
+import com.pastudyhub.user.time.UserClock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class ProgressService {
 
     private final ActivityLogRepository activityLogRepository;
     private final DailyGoalRepository dailyGoalRepository;
+    private final UserClock userClock;
 
     /**
      * Saves one activity event. Called from the flashcard code when a card is reviewed
@@ -41,7 +43,8 @@ public class ProgressService {
                 .cardsReviewed(request.getCardsReviewed())
                 .correctCount(request.getCorrectCount())
                 .totalCount(request.getTotalCount())
-                .activityDate(LocalDate.now())
+                .activityDate(request.getActivityDate() != null
+                        ? request.getActivityDate() : userClock.today(request.getUserId()))
                 .build();
         activityLogRepository.save(log);
         this.log.debug("Activity logged: userId={}, type={}, category={}",
@@ -56,7 +59,7 @@ public class ProgressService {
         List<ActivityLog> allLogs = activityLogRepository.findByUserIdOrderByActivityDateDesc(userId);
         List<LocalDate> studyDates = activityLogRepository.findDistinctStudyDates(userId);
 
-        StreakCalculator streakCalc = new StreakCalculator(studyDates, LocalDate.now());
+        StreakCalculator streakCalc = new StreakCalculator(studyDates, userClock.today(userId));
         PerformanceAnalyzer analyzer = new PerformanceAnalyzer(allLogs);
 
         DailyGoal goal = dailyGoalRepository.findByUserId(userId)
@@ -106,7 +109,7 @@ public class ProgressService {
     // ---- Private helpers ---------------------------------------------------
 
     private GoalProgressResponse buildTodayGoal(UUID userId, DailyGoal goal) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = userClock.today(userId);
         int cardsToday = orZero(activityLogRepository.sumCardsReviewedForDate(userId, today));
         // Time is saved in seconds. Only full minutes count toward the goal.
         int minutesToday = orZero(activityLogRepository.sumDurationSecondsForDate(userId, today)) / 60;
@@ -131,7 +134,7 @@ public class ProgressService {
     }
 
     private List<DailyProgressPoint> buildLast30Days(UUID userId, List<ActivityLog> allLogs, DailyGoal goal) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = userClock.today(userId);
         LocalDate thirtyDaysAgo = today.minusDays(29);
 
         // Group logs by date

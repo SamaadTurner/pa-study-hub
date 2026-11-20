@@ -45,6 +45,9 @@ class DeckServiceImplTest {
     @Mock
     private DeckHandoverService deckHandoverService;
 
+    @Mock
+    private com.pastudyhub.user.time.UserClock userClock;
+
     @InjectMocks
     private DeckServiceImpl deckService;
 

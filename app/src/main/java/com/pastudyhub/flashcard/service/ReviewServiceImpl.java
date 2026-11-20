@@ -22,6 +22,7 @@ import com.pastudyhub.flashcard.repository.ReviewScheduleRepository;
 import com.pastudyhub.progress.dto.LogActivityRequest;
 import com.pastudyhub.progress.model.ActivityType;
 import com.pastudyhub.progress.service.ProgressService;
+import com.pastudyhub.user.time.UserClock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -58,6 +59,7 @@ public class ReviewServiceImpl {
     private final CardMapper cardMapper;
     private final ProgressService progressService;
     private final SchedulingProperties schedulingProperties;
+    private final UserClock userClock;
 
     /**
      * Get the cards to study in a deck right now (max 20).
@@ -80,7 +82,7 @@ public class ReviewServiceImpl {
         List<CardResponse> cards = new ArrayList<>();
 
         List<ReviewSchedule> dueSchedules = reviewScheduleRepository.findDueForReview(
-                deckId, userId, LocalDate.now(), PageRequest.of(0, MAX_CARDS_PER_SESSION));
+                deckId, userId, userClock.today(userId), PageRequest.of(0, MAX_CARDS_PER_SESSION));
         for (ReviewSchedule schedule : dueSchedules) {
             cards.add(cardMapper.toResponse(schedule.getCard(), schedule));
         }
@@ -122,15 +124,16 @@ public class ReviewServiceImpl {
                         .repetitions(0)
                         .build());
 
+        // Saved times are the server's (UTC); days are counted on the user's calendar
         LocalDateTime now = LocalDateTime.now();
-        LocalDate today = now.toLocalDate();
+        LocalDate today = userClock.today(userId);
 
         // Calendar days, not 24-hour periods: a card seen at 11 pm and again at 8 am
         // the next morning counts as one day, the way schedulers count intervals.
         // Null on the first review.
         Integer daysSinceLastReview = null;
         if (schedule.getLastReviewedAt() != null) {
-            daysSinceLastReview = (int) ChronoUnit.DAYS.between(schedule.getLastReviewedAt().toLocalDate(), today);
+            daysSinceLastReview = (int) ChronoUnit.DAYS.between(userClock.dateAt(userId, schedule.getLastReviewedAt()), today);
         }
 
         // Written before the schedule changes, because it records what the card

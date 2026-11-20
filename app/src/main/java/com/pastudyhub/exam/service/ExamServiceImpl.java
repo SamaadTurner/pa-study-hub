@@ -25,6 +25,7 @@ import com.pastudyhub.exam.repository.TaskAreaTotals;
 import com.pastudyhub.progress.dto.LogActivityRequest;
 import com.pastudyhub.progress.model.ActivityType;
 import com.pastudyhub.progress.service.ProgressService;
+import com.pastudyhub.user.time.UserClock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -32,6 +33,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -60,6 +62,7 @@ public class ExamServiceImpl implements ExamService {
     private final ExamMapper examMapper;
     private final ProgressService progressService;
     private final QuestionReportRepository questionReportRepository;
+    private final UserClock userClock;
 
     @Override
     @Transactional
@@ -219,7 +222,7 @@ public class ExamServiceImpl implements ExamService {
         // before the activity is logged
         examSessionRepository.saveAndFlush(session);
 
-        logExamActivity(session.getUserId(), questions, answers);
+        logExamActivity(session.getUserId(), questions, answers, session.getCompletedAt());
 
         log.info("Exam completed: sessionId={}, userId={}, score={}/{} ({}%)",
                 sessionId, session.getUserId(), result.rawScore(), result.totalQuestions(), result.scorePercent());
@@ -307,7 +310,11 @@ public class ExamServiceImpl implements ExamService {
      * <p>One entry is saved per category in the exam, because the dashboard shows
      * accuracy per category and a mixed exam covers several.
      */
-    private void logExamActivity(UUID userId, List<Question> questions, List<ExamAnswer> answers) {
+    private void logExamActivity(UUID userId, List<Question> questions, List<ExamAnswer> answers,
+                                 LocalDateTime finishedAt) {
+        // The day the exam ended where the user is. An exam the server hands in later
+        // (it was asleep) still counts on the day its time ran out.
+        LocalDate day = userClock.dateAt(userId, finishedAt);
         Set<QuestionCategory> categories = new LinkedHashSet<>();
         for (Question question : questions) {
             categories.add(question.getCategory());
@@ -343,6 +350,7 @@ public class ExamServiceImpl implements ExamService {
                     .cardsReviewed(0)
                     .correctCount(correct)
                     .totalCount(total)
+                    .activityDate(day)
                     .build());
         }
     }

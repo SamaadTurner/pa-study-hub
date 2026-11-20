@@ -1,5 +1,7 @@
 package com.pastudyhub;
 
+import java.util.TimeZone;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -16,6 +18,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class PaStudyHubApplication {
 
     public static void main(String[] args) {
+        // Saved times are UTC wherever the app runs (the Render server already is);
+        // the user's own day comes from UserClock
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         SpringApplication.run(PaStudyHubApplication.class, args);
     }
 }

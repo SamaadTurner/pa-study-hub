@@ -13,6 +13,12 @@ describe('security headers', () => {
   it('render.yaml sends every header with the same value', () => {
     // Line endings differ between Windows and Linux checkouts
     const render = readFileSync(path.join(root, 'render.yaml'), 'utf-8').replace(/\r\n/g, '\n')
+    // Each service once, one headers block, one policy: a bad edit once copied half
+    // the file, and the old policy in the second copy stayed live
+    expect(render.match(/^ {4}name: pa-study-hub$/gm)).toHaveLength(1)
+    expect(render.match(/^ {4}name: pa-study-hub-api$/gm)).toHaveLength(1)
+    expect(render.match(/^ {4}headers:$/gm)).toHaveLength(1)
+    expect(render.match(/name: Content-Security-Policy/g)).toHaveLength(1)
     for (const [name, value] of headers) {
       // YAML single quotes write a ' as ''
       expect(render, name).toContain(`name: ${name}\n        value: '${value.replace(/'/g, "''")}'`)

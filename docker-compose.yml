@@ -36,6 +36,8 @@ services:
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
+      # This setup is plain http on localhost; the refresh cookie must not need HTTPS
+      AUTH_COOKIE_SECURE: "false"
       DB_NAME: ${DB_NAME:-pa_study_hub}
       DB_USER: ${DB_USER:-pastudyhub}
       DB_PASSWORD: ${DB_PASSWORD:-pastudyhub_pass}

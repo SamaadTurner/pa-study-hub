@@ -35,6 +35,7 @@ RUN rm /etc/nginx/conf.d/default.conf
 
 # React Router needs all requests served by index.html (client-side routing)
 COPY nginx.conf /etc/nginx/conf.d/app.conf
+COPY nginx-security-headers.conf /etc/nginx/security-headers.conf
 
 # Copy built assets from Stage 1
 COPY --from=build /app/dist /usr/share/nginx/html

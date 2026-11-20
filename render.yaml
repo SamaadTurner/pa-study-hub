@@ -72,6 +72,30 @@ services:
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
+    # Security headers for every page (same values as frontend/security-headers.json;
+    # a unit test checks the copies match). The CSP still allows Google's sign-in script.
+    headers:
+      - path: /*
+        name: Content-Security-Policy
+        value: 'default-src ''self''; script-src ''self'' https://accounts.google.com/gsi/client; style-src ''self'' ''unsafe-inline'' https://accounts.google.com/gsi/style https://fonts.googleapis.com; font-src ''self'' https://fonts.gstatic.com; img-src ''self'' data: blob: https://*.googleusercontent.com; connect-src ''self'' https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; object-src ''none''; base-uri ''self''; form-action ''self''; frame-ancestors ''none'''
+      - path: /*
+        name: X-Frame-Options
+        value: 'DENY'
+      - path: /*
+        name: X-Content-Type-Options
+        value: 'nosniff'
+      - path: /*
+        name: Referrer-Policy
+        value: 'strict-origin-when-cross-origin'
+      - path: /*
+        name: Cross-Origin-Opener-Policy
+        value: 'same-origin-allow-popups'
+      - path: /*
+        name: Permissions-Policy
+        value: 'camera=(), microphone=(), geolocation=()'
+      - path: /*
+        name: Strict-Transport-Security
+        value: 'max-age=31536000'
     buildFilter:
       paths:
         - frontend/**

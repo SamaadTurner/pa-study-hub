@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ReviewCard } from '@/types'
 import ClozeView from './ClozeView'
+import PictureWithBoxes from './PictureWithBoxes'
 
 interface Props {
   card: ReviewCard
@@ -11,6 +12,28 @@ interface Props {
 export default function FlashcardViewer({ card, isFlipped, onFlip }: Props) {
   const [showHint, setShowHint] = useState(false)
   const isCloze = card.cardType === 'CLOZE'
+
+  // A picture card does not flip: a picture can be taller than the flip card, and
+  // the answer is the same picture with the box opened up.
+  if (card.cardType === 'IMAGE') {
+    return (
+      <div className="w-full max-w-2xl mx-auto select-none">
+        <div
+          className={`rounded-2xl border-2 shadow-lg p-4 sm:p-6 cursor-pointer
+            ${isFlipped ? 'bg-primary-50 border-primary-200' : 'bg-white border-gray-200'}`}
+          onClick={onFlip}
+        >
+          <p className={`text-xs font-semibold uppercase tracking-widest mb-2 ${isFlipped ? 'text-primary-700' : 'text-gray-500'}`}>
+            {isFlipped ? 'Answer' : 'Picture'}
+          </p>
+          <p className="text-lg font-medium text-gray-900 mb-3">{card.front}</p>
+          <PictureWithBoxes imageId={card.imageId} boxes={card.boxes} activeIndex={card.clozeIndex} revealed={isFlipped} />
+          {isFlipped && card.back && <p className="mt-3 text-sm text-gray-600 whitespace-pre-wrap">{card.back}</p>}
+          {!isFlipped && <p className="mt-3 text-xs text-gray-500 text-center">Click to reveal answer</p>}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full max-w-2xl mx-auto select-none">

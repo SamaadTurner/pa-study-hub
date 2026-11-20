@@ -1,6 +1,6 @@
 import apiClient from './client'
 import { fetchAllPages } from './pagination'
-import type { Card, CardType, Deck, PaginatedResponse, ReviewCard, ReviewResult } from '@/types'
+import type { Card, CardType, Deck, OcclusionBox, PaginatedResponse, ReviewCard, ReviewResult } from '@/types'
 
 // Backend response types (match Java DTOs)
 interface DeckResponse {
@@ -30,6 +30,8 @@ interface CardResponse {
   back: string
   cardType?: CardType
   clozeIndex?: number | null
+  imageId?: string | null
+  boxes?: OcclusionBox[] | null
   hint?: string
   imageUrl?: string
   tags: string[]
@@ -71,6 +73,8 @@ function mapCard(response: CardResponse): Card {
     back: response.back,
     cardType: response.cardType ?? 'BASIC',
     clozeIndex: response.clozeIndex ?? null,
+    imageId: response.imageId ?? null,
+    boxes: response.boxes ?? [],
     hint: response.hint,
     tags: response.tags || [],
     easeFactor: response.reviewSchedule?.easeFactor ?? 2.5,
@@ -174,6 +178,30 @@ export async function createClozeCards(
   return data.map(mapCard)
 }
 
+// Uploads a picture for picture cards. Nothing uses it until createImageCards.
+export async function uploadPicture(picture: Blob): Promise<{ id: string; width: number; height: number }> {
+  const form = new FormData()
+  form.append('file', picture, 'picture.jpg')
+  // The client sends JSON by default; FormData needs its own type (axios adds the boundary)
+  const { data } = await apiClient.post('/images', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return data
+}
+
+// One card per box
+export async function createImageCards(
+  deckId: string,
+  payload: { imageId: string; prompt?: string; extra?: string; boxes: OcclusionBox[]; tags?: string[] },
+): Promise<Card[]> {
+  const { data } = await apiClient.post<CardResponse[]>(`/decks/${deckId}/image-cards`, payload)
+  return data.map(mapCard)
+}
+
+// The picture as a blob, because an <img> tag can't send the sign-in token
+export async function getPicture(imageId: string): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>(`/images/${imageId}`, { responseType: 'blob' })
+  return data
+}
+
 export async function updateCard(cardId: string, payload: Partial<{ front: string; back: string; hint?: string; tags?: string[] }>): Promise<Card> {
   const { data } = await apiClient.put<CardResponse>(`/cards/${cardId}`, payload)
   return mapCard(data)
@@ -196,6 +224,8 @@ export async function getDueCards(deckId: string): Promise<ReviewCard[]> {
     back: card.back,
     cardType: card.cardType ?? 'BASIC',
     clozeIndex: card.clozeIndex ?? null,
+    imageId: card.imageId ?? null,
+    boxes: card.boxes ?? [],
     hint: card.hint,
     tags: card.tags || []
   }))

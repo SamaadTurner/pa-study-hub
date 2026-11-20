@@ -47,8 +47,19 @@ export interface Deck {
   updatedAt: string
 }
 
-// BASIC = question and answer; CLOZE = fill in the blank ({{c1::answer}} in front)
-export type CardType = 'BASIC' | 'CLOZE'
+// BASIC = question and answer; CLOZE = fill in the blank ({{c1::answer}} in front);
+// IMAGE = a picture with boxes, the card asks for the part under one box
+export type CardType = 'BASIC' | 'CLOZE' | 'IMAGE'
+
+// A box over a picture. Position and size are fractions of the picture (0 to 1),
+// so the box stays on the same spot at any size.
+export interface OcclusionBox {
+  x: number
+  y: number
+  width: number
+  height: number
+  label?: string
+}
 
 export interface Card {
   id: string
@@ -56,7 +67,9 @@ export interface Card {
   front: string
   back: string
   cardType: CardType
-  clozeIndex: number | null  // for a cloze card, the blank number it asks for
+  clozeIndex: number | null  // for a cloze card, the blank number it asks for (picture card: the box number)
+  imageId: string | null     // picture cards only
+  boxes: OcclusionBox[]      // picture cards only
   hint?: string
   tags: string[]
   easeFactor: number
@@ -73,6 +86,8 @@ export interface ReviewCard {
   back: string
   cardType: CardType
   clozeIndex: number | null
+  imageId: string | null
+  boxes: OcclusionBox[]
   hint?: string
   tags: string[]
 }

@@ -11,6 +11,7 @@ import EmptyState from '@/components/common/EmptyState'
 import Button from '@/components/common/Button'
 import Badge from '@/components/common/Badge'
 import ClozeView from '@/components/flashcards/ClozeView'
+import PictureWithBoxes from '@/components/flashcards/PictureWithBoxes'
 import { ConfirmModal } from '@/components/common/Modal'
 import { getCategoryBadgeVariant, getCategoryLabel } from '@/utils/categoryColors'
 import { formatRelativeDate } from '@/utils/formatDate'
@@ -193,7 +194,14 @@ export default function DeckDetailPage() {
                     {String(idx + 1).padStart(2, '0')}
                   </span>
                   <p className="text-sm text-gray-900 font-medium leading-snug line-clamp-2">
-                    {card.cardType === 'CLOZE' ? (
+                    {card.cardType === 'IMAGE' ? (
+                      <>
+                        <span className="mr-2 text-xs font-semibold text-primary-700 bg-primary-50 rounded px-1.5 py-0.5">
+                          Picture, box {card.clozeIndex}
+                        </span>
+                        {card.boxes[(card.clozeIndex ?? 1) - 1]?.label || card.front}
+                      </>
+                    ) : card.cardType === 'CLOZE' ? (
                       <>
                         <span className="mr-2 text-xs font-semibold text-primary-700 bg-primary-50 rounded px-1.5 py-0.5">
                           Blank c{card.clozeIndex}
@@ -216,10 +224,16 @@ export default function DeckDetailPage() {
               {/* Expanded content */}
               {expandedCard === card.id && (
                 <div className="px-5 pb-4 border-t border-gray-100 space-y-3">
-                  {(card.cardType !== 'CLOZE' || card.back) && (
+                  {card.cardType === 'IMAGE' && (
+                    <div className="pt-3 max-w-md">
+                      <p className="text-sm text-gray-800 mb-2">{card.front}</p>
+                      <PictureWithBoxes imageId={card.imageId} boxes={card.boxes} activeIndex={card.clozeIndex} revealed />
+                    </div>
+                  )}
+                  {((card.cardType !== 'CLOZE' && card.cardType !== 'IMAGE') || card.back) && (
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                        {card.cardType === 'CLOZE' ? 'Extra notes' : 'Answer'}
+                        {card.cardType === 'BASIC' ? 'Answer' : 'Extra notes'}
                       </p>
                       <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
                         {card.back}

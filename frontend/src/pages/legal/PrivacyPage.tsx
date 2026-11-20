@@ -37,6 +37,11 @@ export default function PrivacyPage() {
               answers, questions you write, and daily activity for streaks and charts.
             </li>
             <li>
+              Pictures you upload for picture cards. Your browser makes each one smaller before upload,
+              which also removes the photo&apos;s hidden details such as camera and location. Pictures that
+              no card uses are deleted after a day.
+            </li>
+            <li>
               In your browser: the sign-in tokens, in local storage, until you sign out.
             </li>
           </ul>
@@ -46,8 +51,8 @@ export default function PrivacyPage() {
           <h2 className="text-base font-semibold text-gray-900">Who else sees it</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>
-              Decks you make public and questions you share can be seen and used by other users. Shared
-              questions do not show who wrote them.
+              Decks you make public, with their pictures, and questions you share can be seen and used by
+              other users. Shared questions do not show who wrote them.
             </li>
             <li>
               The optional AI features send what you give them to Groq, an AI provider: the notes you paste
@@ -66,8 +71,9 @@ export default function PrivacyPage() {
           <h2 className="text-base font-semibold text-gray-900">Closing your account</h2>
           <p>
             You can close your account on the Profile page. That deletes your account and your study data
-            for good: decks, cards, reviews, exams, activity and the questions you wrote. Two things stay,
-            because they belong to other people: their own copies of decks you made public, and questions of
+            for good: decks, cards, pictures, reviews, exams, activity and the questions you wrote. Two things
+            stay, because they belong to other people: their own copies of decks you made public (with the
+            pictures those copies use), and questions of
             yours that are part of their past exams (kept in those results without your name, and never used
             again). For any other question about your data, email{' '}
             <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary-600 underline">

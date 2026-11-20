@@ -13,6 +13,8 @@ public interface QuestionReportRepository extends JpaRepository<QuestionReport, 
 
     boolean existsByQuestionIdAndReporterId(UUID questionId, UUID reporterId);
 
+    long countByQuestionId(UUID questionId);
+
     // The reports on a set of questions, oldest first (for the author's list)
     @Query("SELECT r FROM QuestionReport r WHERE r.question.id IN :questionIds ORDER BY r.createdAt")
     List<QuestionReport> findByQuestionIds(@Param("questionIds") Collection<UUID> questionIds);

@@ -171,6 +171,90 @@ class SharedQuestionsIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.byCategory.HEMATOLOGY").value(1));
     }
 
+    @Test
+    @DisplayName("Editing a reported question keeps the count of its reports, so one more report hides the new version")
+    void edit_doesNotWipeReports() throws Exception {
+        UUID author = UUID.randomUUID();
+        String firstVersion = writeQuestion(author, "Psychiatry question", "PSYCHIATRY", true);
+        for (int i = 0; i < 2; i++) {
+            UUID student = UUID.randomUUID();
+            takeExam(student, "PSYCHIATRY", 1, true);
+            report(student, firstVersion, "WRONG_ANSWER", null).andExpect(status().isCreated());
+        }
+
+        // The edit saves a new version, which starts without reports of its own
+        String body = mockMvc.perform(put("/api/v1/questions/{id}", firstVersion).header("Authorization", bearerToken(author))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(questionBody("Same question, new id", "PSYCHIATRY", true))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.earlierReportCount").value(2))
+                .andExpect(jsonPath("$.hiddenFromShared").value(false))
+                .andReturn().getResponse().getContentAsString();
+        String secondVersion = objectMapper.readTree(body).get("id").asText();
+
+        // Still in shared exams, until a single new report
+        UUID third = UUID.randomUUID();
+        takeExam(third, "PSYCHIATRY", 1, true);
+        report(third, secondVersion, "WRONG_ANSWER", null).andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/exams").header("Authorization", bearerToken(UUID.randomUUID()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(examBody("PSYCHIATRY", 1, true)))
+                .andExpect(status().isUnprocessableEntity());
+        mockMvc.perform(get("/api/v1/questions/mine").header("Authorization", bearerToken(author)))
+                .andExpect(jsonPath("$.content[0].earlierReportCount").value(2))
+                .andExpect(jsonPath("$.content[0].reports", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].hiddenFromShared").value(true));
+    }
+
+    @Test
+    @DisplayName("A fixed version of a hidden question comes back to shared exams, and any report hides it again")
+    void fixedVersion_comesBack() throws Exception {
+        UUID author = UUID.randomUUID();
+        String hidden = writeQuestion(author, "EENT question", "EENT", true);
+        for (int i = 0; i < 3; i++) {
+            UUID student = UUID.randomUUID();
+            takeExam(student, "EENT", 1, true);
+            report(student, hidden, "UNCLEAR", null).andExpect(status().isCreated());
+        }
+        String body = mockMvc.perform(put("/api/v1/questions/{id}", hidden).header("Authorization", bearerToken(author))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(questionBody("EENT question, fixed", "EENT", true))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String fixed = objectMapper.readTree(body).get("id").asText();
+
+        UUID newcomer = UUID.randomUUID();
+        String sessionId = takeExam(newcomer, "EENT", 1, true);
+        mockMvc.perform(get("/api/v1/exams/{id}/result", sessionId).header("Authorization", bearerToken(newcomer)))
+                .andExpect(jsonPath("$.answerDetails[0].stem").value("EENT question, fixed"));
+
+        report(newcomer, fixed, "UNCLEAR", null).andExpect(status().isCreated());
+        mockMvc.perform(post("/api/v1/exams").header("Authorization", bearerToken(UUID.randomUUID()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(examBody("EENT", 1, true)))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    @DisplayName("The browse list can be searched, ignoring case, with % and _ taken as plain characters")
+    void browse_search() throws Exception {
+        UUID writer = UUID.randomUUID();
+        String token = "token" + UUID.randomUUID().toString().replace("-", "");
+        writeQuestion(writer, "Which drug? " + token + " covers 50% of cases", "NEPHROLOGY", true);
+
+        mockMvc.perform(get("/api/v1/questions/shared").param("search", token.toUpperCase())
+                        .header("Authorization", bearerToken(UUID.randomUUID())))
+                .andExpect(jsonPath("$.content", hasSize(1)));
+        mockMvc.perform(get("/api/v1/questions/shared").param("search", token + " covers 50%")
+                        .header("Authorization", bearerToken(UUID.randomUUID())))
+                .andExpect(jsonPath("$.content", hasSize(1)));
+        // "_" would match any one character if it were not escaped
+        mockMvc.perform(get("/api/v1/questions/shared").param("search", token + "_covers")
+                        .header("Authorization", bearerToken(UUID.randomUUID())))
+                .andExpect(jsonPath("$.content", hasSize(0)));
+    }
+
     // ---- helpers -------------------------------------------------------------
 
     private Map<String, Object> questionBody(String stem, String category, boolean shared) {

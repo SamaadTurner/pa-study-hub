@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -44,6 +45,17 @@ import java.util.UUID;
 public class SharedQuestionService {
 
     public static final long REPORT_LIMIT = 3;
+
+    /**
+     * Whether a shared question is left out of other people's exams. Reports on earlier
+     * versions count too, so editing can't wipe them: a new version comes back to
+     * shared exams (a real fix gets its chance), but if the earlier versions already
+     * had 2 reports, 1 new report hides it again, and after 3 or more, any report
+     * does. Same rule as QuestionRepository.NOT_HIDDEN_BY_REPORTS.
+     */
+    public static boolean isHiddenByReports(long ownReports, int earlierReports) {
+        return ownReports > 0 && ownReports + earlierReports >= REPORT_LIMIT;
+    }
 
     private final QuestionRepository questionRepository;
     private final QuestionReportRepository questionReportRepository;
@@ -85,10 +97,24 @@ public class SharedQuestionService {
     }
 
     @Transactional(readOnly = true)
-    public Page<SharedQuestionResponse> browse(UUID userId, QuestionCategory category, int page, int size) {
+    public Page<SharedQuestionResponse> browse(UUID userId, QuestionCategory category, String search,
+                                               int page, int size) {
         PageRequest pageRequest = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
-        return questionRepository.findSharedByOthers(userId, REPORT_LIMIT, category, pageRequest)
+        return questionRepository.findSharedByOthers(userId, REPORT_LIMIT, category, toLikePattern(search), pageRequest)
                 .map(this::toSharedResponse);
+    }
+
+    // "Contains this text" for LIKE, the same way the public deck search does it:
+    // % and _ are escaped with ! so they are searched for as plain characters.
+    private String toLikePattern(String search) {
+        if (search == null || search.isBlank()) {
+            return "%";
+        }
+        String escaped = search.trim().toLowerCase(Locale.ROOT)
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
+        return "%" + escaped + "%";
     }
 
     @Transactional(readOnly = true)

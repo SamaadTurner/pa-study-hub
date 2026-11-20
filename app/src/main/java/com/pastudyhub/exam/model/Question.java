@@ -67,6 +67,11 @@ public class Question {
     @Column(name = "owner_id")
     private UUID ownerId;
 
+    /** Reports the earlier versions of this question had (see SharedQuestionService). */
+    @Column(name = "earlier_report_count", nullable = false)
+    @Builder.Default
+    private int earlierReportCount = 0;
+
     /** True when the author closed their account (the owner is then null, like a starter question). */
     @Column(name = "author_deleted", nullable = false)
     @Builder.Default

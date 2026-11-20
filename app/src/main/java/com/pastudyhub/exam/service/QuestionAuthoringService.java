@@ -104,6 +104,10 @@ public class QuestionAuthoringService {
 
         Question newVersion = new Question();
         newVersion.setOwnerId(userId);
+        // The reports stay with the old version, but their number comes along, so an
+        // edit alone can't clear them (see SharedQuestionService.isHiddenByReports)
+        long oldReports = questionReportRepository.countByQuestionId(questionId);
+        newVersion.setEarlierReportCount(question.getEarlierReportCount() + (int) oldReports);
         copyRequestInto(request, newVersion);
         Question saved = questionRepository.saveAndFlush(newVersion);
         log.info("Question edited after use in an exam: old={}, new={}", questionId, saved.getId());
@@ -208,7 +212,9 @@ public class QuestionAuthoringService {
                 .difficulty(question.getDifficulty())
                 .isPublic(question.isPublic())
                 .reports(reportResponses)
-                .hiddenFromShared(question.isPublic() && reports.size() >= SharedQuestionService.REPORT_LIMIT)
+                .earlierReportCount(question.getEarlierReportCount())
+                .hiddenFromShared(question.isPublic()
+                        && SharedQuestionService.isHiddenByReports(reports.size(), question.getEarlierReportCount()))
                 .createdAt(question.getCreatedAt())
                 .updatedAt(question.getUpdatedAt())
                 .build();

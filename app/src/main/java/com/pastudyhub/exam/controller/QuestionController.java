@@ -85,13 +85,14 @@ public class QuestionController {
     }
 
     @GetMapping("/shared")
-    @Operation(summary = "Browse questions other users shared, optionally one category")
+    @Operation(summary = "Browse questions other users shared, optionally one category and a text search")
     public Page<SharedQuestionResponse> browseShared(
             @RequestHeader("X-User-Id") UUID userId,
             @RequestParam(required = false) QuestionCategory category,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return sharedQuestionService.browse(userId, category, page, size);
+        return sharedQuestionService.browse(userId, category, search, page, size);
     }
 
     @GetMapping("/counts")

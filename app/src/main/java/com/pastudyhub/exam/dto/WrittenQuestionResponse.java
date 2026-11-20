@@ -34,6 +34,8 @@ public class WrittenQuestionResponse {
     private boolean isPublic;
     /** Reports from other users, oldest first. */
     private List<QuestionReportResponse> reports;
+    /** Reports the earlier versions of this question had; they still count. */
+    private int earlierReportCount;
     /** True when a shared question has enough reports to be left out of other people's exams. */
     private boolean hiddenFromShared;
     private LocalDateTime createdAt;

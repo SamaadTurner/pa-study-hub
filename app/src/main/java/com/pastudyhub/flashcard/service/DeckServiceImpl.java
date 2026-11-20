@@ -10,6 +10,7 @@ import com.pastudyhub.flashcard.model.Deck;
 import com.pastudyhub.flashcard.model.MedicalCategory;
 import com.pastudyhub.flashcard.model.ReviewSchedule;
 import com.pastudyhub.flashcard.repository.CardRepository;
+import com.pastudyhub.flashcard.repository.DeckCardCounts;
 import com.pastudyhub.flashcard.repository.DeckRepository;
 import com.pastudyhub.flashcard.repository.ReviewScheduleRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -45,12 +48,22 @@ public class DeckServiceImpl implements DeckService {
     @Override
     @Transactional(readOnly = true)
     public Page<DeckResponse> getUserDecks(UUID userId, MedicalCategory category, int page, int size) {
-        return deckRepository.findByUserIdAndNotDeleted(userId, category, newestFirst(page, size))
-                .map(deck -> {
-                    int cardCount = cardRepository.countByDeckIdAndNotDeleted(deck.getId());
-                    int cardsToReview = countCardsToReview(deck.getId(), userId);
-                    return deckMapper.toResponse(deck, cardCount, cardsToReview);
-                });
+        Page<Deck> decks = deckRepository.findByUserIdAndNotDeleted(userId, category, newestFirst(page, size));
+        // The counts of every deck on the page in one query (it used to be three per deck)
+        Map<UUID, DeckCardCounts> counts = new HashMap<>();
+        if (decks.hasContent()) {
+            List<UUID> deckIds = decks.getContent().stream().map(Deck::getId).toList();
+            for (DeckCardCounts count : cardRepository.countForDeckList(deckIds, userId, LocalDate.now())) {
+                counts.put(count.deckId(), count);
+            }
+        }
+        return decks.map(deck -> {
+            DeckCardCounts count = counts.get(deck.getId());
+            // A deck without cards is not in the query's result
+            return count == null
+                    ? deckMapper.toResponse(deck, 0, 0)
+                    : deckMapper.toResponse(deck, (int) count.cardCount(), (int) count.toReview());
+        });
     }
 
     @Override
@@ -115,11 +128,15 @@ public class DeckServiceImpl implements DeckService {
     @Override
     @Transactional(readOnly = true)
     public Page<DeckResponse> getPublicDecks(String search, MedicalCategory category, int page, int size) {
-        return deckRepository.findPublicDecks(category, toLikePattern(search), newestFirst(page, size))
-                .map(deck -> {
-                    int cardCount = cardRepository.countByDeckIdAndNotDeleted(deck.getId());
-                    return deckMapper.toResponse(deck, cardCount, 0);
-                });
+        Page<Deck> decks = deckRepository.findPublicDecks(category, toLikePattern(search), newestFirst(page, size));
+        Map<UUID, Long> cardCounts = new HashMap<>();
+        if (decks.hasContent()) {
+            List<UUID> deckIds = decks.getContent().stream().map(Deck::getId).toList();
+            for (DeckCardCounts count : cardRepository.countCardsForDecks(deckIds)) {
+                cardCounts.put(count.deckId(), count.cardCount());
+            }
+        }
+        return decks.map(deck -> deckMapper.toResponse(deck, cardCounts.getOrDefault(deck.getId(), 0L).intValue(), 0));
     }
 
     // One page of decks, the most recently changed first.

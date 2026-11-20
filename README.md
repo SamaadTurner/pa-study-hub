@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 434 backend tests, 129 frontend unit tests and 87 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
+the frontend. 437 backend tests, 129 frontend unit tests and 88 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -27,7 +27,8 @@ run in CI on every push.
 - **Picture cards.** Upload an anatomy diagram, an ECG strip or an X-ray and drag boxes
   over the parts to learn (or use Add box and the arrow keys). Every box becomes a card:
   the picture is shown with that box highlighted and the others covered, and revealing it
-  uncovers the part and shows its label. Works with touch on phones.
+  uncovers the part and shows its label. Works with touch on phones. The boxes can be
+  changed later: a box that is moved or relabelled keeps its card and study history.
 - **Spaced repetition.** Studying a deck shows the cards that are due. You flip a card
   and rate it Again, Hard, Good or Easy, and the FSRS algorithm decides when it comes
   back; SM-2 can be switched back on (see [How cards are scheduled](#how-cards-are-scheduled)).
@@ -126,13 +127,13 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 434 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 437 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 96.4% of lines and 86.3% of branches (JaCoCo, without the code Lombok
+  They cover 96.4% of lines and 86.2% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
 - **Frontend:** 129 unit tests with Vitest and React Testing Library.
-- **End to end:** 87 Playwright tests in Chromium; the account, deck, study, exam, fill-in-the-blank and picture card tests (45) also run in WebKit (desktop Safari) and on an iPhone 13 screen. They click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
+- **End to end:** 88 Playwright tests in Chromium; the account, deck, study, exam, fill-in-the-blank and picture card tests (46) also run in WebKit (desktop Safari) and on an iPhone 13 screen. They click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
   and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
@@ -416,8 +417,6 @@ To turn it on locally, add `AI_API_KEY=<your Groq key>` to the backend command a
   minutes (the reset email unlocks it).
 - Emails come from a Brevo address, because a Gmail sender can't pass the checks receiving
   servers run, so some may land in spam. A domain of our own would fix that.
-- The boxes of a picture card can't be changed after saving (the question, notes and tags
-  can); delete its cards and make them again.
 - Only 30 starter questions, in three topics. Users can add their own. Shared questions
   are only checked by other users' reports, not by an expert.
 

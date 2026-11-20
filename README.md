@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 442 backend tests, 132 frontend unit tests and 90 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
+the frontend. 447 backend tests, 135 frontend unit tests and 91 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -127,13 +127,13 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 442 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 447 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 96.5% of lines and 86.5% of branches (JaCoCo, without the code Lombok
+  They cover 96.5% of lines and 86.7% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
-- **Frontend:** 132 unit tests with Vitest and React Testing Library.
-- **End to end:** 90 Playwright tests in Chromium; the account, deck, study, exam, fill-in-the-blank and picture card tests (46) also run in WebKit (desktop Safari) and on an iPhone 13 screen. They click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
+- **Frontend:** 135 unit tests with Vitest and React Testing Library.
+- **End to end:** 91 Playwright tests in Chromium; the account, deck, study, exam, fill-in-the-blank and picture card tests (47) also run in WebKit (desktop Safari) and on an iPhone 13 screen. They click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
   and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
@@ -252,6 +252,27 @@ possible.
 database lookup. Refresh tokens are stored, work once, and are replaced on every use.
 If an old one is used again, every token of that account is revoked, because that
 usually means someone copied it. Changing the password revokes the refresh tokens too.
+The refresh token is never given to the page's JavaScript: every response that signs
+someone in moves it into an `HttpOnly`, `Secure`, `SameSite=Strict` cookie that is only
+sent to `/api/v1/auth` (`RefreshTokenCookieAdvice`), so a script that got into the page
+could not carry a session away for a week. The 15-minute access token stays in
+`localStorage`. Students who were signed in before the change hand their old stored
+token over once and get the cookie, without signing in again.
+
+**Security headers on the site.** The static site sends a Content-Security-Policy (scripts
+only from the site itself and Google's sign-in script, no `eval`, no plugins, no framing
+by other sites), `X-Frame-Options: DENY`, `nosniff`, a referrer policy, HSTS and
+`Cross-Origin-Opener-Policy: same-origin-allow-popups` (what Google's sign-in popup needs).
+The values live in `frontend/security-headers.json`; `render.yaml`, the Docker nginx and
+`vite preview` carry copies, and a unit test fails if a copy drifts. The production build
+was walked through under the policy (sign-in button, charts, pictures, fonts) with nothing
+blocked, and the Docker smoke test in CI checks the headers are sent.
+
+**Sign-ups are capped for the whole site.** At most 30 new accounts an hour and 200 a day
+(`SignupLimiter`, counted from `users.created_at`). Each new account sends a confirmation
+email and the free Brevo plan sends 300 a day, so a script making accounts could otherwise
+stop password reset emails for everyone. Like the login lock it is not per IP address, for
+the reason below; people who already have an account are not affected.
 
 **Tests against real PostgreSQL.** The H2 run is fast, but H2 builds its tables from the
 Java classes and never runs the migration files. On PostgreSQL the schema comes from the
@@ -425,6 +446,11 @@ To turn it on locally, add `AI_API_KEY=<your Groq key>` to the backend command a
 
 ## Known limits
 
+- Sign-ups are capped for the whole site (30 an hour, 200 a day), so a script making
+  accounts can pause sign-up for everyone for up to an hour. A bot check on the sign-up form
+  would stop that.
+- The 15-minute access token is kept in `localStorage`, so a script that got past the
+  Content-Security-Policy could use it until it runs out (it can't get the refresh token).
 - The login lock is per email only: someone who knows your email can lock you out for 15
   minutes (the reset email unlocks it).
 - Emails come from a Brevo address, because a Gmail sender can't pass the checks receiving

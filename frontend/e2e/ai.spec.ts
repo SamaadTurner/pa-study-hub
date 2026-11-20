@@ -12,6 +12,46 @@ async function turnAiOn(page: Page, remainingToday = 20) {
 }
 
 test.describe('AI features', () => {
+  test('fill-in-the-blank suggestions are checked and saved as one card per blank', async ({ page }) => {
+    await register(page, newUser())
+    await turnAiOn(page)
+
+    let sentType: string | null = null
+    await page.route('**/api/v1/ai/flashcards', async route => {
+      sentType = route.request().postDataJSON().cardType
+      await route.fulfill({
+        json: {
+          cards: [
+            { front: '{{c1::Furosemide}} acts on the {{c2::loop of Henle}}', back: '', cardType: 'CLOZE' },
+            { front: '{{c1::Digoxin}} slows AV conduction', back: 'Narrow therapeutic window', cardType: 'CLOZE' },
+          ],
+        },
+      })
+    })
+
+    await createDeckWithCards(page, `AI cloze ${Date.now()}`, [{ front: 'Existing card', back: 'Already here' }])
+    await page.getByRole('button', { name: 'Suggest cards' }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('Your notes').fill('Furosemide acts on the loop of Henle. Digoxin slows AV conduction.')
+    await dialog.getByRole('button', { name: 'Fill in the blank' }).click()
+    await dialog.getByRole('button', { name: 'Suggest cards' }).click()
+
+    await expect(dialog.getByText(/can contain mistakes/)).toBeVisible()
+    expect(sentType).toBe('CLOZE')
+
+    // Breaking a blank shows the problem and leaves that suggestion out
+    await dialog.getByLabel('Text with blanks of card 2').fill('Digoxin slows AV conduction')
+    await expect(dialog.getByText('Mark at least one blank like this: {{c1::the answer}}')).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Add 1 card' })).toBeVisible()
+    await dialog.getByLabel('Text with blanks of card 2').fill('{{c1::Digoxin}} slows {{c2::AV}} conduction')
+    await dialog.getByRole('button', { name: 'Add 2 cards' }).click()
+
+    // Two texts with two blanks each: four new cards next to the existing one
+    await expect(dialog).toBeHidden()
+    await expect(page.getByText('5 cards')).toBeVisible()
+    await expect(page.getByText('Blank c2')).toHaveCount(2)
+  })
+
   test('with AI off on the server, the AI buttons are not shown', async ({ page }) => {
     await register(page, newUser())
     await createDeckWithCards(page, 'No AI here', [{ front: 'Q', back: 'A' }])
@@ -29,7 +69,7 @@ test.describe('AI features', () => {
     await register(page, newUser())
     await turnAiOn(page)
 
-    let sentBody: { notes: string; count: number } | null = null
+    let sentBody: { notes: string; count: number; cardType: string } | null = null
     await page.route('**/api/v1/ai/flashcards', async route => {
       sentBody = route.request().postDataJSON()
       await route.fulfill({
@@ -57,6 +97,7 @@ test.describe('AI features', () => {
     expect(sentBody).toEqual({
       notes: 'Mitral stenosis: diastolic rumble. Aortic stenosis: radiates to carotids.',
       count: 3,
+      cardType: 'BASIC',
     })
 
     await dialog.getByLabel('Back of card 1').fill('Mitral stenosis (left atrium to left ventricle)')

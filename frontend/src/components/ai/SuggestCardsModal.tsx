@@ -2,7 +2,9 @@ import { useState } from 'react'
 import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
 import { suggestFlashcards, type SuggestedCard } from '@/api/ai'
-import type { ApiError } from '@/types'
+import ClozeView from '@/components/flashcards/ClozeView'
+import { clozeNumbers, clozeProblem } from '@/utils/cloze'
+import type { ApiError, CardType } from '@/types'
 
 const MAX_NOTES_LENGTH = 6000
 const COUNT_CHOICES = [3, 5, 10]
@@ -16,8 +18,10 @@ interface Props {
   isOpen: boolean
   onClose: () => void
   remainingToday: number | null
-  // Saves one card. The modal calls it once for every card the user keeps.
-  onAddCard: (card: SuggestedCard) => Promise<unknown>
+  // Saves one question-and-answer card. Called once for every one the user keeps.
+  onAddCard: (card: { front: string; back: string }) => Promise<unknown>
+  // Saves one fill-in-the-blank text (one card per blank number)
+  onAddClozeText: (text: string, extra: string) => Promise<unknown>
   // Called after a request, so the page can update how many requests are left
   onUsedRequest: () => void
 }
@@ -25,15 +29,23 @@ interface Props {
 const textareaClass = `w-full px-3 py-2 border border-gray-300 rounded-lg text-sm
   focus:outline-none focus:ring-2 focus:ring-primary-500 resize-y`
 
-export default function SuggestCardsModal({ isOpen, onClose, remainingToday, onAddCard, onUsedRequest }: Props) {
+// A suggestion is ready to add when it is complete: a question and an answer, or a
+// text with a proper blank
+function isComplete(draft: Draft): boolean {
+  if (draft.cardType === 'CLOZE') return clozeProblem(draft.front) === null
+  return draft.front.trim() !== '' && draft.back.trim() !== ''
+}
+
+export default function SuggestCardsModal({ isOpen, onClose, remainingToday, onAddCard, onAddClozeText, onUsedRequest }: Props) {
   const [notes, setNotes]         = useState('')
+  const [cardType, setCardType]   = useState<CardType>('BASIC')
   const [count, setCount]         = useState(5)
   const [drafts, setDrafts]       = useState<Draft[]>([])
   const [suggesting, setSuggesting] = useState(false)
   const [saving, setSaving]       = useState(false)
   const [error, setError]         = useState<string | null>(null)
 
-  const keptCount = drafts.filter(d => d.keep && d.front.trim() && d.back.trim()).length
+  const keptCount = drafts.filter(d => d.keep && isComplete(d)).length
 
   function close() {
     // Start fresh next time, so old suggestions are not added to another deck by mistake
@@ -47,7 +59,7 @@ export default function SuggestCardsModal({ isOpen, onClose, remainingToday, onA
     setSuggesting(true)
     setError(null)
     try {
-      const cards = await suggestFlashcards(notes, count)
+      const cards = await suggestFlashcards(notes, count, cardType)
       setDrafts(cards.map(card => ({ ...card, keep: true })))
     } catch (err) {
       setError((err as ApiError)?.detail ?? 'Could not get suggestions. Please try again.')
@@ -67,7 +79,10 @@ export default function SuggestCardsModal({ isOpen, onClose, remainingToday, onA
     try {
       // One after the other, so the cards keep the order they were suggested in
       for (const draft of drafts) {
-        if (draft.keep && draft.front.trim() && draft.back.trim()) {
+        if (!draft.keep || !isComplete(draft)) continue
+        if (draft.cardType === 'CLOZE') {
+          await onAddClozeText(draft.front.trim(), draft.back.trim())
+        } else {
           await onAddCard({ front: draft.front.trim(), back: draft.back.trim() })
         }
       }
@@ -122,6 +137,25 @@ export default function SuggestCardsModal({ isOpen, onClose, remainingToday, onA
               </p>
             </div>
 
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Kind of card">
+              <span className="text-sm text-gray-700">Kind of card:</span>
+              {([['BASIC', 'Question and answer'], ['CLOZE', 'Fill in the blank']] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setCardType(value)}
+                  aria-pressed={cardType === value}
+                  className={`px-3 py-1 rounded-lg text-sm border transition-colors ${
+                    cardType === value
+                      ? 'bg-primary-600 text-white border-primary-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-700">How many cards:</span>
               {COUNT_CHOICES.map(choice => (
@@ -168,20 +202,49 @@ export default function SuggestCardsModal({ isOpen, onClose, remainingToday, onA
                   />
                   Keep card {index + 1}
                 </label>
-                <textarea
-                  aria-label={`Front of card ${index + 1}`}
-                  value={draft.front}
-                  onChange={e => updateDraft(index, { front: e.target.value })}
-                  rows={2}
-                  className={textareaClass}
-                />
-                <textarea
-                  aria-label={`Back of card ${index + 1}`}
-                  value={draft.back}
-                  onChange={e => updateDraft(index, { back: e.target.value })}
-                  rows={3}
-                  className={textareaClass}
-                />
+                {draft.cardType === 'CLOZE' ? (
+                  <>
+                    <textarea
+                      aria-label={`Text with blanks of card ${index + 1}`}
+                      value={draft.front}
+                      onChange={e => updateDraft(index, { front: e.target.value })}
+                      rows={2}
+                      className={`${textareaClass} font-mono`}
+                    />
+                    {clozeProblem(draft.front) ? (
+                      <p className="text-xs text-red-600">{clozeProblem(draft.front)}</p>
+                    ) : (
+                      <p className="text-sm text-gray-700">
+                        <ClozeView text={draft.front} index={clozeNumbers(draft.front)[0]} revealed={false} />
+                      </p>
+                    )}
+                    <textarea
+                      aria-label={`Extra notes of card ${index + 1}`}
+                      value={draft.back}
+                      onChange={e => updateDraft(index, { back: e.target.value })}
+                      rows={2}
+                      placeholder="Extra notes (optional)"
+                      className={textareaClass}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <textarea
+                      aria-label={`Front of card ${index + 1}`}
+                      value={draft.front}
+                      onChange={e => updateDraft(index, { front: e.target.value })}
+                      rows={2}
+                      className={textareaClass}
+                    />
+                    <textarea
+                      aria-label={`Back of card ${index + 1}`}
+                      value={draft.back}
+                      onChange={e => updateDraft(index, { back: e.target.value })}
+                      rows={3}
+                      className={textareaClass}
+                    />
+                  </>
+                )}
               </div>
             ))}
           </>

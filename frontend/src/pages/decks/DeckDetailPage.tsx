@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useCards } from '@/hooks/useCards'
 import { useAiStatus } from '@/hooks/useAiStatus'
 import SuggestCardsModal from '@/components/ai/SuggestCardsModal'
-import { cloneDeck, getDeck } from '@/api/decks'
+import { cloneDeck, createClozeCards, getDeck } from '@/api/decks'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Card, Deck } from '@/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
@@ -24,7 +24,7 @@ export default function DeckDetailPage() {
   const { user }    = useAuth()
   const [copying, setCopying] = useState(false)
 
-  const { cards, loading, error, createCard, deleteCard } = useCards(deckId!)
+  const { cards, loading, error, refetch, createCard, deleteCard } = useCards(deckId!)
   const ai = useAiStatus()
   const [suggestOpen, setSuggestOpen] = useState(false)
   const [deck, setDeck]                           = useState<Deck | null>(null)
@@ -283,6 +283,10 @@ export default function DeckDetailPage() {
         onClose={() => setSuggestOpen(false)}
         remainingToday={ai.remainingToday}
         onAddCard={createCard}
+        onAddClozeText={async (text, extra) => {
+          await createClozeCards(deckId!, { text, extra })
+          await refetch()
+        }}
         onUsedRequest={ai.refresh}
       />
 

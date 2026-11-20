@@ -72,6 +72,8 @@ public class AccountDeletionService {
 
         // The account itself
         run("DELETE FROM refresh_tokens WHERE user_id = ?", userId);
+        run("DELETE FROM email_tokens WHERE user_id = ?", userId);
+        run("DELETE FROM login_failures WHERE email = (SELECT email FROM users WHERE id = ?)", userId);
         run("DELETE FROM users WHERE id = ?", userId);
 
         log.info("Account deleted with all its data: id={}", userId);

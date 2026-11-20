@@ -32,4 +32,5 @@ public class UserResponse {
     /** False for an account made with Google that has not set a password. */
     private boolean hasPassword;
     private boolean googleLinked;
+    private boolean emailVerified;
 }

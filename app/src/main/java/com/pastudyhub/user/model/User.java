@@ -45,6 +45,11 @@ public class User {
     @Column(name = "password_hash", length = 72)
     private String passwordHash;
 
+    /** True once the user clicked the confirmation link (or Google vouched for the address). */
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private boolean emailVerified = false;
+
     /** Google's id for the user ("sub" in the ID token), or null if Google sign-in is not linked. */
     @Column(name = "google_subject", unique = true, length = 255)
     private String googleSubject;

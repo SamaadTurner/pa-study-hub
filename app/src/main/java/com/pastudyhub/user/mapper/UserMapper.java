@@ -41,6 +41,7 @@ public class UserMapper {
                 .lastLoginAt(user.getLastLoginAt())
                 .hasPassword(user.getPasswordHash() != null)
                 .googleLinked(user.getGoogleSubject() != null)
+                .emailVerified(user.isEmailVerified())
                 .build();
     }
 }

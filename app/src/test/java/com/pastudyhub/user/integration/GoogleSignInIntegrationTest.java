@@ -3,6 +3,8 @@ package com.pastudyhub.user.integration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
+import com.pastudyhub.mail.LoggingMailSender;
+import com.pastudyhub.mail.MailSender;
 import com.pastudyhub.user.exception.InvalidTokenException;
 import com.pastudyhub.user.google.GoogleIdentity;
 import com.pastudyhub.user.google.GoogleTokenVerifier;
@@ -50,6 +52,9 @@ class GoogleSignInIntegrationTest extends BaseIntegrationTest {
 
     @MockBean
     private GoogleTokenVerifier googleTokenVerifier;
+
+    @Autowired
+    private MailSender mailSender;
 
     @Test
     @DisplayName("The status endpoint says Google sign-in is on and gives the client ID")
@@ -137,6 +142,28 @@ class GoogleSignInIntegrationTest extends BaseIntegrationTest {
 
         // From now on Google signs in directly, and the password still works too
         googleSignIn(sub, account.email()).andExpect(status().isOk());
+        login(account.email(), TestAccounts.PASSWORD).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("An account whose email is confirmed is linked to Google without asking for its password")
+    void confirmedEmail_linksDirectly() throws Exception {
+        Account account = TestAccounts.register(mockMvc, objectMapper);
+        // Confirm the email with the link from the sign-up email
+        String text = ((LoggingMailSender) mailSender).sentTo(account.email()).get(0).text();
+        String marker = "/confirm-email?token=";
+        int start = text.indexOf(marker) + marker.length();
+        String token = text.substring(start, text.indexOf('\n', start)).trim();
+        mockMvc.perform(post("/api/v1/auth/confirm-email").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("token", token))))
+                .andExpect(status().isNoContent());
+
+        String sub = "sub-" + UUID.randomUUID();
+        fakeGoogle(sub, account.email(), "Riley", "Morgan");
+        googleSignIn(sub, account.email())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.email").value(account.email()))
+                .andExpect(jsonPath("$.user.googleLinked").value(true));
         login(account.email(), TestAccounts.PASSWORD).andExpect(status().isOk());
     }
 

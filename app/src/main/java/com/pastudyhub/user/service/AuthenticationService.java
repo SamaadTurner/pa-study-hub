@@ -51,6 +51,16 @@ public interface AuthenticationService {
      */
     AuthResponse issueTokensFor(UUID userId);
 
+    /**
+     * Sets a new password from a reset link sent by email, and signs in. Also confirms
+     * the email (the link proves the inbox), clears the login lock and signs out
+     * every other device.
+     */
+    AuthResponse resetPassword(NewPasswordRequest request);
+
+    /** Confirms the email with the link sent after signing up. */
+    void confirmEmail(EmailLinkRequest request);
+
     /** Whether Google sign-in is on, with the client ID for the button. */
     GoogleStatusResponse googleStatus();
 

@@ -1,6 +1,7 @@
 package com.pastudyhub.user.controller;
 
 import com.pastudyhub.user.dto.*;
+import com.pastudyhub.user.service.AccountEmailService;
 import com.pastudyhub.user.service.AuthenticationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthenticationService authenticationService;
+    private final AccountEmailService accountEmailService;
 
     /**
      * Register a new PA school student account.
@@ -42,7 +44,10 @@ public class AuthController {
         }
     )
     public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
-        return authenticationService.register(request);
+        AuthResponse response = authenticationService.register(request);
+        // After the account is saved, so a failed email can't undo the sign-up
+        accountEmailService.sendConfirmationAfterSignUp(response.getUser().getId());
+        return response;
     }
 
     /**
@@ -126,5 +131,27 @@ public class AuthController {
     @Operation(summary = "Add Google sign-in to an existing account, proven with its password")
     public AuthResponse linkGoogle(@Valid @RequestBody GoogleLinkRequest request) {
         return authenticationService.linkGoogle(request);
+    }
+
+    @PostMapping("/password-reset/request")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(summary = "Forgot password: email a reset link (same answer whether or not the email has an account)")
+    public MessageResponse requestPasswordReset(@Valid @RequestBody PasswordResetRequest request) {
+        accountEmailService.requestPasswordReset(request.getEmail());
+        return new MessageResponse("If an account uses that email, a reset link is on its way. "
+                + "It works for one hour. Check your spam folder too.");
+    }
+
+    @PostMapping("/password-reset/confirm")
+    @Operation(summary = "Set a new password with the token from a reset link, and sign in")
+    public AuthResponse resetPassword(@Valid @RequestBody NewPasswordRequest request) {
+        return authenticationService.resetPassword(request);
+    }
+
+    @PostMapping("/confirm-email")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Confirm the email with the token from the link sent after signing up")
+    public void confirmEmail(@Valid @RequestBody EmailLinkRequest request) {
+        authenticationService.confirmEmail(request);
     }
 }

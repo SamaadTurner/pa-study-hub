@@ -48,6 +48,14 @@ scheduling:
   algorithm: ${SCHEDULING_ALGORITHM:fsrs}
   desired-retention: ${SCHEDULING_DESIRED_RETENTION:0.9}
 
+# Emails (password reset, email confirmation) through Brevo's web API. Without a
+# key they are only written to the log. Render's free plan blocks SMTP ports.
+mail:
+  brevo-api-key: ${MAIL_BREVO_API_KEY:}
+  from-address: ${MAIL_FROM_ADDRESS:}
+  from-name: PA Study Hub
+  app-base-url: ${APP_BASE_URL:https://pa-study-hub.onrender.com}
+
 # "Continue with Google". Off unless GOOGLE_CLIENT_ID is set. The client ID is
 # public (Google's button shows it in the page), the client secret is never used.
 google:

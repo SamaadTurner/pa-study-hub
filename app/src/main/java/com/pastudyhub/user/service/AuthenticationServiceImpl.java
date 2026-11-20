@@ -5,6 +5,7 @@ import com.pastudyhub.user.exception.*;
 import com.pastudyhub.user.google.GoogleIdentity;
 import com.pastudyhub.user.google.GoogleTokenVerifier;
 import com.pastudyhub.user.mapper.UserMapper;
+import com.pastudyhub.user.model.EmailToken;
 import com.pastudyhub.user.model.RefreshToken;
 import com.pastudyhub.user.model.User;
 import com.pastudyhub.user.model.UserRole;
@@ -48,6 +49,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final UserMapper userMapper;
     private final LoginAttemptLimiter loginAttemptLimiter;
     private final GoogleTokenVerifier googleTokenVerifier;
+    private final EmailLinkService emailLinkService;
 
     @Value("${jwt.refresh-token-expiry-days:7}")
     private int refreshTokenExpiryDays;
@@ -171,6 +173,44 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     @Transactional
+    public AuthResponse resetPassword(NewPasswordRequest request) {
+        // The password rules first, so a weak password doesn't use up the link
+        PasswordPolicy.ValidationResult policyResult = passwordPolicy.validate(request.getNewPassword());
+        if (!policyResult.isValid()) {
+            throw new com.pastudyhub.user.exception.StudyHubException(
+                    policyResult.getErrorMessage(), org.springframework.http.HttpStatus.BAD_REQUEST) {};
+        }
+        User user = emailLinkService.useLink(request.getToken(), EmailToken.Purpose.RESET_PASSWORD)
+                .orElseThrow(() -> new InvalidEmailLinkException(
+                        "This reset link is invalid, used or expired. Ask for a new one."));
+        if (!user.isActive()) {
+            throw new AccountDeactivatedException();
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setEmailVerified(true);
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
+        // Whoever knew the old password is signed out everywhere
+        refreshTokenRepository.deleteAllForUser(user.getId());
+        loginAttemptLimiter.recordSuccess(user.getEmail());
+        log.info("Password reset by email: id={}", user.getId());
+        return buildAuthResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public void confirmEmail(EmailLinkRequest request) {
+        User user = emailLinkService.useLink(request.getToken(), EmailToken.Purpose.CONFIRM_EMAIL)
+                .orElseThrow(() -> new InvalidEmailLinkException(
+                        "This confirmation link is invalid, used or expired. Send a new one from the app."));
+        user.setEmailVerified(true);
+        userRepository.save(user);
+        log.info("Email confirmed: id={}", user.getId());
+    }
+
+    @Override
+    @Transactional
     public AuthResponse issueTokensFor(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
@@ -194,18 +234,26 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             return finishGoogleSignIn(linked);
         }
 
-        // Same email as an account that exists. It is not linked automatically: the
-        // app never checks emails at sign-up, so someone could have registered this
-        // address before its owner did. Asking for that account's password once
-        // proves the person signing in with Google also owns the account.
-        if (userRepository.existsByEmail(google.email())) {
-            throw new GoogleLinkRequiredException();
+        // Same email as an account that exists. If that account confirmed its email,
+        // the owner of the inbox made it, and Google has just shown that this person
+        // owns the inbox too, so the two are linked. An unconfirmed account could have
+        // been made by someone else with this address (account pre-hijacking), so it
+        // is only linked with that account's password (linkGoogle).
+        User sameEmail = userRepository.findByEmail(google.email()).orElse(null);
+        if (sameEmail != null) {
+            if (!sameEmail.isEmailVerified() || sameEmail.getGoogleSubject() != null) {
+                throw new GoogleLinkRequiredException();
+            }
+            sameEmail.setGoogleSubject(google.subject());
+            log.info("Google sign-in linked to a confirmed email: id={}", sameEmail.getId());
+            return finishGoogleSignIn(sameEmail);
         }
 
         User user = User.builder()
                 .email(google.email())
                 .passwordHash(null)
                 .googleSubject(google.subject())
+                .emailVerified(true)
                 .firstName(nameOrDefault(google.firstName(), "Student"))
                 .lastName(nameOrDefault(google.lastName(), ""))
                 .role(UserRole.STUDENT)
@@ -234,6 +282,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         loginAttemptLimiter.recordSuccess(google.email());
 
         user.setGoogleSubject(google.subject());
+        // Google has checked the address, so it counts as confirmed now
+        user.setEmailVerified(true);
         log.info("Google sign-in linked: id={}", user.getId());
         return finishGoogleSignIn(user);
     }

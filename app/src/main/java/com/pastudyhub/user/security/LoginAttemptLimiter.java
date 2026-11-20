@@ -7,99 +7,77 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 /**
  * Slows down password guessing: after too many failed logins for one email, that
- * email cannot log in until the time window is over. A successful login clears
- * the count.
+ * email cannot log in until the time window is over. A successful login, or a
+ * password reset by email, clears the count.
  *
  * <p>The count is per email and not per client IP address. Behind Render the app
  * does not reliably see the visitor's address (the static site forwards /api
  * requests, and X-Forwarded-For can be set by the client), so an IP limit would
  * either be easy to dodge or would block everybody at once. The cost of a per-email
- * limit is that someone who knows your email can lock you out for one window.
+ * limit is that someone who knows your email can lock you out for one window; the
+ * "forgot password" email unlocks it.
  *
- * <p>The counts live in memory. That is enough for one server; a restart forgets
- * them, and several servers would each count on their own.
+ * <p>The counts are in the database (login_failures), so a restart does not clear
+ * them. That matters on the free plan, where every wake-up is a restart.
  */
 @Component
 public class LoginAttemptLimiter {
 
-    // Old entries are only cleaned up once the map is this big, not on every call
-    private static final int CLEANUP_SIZE = 10_000;
-
+    private final LoginFailureStore store;
     private final int maxFailures;
     private final Duration window;
     private final Clock clock;
-    private final Map<String, Failures> failuresByEmail = new HashMap<>();
 
     @Autowired
     public LoginAttemptLimiter(
+            LoginFailureStore store,
             @Value("${auth.login-limit.max-failures:5}") int maxFailures,
             @Value("${auth.login-limit.window-minutes:15}") int windowMinutes) {
-        this(maxFailures, Duration.ofMinutes(windowMinutes), Clock.systemUTC());
+        this(store, maxFailures, Duration.ofMinutes(windowMinutes), Clock.systemDefaultZone());
     }
 
-    // Tests pass their own clock so they don't have to wait out the window
-    public LoginAttemptLimiter(int maxFailures, Duration window, Clock clock) {
+    // Tests pass their own store and clock so they don't have to wait out the window
+    public LoginAttemptLimiter(LoginFailureStore store, int maxFailures, Duration window, Clock clock) {
+        this.store = store;
         this.maxFailures = maxFailures;
         this.window = window;
         this.clock = clock;
     }
 
     /** Throws when this email has used up its failed attempts for the current window. */
-    public synchronized void checkAllowed(String email) {
-        Failures failures = failuresByEmail.get(email);
-        if (failures == null || failures.isOver(clock.instant())) {
+    public void checkAllowed(String email) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        Optional<LoginFailure> failures = store.find(email);
+        if (failures.isEmpty() || !now.isBefore(failures.get().getWindowEnd())) {
             return;
         }
-        if (failures.count >= maxFailures) {
-            long secondsLeft = Duration.between(clock.instant(), failures.windowEnd).toSeconds();
+        if (failures.get().getFailureCount() >= maxFailures) {
+            long secondsLeft = Duration.between(now, failures.get().getWindowEnd()).toSeconds();
             throw new TooManyLoginAttemptsException(Math.max(1, secondsLeft));
         }
     }
 
-    public synchronized void recordFailure(String email) {
-        Instant now = clock.instant();
-        Failures failures = failuresByEmail.get(email);
-        if (failures == null || failures.isOver(now)) {
-            if (failuresByEmail.size() >= CLEANUP_SIZE) {
-                removeOldEntries(now);
-            }
+    public void recordFailure(String email) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        Optional<LoginFailure> current = store.find(email);
+        if (current.isEmpty() || !now.isBefore(current.get().getWindowEnd())) {
             // The window starts at the first failure
-            failuresByEmail.put(email, new Failures(now.plus(window)));
+            store.save(new LoginFailure(email, 1, now.plus(window)));
         } else {
-            failures.count++;
+            LoginFailure failure = current.get();
+            failure.setFailureCount(failure.getFailureCount() + 1);
+            store.save(failure);
         }
     }
 
-    public synchronized void recordSuccess(String email) {
-        failuresByEmail.remove(email);
-    }
-
-    private void removeOldEntries(Instant now) {
-        Iterator<Failures> entries = failuresByEmail.values().iterator();
-        while (entries.hasNext()) {
-            if (entries.next().isOver(now)) {
-                entries.remove();
-            }
-        }
-    }
-
-    private static class Failures {
-        private int count = 1;
-        private final Instant windowEnd;
-
-        Failures(Instant windowEnd) {
-            this.windowEnd = windowEnd;
-        }
-
-        boolean isOver(Instant now) {
-            return !now.isBefore(windowEnd);
+    public void recordSuccess(String email) {
+        if (store.find(email).isPresent()) {
+            store.delete(email);
         }
     }
 }

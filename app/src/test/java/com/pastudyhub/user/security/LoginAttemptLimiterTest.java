@@ -8,8 +8,12 @@ import org.junit.jupiter.api.Test;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -21,12 +25,14 @@ class LoginAttemptLimiterTest {
     private static final String EMAIL = "student@example.com";
 
     private MovableClock clock;
+    private MapStore store;
     private LoginAttemptLimiter limiter;
 
     @BeforeEach
     void setUp() {
         clock = new MovableClock(Instant.parse("2026-11-19T10:00:00Z"));
-        limiter = new LoginAttemptLimiter(5, Duration.ofMinutes(15), clock);
+        store = new MapStore();
+        limiter = new LoginAttemptLimiter(store, 5, Duration.ofMinutes(15), clock);
     }
 
     @Test
@@ -100,22 +106,40 @@ class LoginAttemptLimiterTest {
     }
 
     @Test
-    @DisplayName("Old entries are removed once there are many, and current ones are kept")
-    void cleanup_keepsCurrentEntries() {
-        for (int i = 0; i < 5; i++) {
-            limiter.recordFailure(EMAIL);
+    @DisplayName("A successful login removes the stored count, and an unknown email stores nothing")
+    void success_removesRow() {
+        limiter.recordFailure(EMAIL);
+        assertThat(store.rows).containsKey(EMAIL);
+        limiter.recordSuccess(EMAIL);
+        assertThat(store.rows).doesNotContainKey(EMAIL);
+
+        limiter.recordSuccess("never-failed@example.com");
+        assertThat(store.rows).isEmpty();
+    }
+
+    // The database table, as a map
+    private static class MapStore implements LoginFailureStore {
+        private final Map<String, LoginFailure> rows = new HashMap<>();
+
+        @Override
+        public Optional<LoginFailure> find(String email) {
+            return Optional.ofNullable(rows.get(email));
         }
-        clock.advance(Duration.ofMinutes(16));
-        for (int i = 0; i < 10_000; i++) {
-            limiter.recordFailure("user" + i + "@example.com");
+
+        @Override
+        public void save(LoginFailure failure) {
+            rows.put(failure.getEmail(), failure);
         }
-        for (int i = 0; i < 4; i++) {
-            limiter.recordFailure("user0@example.com");
+
+        @Override
+        public void delete(String email) {
+            rows.remove(email);
         }
-        // The cleanup ran while the map was full and did not touch the current entries
-        assertThatThrownBy(() -> limiter.checkAllowed("user0@example.com"))
-                .isInstanceOf(TooManyLoginAttemptsException.class);
-        assertThatCode(() -> limiter.checkAllowed(EMAIL)).doesNotThrowAnyException();
+
+        @Override
+        public void deleteEndedBefore(LocalDateTime time) {
+            rows.values().removeIf(row -> row.getWindowEnd().isBefore(time));
+        }
     }
 
     // A clock the test can move forward

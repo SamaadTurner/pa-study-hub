@@ -7,6 +7,7 @@ import com.pastudyhub.user.dto.GoogleSignInRequest;
 import com.pastudyhub.user.dto.UpdateProfileRequest;
 import com.pastudyhub.user.dto.UserResponse;
 import com.pastudyhub.user.security.JwtTokenProvider;
+import com.pastudyhub.user.service.AccountEmailService;
 import com.pastudyhub.user.service.AuthenticationService;
 import com.pastudyhub.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +36,7 @@ public class UserController {
 
     private final UserService userService;
     private final AuthenticationService authenticationService;
+    private final AccountEmailService accountEmailService;
 
     /**
      * Get the current user's profile (derived from JWT).
@@ -96,6 +98,13 @@ public class UserController {
             Authentication authentication,
             @RequestBody DeleteAccountRequest request) {
         userService.deleteAccount(extractUserId(authentication), request);
+    }
+
+    @PostMapping("/me/confirmation-email")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(summary = "Send the email confirmation link again (3 an hour)")
+    public void resendConfirmation(Authentication authentication) {
+        accountEmailService.resendConfirmation(extractUserId(authentication));
     }
 
     private UUID extractUserId(Authentication authentication) {

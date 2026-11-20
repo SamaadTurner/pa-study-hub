@@ -51,6 +51,15 @@ public class Card {
     private String back;
 
     /** Optional memory aid shown before the card is flipped. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "card_type", nullable = false, length = 10)
+    @Builder.Default
+    private CardType cardType = CardType.BASIC;
+
+    /** For a cloze card: the number of the blank it asks for (c1 = 1). Null for basic cards. */
+    @Column(name = "cloze_index")
+    private Integer clozeIndex;
+
     @Column(name = "hint", length = 500)
     private String hint;
 

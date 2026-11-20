@@ -2,6 +2,7 @@ package com.pastudyhub.flashcard.controller;
 
 import com.pastudyhub.flashcard.dto.CardResponse;
 import com.pastudyhub.flashcard.dto.CreateCardRequest;
+import com.pastudyhub.flashcard.dto.ClozeCardsRequest;
 import com.pastudyhub.flashcard.service.CardServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -12,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -45,6 +47,16 @@ public class CardController {
             @Valid @RequestBody CreateCardRequest request,
             @RequestHeader("X-User-Id") UUID userId) {
         return cardService.createCard(deckId, request, userId);
+    }
+
+    @PostMapping("/decks/{deckId}/cloze-cards")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Add fill-in-the-blank cards: one card per blank number ({{c1::answer}})")
+    public List<CardResponse> createClozeCards(
+            @PathVariable UUID deckId,
+            @Valid @RequestBody ClozeCardsRequest request,
+            @RequestHeader("X-User-Id") UUID userId) {
+        return cardService.createClozeCards(deckId, request, userId);
     }
 
     @PutMapping("/cards/{cardId}")

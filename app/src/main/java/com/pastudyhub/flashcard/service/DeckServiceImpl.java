@@ -194,6 +194,8 @@ public class DeckServiceImpl implements DeckService {
                     .deck(savedClone)
                     .front(sourceCard.getFront())
                     .back(sourceCard.getBack())
+                    .cardType(sourceCard.getCardType())
+                    .clozeIndex(sourceCard.getClozeIndex())
                     .hint(sourceCard.getHint())
                     .imageUrl(sourceCard.getImageUrl())
                     .tags(sourceCard.getTags())

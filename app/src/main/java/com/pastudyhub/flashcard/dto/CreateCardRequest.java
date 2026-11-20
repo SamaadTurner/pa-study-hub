@@ -14,7 +14,7 @@ public class CreateCardRequest {
     @Size(max = 2000, message = "Front must not exceed 2000 characters")
     private String front;
 
-    @NotBlank(message = "Card back (answer) is required")
+    // Required for basic cards, optional extra notes for cloze cards; the service checks it
     @Size(max = 5000, message = "Back must not exceed 5000 characters")
     private String back;
 

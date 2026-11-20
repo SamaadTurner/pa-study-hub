@@ -1,12 +1,16 @@
 package com.pastudyhub.flashcard.service;
 
 import com.pastudyhub.flashcard.dto.CardResponse;
+import com.pastudyhub.flashcard.dto.ClozeCardsRequest;
 import com.pastudyhub.flashcard.dto.CreateCardRequest;
+import com.pastudyhub.flashcard.engine.ClozeText;
 import com.pastudyhub.flashcard.exception.CardNotFoundException;
 import com.pastudyhub.flashcard.exception.DeckNotFoundException;
+import com.pastudyhub.flashcard.exception.InvalidCardException;
 import com.pastudyhub.flashcard.exception.UnauthorizedDeckAccessException;
 import com.pastudyhub.flashcard.mapper.CardMapper;
 import com.pastudyhub.flashcard.model.Card;
+import com.pastudyhub.flashcard.model.CardType;
 import com.pastudyhub.flashcard.model.Deck;
 import com.pastudyhub.flashcard.model.ReviewSchedule;
 import com.pastudyhub.flashcard.repository.CardRepository;
@@ -20,6 +24,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -77,6 +83,9 @@ public class CardServiceImpl {
             throw new UnauthorizedDeckAccessException();
         }
 
+        if (request.getBack() == null || request.getBack().isBlank()) {
+            throw new InvalidCardException("Card back (answer) is required");
+        }
         Card card = cardMapper.toEntity(request, deck);
         // A new card goes to the end of the deck
         card.setPositionInDeck(cardRepository.findLastPositionInDeck(deckId) + 1);
@@ -84,6 +93,46 @@ public class CardServiceImpl {
         Card saved = cardRepository.saveAndFlush(card);
         log.info("Card created: id={}, deckId={}", saved.getId(), deckId);
         return cardMapper.toResponse(saved, null);
+    }
+
+    /**
+     * Makes the cards of one fill-in-the-blank text: one card per blank number, in
+     * number order, at the end of the deck. Every card keeps the whole text; when
+     * it is studied only its own blank is hidden.
+     */
+    @Transactional
+    public List<CardResponse> createClozeCards(UUID deckId, ClozeCardsRequest request, UUID userId) {
+        Deck deck = deckRepository.findByIdAndNotDeleted(deckId)
+                .orElseThrow(() -> new DeckNotFoundException(deckId));
+        if (!deck.getUserId().equals(userId)) {
+            throw new UnauthorizedDeckAccessException();
+        }
+        String problem = ClozeText.problem(request.getText());
+        if (problem != null) {
+            throw new InvalidCardException(problem);
+        }
+
+        String text = request.getText().trim();
+        String extra = request.getExtra() == null ? "" : request.getExtra().trim();
+        int position = cardRepository.findLastPositionInDeck(deckId);
+        List<CardResponse> created = new ArrayList<>();
+        for (int number : ClozeText.numbers(text)) {
+            position++;
+            Card card = Card.builder()
+                    .deck(deck)
+                    .front(text)
+                    .back(extra)
+                    .cardType(CardType.CLOZE)
+                    .clozeIndex(number)
+                    .positionInDeck(position)
+                    .build();
+            if (request.getTags() != null) {
+                card.setTagsList(request.getTags());
+            }
+            created.add(cardMapper.toResponse(cardRepository.saveAndFlush(card), null));
+        }
+        log.info("Cloze cards created: {} in deckId={}", created.size(), deckId);
+        return created;
     }
 
     @Transactional
@@ -95,6 +144,15 @@ public class CardServiceImpl {
             throw new UnauthorizedDeckAccessException();
         }
 
+        if (card.getCardType() == CardType.CLOZE) {
+            // The card asks for one blank number; the text has to keep it
+            if (request.getFront() != null && !ClozeText.numbers(request.getFront()).contains(card.getClozeIndex())) {
+                throw new InvalidCardException("This card asks for blank c" + card.getClozeIndex()
+                        + ", so the text needs a {{c" + card.getClozeIndex() + "::...}} blank");
+            }
+        } else if (request.getBack() != null && request.getBack().isBlank()) {
+            throw new InvalidCardException("Card back (answer) is required");
+        }
         if (request.getFront() != null) card.setFront(request.getFront().trim());
         if (request.getBack() != null) card.setBack(request.getBack().trim());
         if (request.getHint() != null) card.setHint(request.getHint());

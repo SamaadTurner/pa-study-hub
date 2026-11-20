@@ -38,6 +38,8 @@ public class CardMapper {
         return CardResponse.builder()
                 .id(card.getId())
                 .deckId(card.getDeck().getId())
+                .cardType(card.getCardType())
+                .clozeIndex(card.getClozeIndex())
                 .front(card.getFront())
                 .back(card.getBack())
                 .hint(card.getHint())

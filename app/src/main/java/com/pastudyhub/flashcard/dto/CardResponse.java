@@ -1,5 +1,6 @@
 package com.pastudyhub.flashcard.dto;
 
+import com.pastudyhub.flashcard.model.CardType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,9 @@ public class CardResponse {
     private String front;
     private String back;
     private String hint;
+    private CardType cardType;
+    /** For a cloze card, the blank number it asks for. */
+    private Integer clozeIndex;
     private String imageUrl;
     private List<String> tags;
     private ReviewScheduleInfo reviewSchedule;

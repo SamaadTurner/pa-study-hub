@@ -21,6 +21,12 @@ export async function register(req: RegisterRequest): Promise<{ user: User }> {
 
 // ---- Continue with Google ------------------------------------------------------
 
+// The site key for the sign-up bot check (Cloudflare Turnstile), or null when it is off
+export async function getBotCheckSiteKey(): Promise<string | null> {
+  const { data } = await apiClient.get<{ turnstileSiteKey: string | null }>('/auth/bot-check')
+  return data.turnstileSiteKey
+}
+
 export interface GoogleStatus {
   enabled: boolean
   clientId: string | null

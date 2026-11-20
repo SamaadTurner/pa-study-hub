@@ -30,7 +30,7 @@ describe('security headers', () => {
 
   it('the policy allows Google sign-in and blocks framing and plugins', () => {
     const csp = securityHeaders['Content-Security-Policy']
-    expect(csp).toContain("script-src 'self' https://accounts.google.com/gsi/client")
+    expect(csp).toContain("script-src 'self' https://accounts.google.com/gsi/client https://challenges.cloudflare.com")
     expect(csp).toContain('frame-src https://accounts.google.com/gsi/')
     expect(csp).toContain("frame-ancestors 'none'")
     expect(csp).toContain("object-src 'none'")

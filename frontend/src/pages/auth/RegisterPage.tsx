@@ -1,10 +1,12 @@
-import { useState, FormEvent } from 'react'
+import { useEffect, useState, FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNotification } from '@/contexts/NotificationContext'
 import type { ApiError } from '@/types'
 import Button from '@/components/common/Button'
 import GoogleSignIn from '@/components/auth/GoogleSignIn'
+import TurnstileWidget from '@/components/auth/TurnstileWidget'
+import { getBotCheckSiteKey } from '@/api/auth'
 import { PASSWORD_REQUIREMENTS } from '@/utils/passwordRules'
 
 interface FormState {
@@ -36,6 +38,20 @@ export default function RegisterPage() {
   })
   const [errors, setErrors]   = useState<FieldErrors>({})
   const [loading, setLoading] = useState(false)
+  // The bot check: the site key (null = off), the token once passed, and a counter
+  // that asks for a fresh check after a failed attempt (a token works only once)
+  const [botCheckKey, setBotCheckKey] = useState<string | null>(null)
+  const [botCheckToken, setBotCheckToken] = useState<string | null>(null)
+  const [botCheckResets, setBotCheckResets] = useState(0)
+
+  useEffect(() => {
+    let ignore = false
+    getBotCheckSiteKey()
+      .then(key => { if (!ignore) setBotCheckKey(key) })
+      // Can't be read (server waking up): the form still works when the check is off
+      .catch(() => {})
+    return () => { ignore = true }
+  }, [])
 
   function validate(): boolean {
     const next: FieldErrors = {}
@@ -66,10 +82,13 @@ export default function RegisterPage() {
         password:     form.password,
         firstName:    form.firstName.trim(),
         lastName:     form.lastName.trim(),
+        botCheckToken: botCheckToken ?? undefined,
       })
       navigate('/dashboard', { replace: true })
     } catch (err) {
       const apiError = err as ApiError
+      // The token was used up by this attempt
+      if (botCheckKey) setBotCheckResets(n => n + 1)
 
       // Handle field-level validation errors from backend
       if (apiError?.fieldErrors) {
@@ -254,11 +273,16 @@ export default function RegisterPage() {
               />
             </div>
 
+            {botCheckKey && (
+              <TurnstileWidget siteKey={botCheckKey} onToken={setBotCheckToken} resetCount={botCheckResets} />
+            )}
+
             <Button
               type="submit"
               loading={loading}
               className="w-full"
-              disabled={form.password.length > 0 && metRequirements.length < PASSWORD_REQUIREMENTS.length}
+              disabled={(form.password.length > 0 && metRequirements.length < PASSWORD_REQUIREMENTS.length)
+                || (!!botCheckKey && !botCheckToken)}
             >
               Create account
             </Button>

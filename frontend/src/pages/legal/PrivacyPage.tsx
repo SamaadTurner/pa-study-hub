@@ -63,7 +63,8 @@ export default function PrivacyPage() {
             </li>
             <li>
               The page loads its font from Google Fonts, so Google sees your IP address when the font
-              loads. The app runs on Render and the database on Neon, both in the US (Oregon). Emails from the app
+              loads. The sign-up form uses Cloudflare Turnstile to check that a person is signing up;
+              Cloudflare sees your browser&apos;s details during that check. The app runs on Render and the database on Neon, both in the US (Oregon). Emails from the app
               (the sign-up confirmation and password reset links) are sent through Brevo, which gets your
               email address and the email's text for that purpose.
             </li>

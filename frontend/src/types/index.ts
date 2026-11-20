@@ -29,6 +29,7 @@ export interface RegisterRequest {
   password: string
   firstName: string
   lastName: string
+  botCheckToken?: string  // from the Turnstile widget, when the check is on
 }
 
 // ---- Flashcards ------------------------------------------------------------

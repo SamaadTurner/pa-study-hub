@@ -71,6 +71,7 @@ public class ProgressService {
                 .totalStudyDays(streakCalc.totalStudyDays())
                 .totalStudyMinutes(analyzer.totalStudyMinutes())
                 .totalCardsReviewed(analyzer.totalCardsReviewed())
+                .totalExamQuestions(analyzer.totalExamQuestions())
                 .overallAccuracy(analyzer.overallAccuracy())
                 .weakestCategory(analyzer.weakestCategory())
                 .categoryAccuracy(analyzer.categoryAccuracy())

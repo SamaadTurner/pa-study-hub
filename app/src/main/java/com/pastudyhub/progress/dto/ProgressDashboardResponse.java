@@ -21,6 +21,8 @@ public class ProgressDashboardResponse {
     private int totalStudyDays;
     private int totalStudyMinutes;
     private int totalCardsReviewed;
+    /** Questions in finished practice exams (not flashcards). */
+    private int totalExamQuestions;
     private double overallAccuracy;
     private String weakestCategory;
     private Map<String, Double> categoryAccuracy;

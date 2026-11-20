@@ -1,8 +1,10 @@
 package com.pastudyhub.flashcard.repository;
 
+import com.pastudyhub.flashcard.model.Card;
 import com.pastudyhub.flashcard.model.ReviewSchedule;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -91,4 +93,13 @@ public interface ReviewScheduleRepository extends JpaRepository<ReviewSchedule, 
     Double findAverageEaseFactorForDeck(
             @Param("deckId") UUID deckId,
             @Param("userId") UUID userId);
+
+    // Everyone but the owner who has studied a card of this deck
+    @Query("SELECT DISTINCT rs.userId FROM ReviewSchedule rs WHERE rs.card.deck.id = :deckId AND rs.userId <> :ownerId")
+    List<UUID> findStudentIds(@Param("deckId") UUID deckId, @Param("ownerId") UUID ownerId);
+
+    // Moves one student's schedule for a card to another card (see DeckHandoverService)
+    @Modifying
+    @Query("UPDATE ReviewSchedule rs SET rs.card = :to WHERE rs.card = :from AND rs.userId = :userId")
+    int moveToCard(@Param("from") Card from, @Param("to") Card to, @Param("userId") UUID userId);
 }

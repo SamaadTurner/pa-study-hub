@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -65,4 +66,8 @@ public interface DeckRepository extends JpaRepository<Deck, UUID> {
      */
     @Query("SELECT COUNT(c) FROM Card c WHERE c.deck.id = :deckId AND c.isDeleted = false")
     int countCardsByDeckId(@Param("deckId") UUID deckId);
+
+    // All decks of a user that are not deleted (to hand them over before the account goes)
+    @Query("SELECT d FROM Deck d WHERE d.userId = :userId AND d.isDeleted = false")
+    List<Deck> findAllActiveOf(@Param("userId") UUID userId);
 }

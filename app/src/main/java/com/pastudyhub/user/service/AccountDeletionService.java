@@ -1,5 +1,6 @@
 package com.pastudyhub.user.service;
 
+import com.pastudyhub.flashcard.service.DeckHandoverService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -24,8 +25,9 @@ import java.util.UUID;
  *   <li>Other people's own copies of the user's public decks. A copy belongs to the
  *       person who made it and is kept.</li>
  * </ul>
- * Other people's study progress on the user's public decks (not copies) goes away
- * with the decks.
+ * Other people's study progress on the user's public decks is not lost: before
+ * anything is deleted, each of them gets their own copy of the deck with their
+ * progress moved over (DeckHandoverService).
  *
  * <p>When a new table gets a user_id column, it has to be added here.
  */
@@ -40,9 +42,13 @@ public class AccountDeletionService {
             "SELECT id FROM exam_sessions WHERE user_id = ?";
 
     private final JdbcTemplate jdbcTemplate;
+    private final DeckHandoverService deckHandoverService;
 
     @Transactional
     public void deleteEverything(UUID userId) {
+        // First: others who studied one of the user's public decks get their own copy
+        deckHandoverService.handOverAllDecksOf(userId);
+
         // Flashcards: the user's own reviews anywhere, and every review of the user's cards
         run("DELETE FROM review_logs WHERE user_id = ? OR card_id IN (" + CARDS_OF_USER + ")", userId, userId);
         run("DELETE FROM review_schedules WHERE user_id = ? OR card_id IN (" + CARDS_OF_USER + ")", userId, userId);

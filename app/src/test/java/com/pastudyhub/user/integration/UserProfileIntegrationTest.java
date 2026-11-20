@@ -107,6 +107,27 @@ class UserProfileIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("PUT /users/me can clear the graduation year")
+    void updateProfile_clearsGraduationYear() throws Exception {
+        Account account = TestAccounts.register(mockMvc, objectMapper);
+        mockMvc.perform(put("/api/v1/users/me").header("Authorization", account.authorization())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"graduationYear\": 2028}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.graduationYear").value(2028));
+        // Leaving the year out keeps it; the flag removes it
+        mockMvc.perform(put("/api/v1/users/me").header("Authorization", account.authorization())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"firstName\": \"Sam\"}"))
+                .andExpect(jsonPath("$.graduationYear").value(2028));
+        mockMvc.perform(put("/api/v1/users/me").header("Authorization", account.authorization())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clearGraduationYear\": true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.graduationYear").doesNotExist());
+    }
+
+    @Test
     @DisplayName("PUT /users/me with a graduation year out of range is a 400")
     void updateProfile_badGraduationYear_isBadRequest() throws Exception {
         Account account = TestAccounts.register(mockMvc, objectMapper);

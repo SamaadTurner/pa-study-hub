@@ -74,7 +74,9 @@ public class UserServiceImpl implements UserService {
         if (request.getPaSchoolName() != null) {
             user.setPaSchoolName(request.getPaSchoolName());
         }
-        if (request.getGraduationYear() != null) {
+        if (Boolean.TRUE.equals(request.getClearGraduationYear())) {
+            user.setGraduationYear(null);
+        } else if (request.getGraduationYear() != null) {
             user.setGraduationYear(request.getGraduationYear());
         }
         if (request.getStudyRemindersEnabled() != null) {

@@ -1,6 +1,7 @@
 package com.pastudyhub.progress.engine;
 
 import com.pastudyhub.progress.model.ActivityLog;
+import com.pastudyhub.progress.model.ActivityType;
 
 import java.util.List;
 import java.util.Map;
@@ -54,6 +55,14 @@ public class PerformanceAnalyzer {
      */
     public int totalCardsReviewed() {
         return logs.stream().mapToInt(ActivityLog::getCardsReviewed).sum();
+    }
+
+    /** Returns the number of questions in the user's finished practice exams. */
+    public int totalExamQuestions() {
+        return logs.stream()
+                .filter(log -> log.getActivityType() == ActivityType.EXAM_COMPLETED)
+                .mapToInt(ActivityLog::getTotalCount)
+                .sum();
     }
 
     /**

@@ -43,6 +43,7 @@ public class DeckServiceImpl implements DeckService {
     private final CardRepository cardRepository;
     private final ReviewScheduleRepository reviewScheduleRepository;
     private final DeckMapper deckMapper;
+    private final DeckHandoverService deckHandoverService;
     private final CardMapper cardMapper;
 
     @Override
@@ -120,6 +121,8 @@ public class DeckServiceImpl implements DeckService {
             throw new UnauthorizedDeckAccessException();
         }
 
+        // Others who studied it keep their own copy and their progress
+        deckHandoverService.handOver(deck);
         deck.setDeleted(true);
         deckRepository.save(deck);
         log.info("Deck soft-deleted: id={}, userId={}", deckId, userId);

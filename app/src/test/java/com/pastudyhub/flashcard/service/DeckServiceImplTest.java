@@ -42,6 +42,9 @@ class DeckServiceImplTest {
     @Mock
     private CardMapper cardMapper;
 
+    @Mock
+    private DeckHandoverService deckHandoverService;
+
     @InjectMocks
     private DeckServiceImpl deckService;
 

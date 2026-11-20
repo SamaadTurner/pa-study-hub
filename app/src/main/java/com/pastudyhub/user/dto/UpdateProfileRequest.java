@@ -22,6 +22,10 @@ public class UpdateProfileRequest {
     @Max(value = 2040, message = "Graduation year must be 2040 or earlier")
     private Integer graduationYear;
 
+    // Fields left out are not changed, so "no year" can't be said with a missing
+    // graduationYear. True removes the year.
+    private Boolean clearGraduationYear;
+
     private Boolean studyRemindersEnabled;
 
     @Size(max = 5, message = "Preferred study time must be in HH:mm format")

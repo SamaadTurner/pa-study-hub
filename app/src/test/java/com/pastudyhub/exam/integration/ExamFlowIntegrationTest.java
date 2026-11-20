@@ -540,6 +540,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.last30DaysActivity[29].accuracy").value(50.0))
                 // exam questions are not flashcards, so the card numbers stay at 0
                 .andExpect(jsonPath("$.totalCardsReviewed").value(0))
+                .andExpect(jsonPath("$.totalExamQuestions").value(2))
                 .andExpect(jsonPath("$.last30DaysActivity[29].cardsReviewed").value(0))
                 .andExpect(jsonPath("$.todayGoal.cardsReviewedToday").value(0))
                 .andExpect(jsonPath("$.todayGoal.minutesStudiedToday").value(2));

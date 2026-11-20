@@ -1,5 +1,7 @@
 package com.pastudyhub.user.integration;
 
+import com.pastudyhub.user.security.RefreshTokenCookie;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.user.dto.LoginRequest;
@@ -65,7 +67,9 @@ class AuthControllerIntegrationTest extends BaseIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
+                .andExpect(cookie().httpOnly(RefreshTokenCookie.NAME, true))
+                .andExpect(cookie().exists(RefreshTokenCookie.NAME))
                 .andExpect(jsonPath("$.user.email").value("jocelyn@test.com"))
                 .andExpect(jsonPath("$.user.firstName").value("Jocelyn"))
                 .andExpect(jsonPath("$.user.role").value("STUDENT"))
@@ -169,7 +173,9 @@ class AuthControllerIntegrationTest extends BaseIntegrationTest {
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
+                .andExpect(cookie().httpOnly(RefreshTokenCookie.NAME, true))
+                .andExpect(cookie().exists(RefreshTokenCookie.NAME))
                 .andExpect(jsonPath("$.user.email").value("logintest@test.com"));
     }
 

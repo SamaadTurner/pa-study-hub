@@ -1,6 +1,7 @@
 package com.pastudyhub.user.controller;
 
 import com.pastudyhub.user.dto.*;
+import com.pastudyhub.user.security.RefreshTokenCookie;
 import com.pastudyhub.user.service.AccountEmailService;
 import com.pastudyhub.user.service.AuthenticationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -8,7 +9,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -24,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthenticationService authenticationService;
+    private final RefreshTokenCookie refreshTokenCookie;
     private final AccountEmailService accountEmailService;
 
     /**
@@ -85,7 +89,11 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Refresh token is invalid, expired, or revoked")
         }
     )
-    public AuthResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
+    public AuthResponse refresh(
+            @CookieValue(name = RefreshTokenCookie.NAME, required = false) String cookieToken,
+            @RequestBody(required = false) RefreshTokenRequest body) {
+        RefreshTokenRequest request = new RefreshTokenRequest();
+        request.setRefreshToken(tokenFrom(cookieToken, body));
         return authenticationService.refresh(request);
     }
 
@@ -97,15 +105,32 @@ public class AuthController {
      * @return 204 No Content
      */
     @PostMapping("/logout")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(
         summary = "Logout — revoke refresh token",
         responses = {
             @ApiResponse(responseCode = "204", description = "Logged out successfully")
         }
     )
-    public void logout(@Valid @RequestBody RefreshTokenRequest request) {
-        authenticationService.logout(request.getRefreshToken());
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = RefreshTokenCookie.NAME, required = false) String cookieToken,
+            @RequestBody(required = false) RefreshTokenRequest body) {
+        String token = tokenFrom(cookieToken, body);
+        if (token != null) {
+            authenticationService.logout(token);
+        }
+        // The cookie goes either way, so a sign-out always signs out this browser
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.clear().toString())
+                .build();
+    }
+
+    // The cookie, or for a tab opened before the cookie existed, the token in the body
+    private static String tokenFrom(String cookieToken, RefreshTokenRequest body) {
+        if (cookieToken != null && !cookieToken.isBlank()) {
+            return cookieToken;
+        }
+        String fromBody = body == null ? null : body.getRefreshToken();
+        return fromBody == null || fromBody.isBlank() ? null : fromBody;
     }
 
     @GetMapping("/google/status")

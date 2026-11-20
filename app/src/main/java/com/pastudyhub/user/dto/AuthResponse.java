@@ -1,5 +1,7 @@
 package com.pastudyhub.user.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +18,9 @@ public class AuthResponse {
     private String accessToken;
 
     /** Long-lived refresh token (7 days). Store securely, use to obtain new access tokens. */
+    // Moved into the HttpOnly cookie by RefreshTokenCookieAdvice, so it never
+    // reaches the page's JavaScript; left out of the JSON when empty
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String refreshToken;
 
     /** The authenticated user's profile data. */

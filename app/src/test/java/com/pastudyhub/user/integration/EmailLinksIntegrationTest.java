@@ -1,5 +1,7 @@
 package com.pastudyhub.user.integration;
 
+import com.pastudyhub.user.security.RefreshTokenCookie;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.mail.LoggingMailSender;
@@ -225,7 +227,7 @@ class EmailLinksIntegrationTest extends BaseIntegrationTest {
     }
 
     private ResultActions refresh(String refreshToken) throws Exception {
-        return mockMvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(Map.of("refreshToken", refreshToken))));
+        return mockMvc.perform(post("/api/v1/auth/refresh")
+                .cookie(new jakarta.servlet.http.Cookie(RefreshTokenCookie.NAME, refreshToken)));
     }
 }

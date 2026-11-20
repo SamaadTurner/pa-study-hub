@@ -1,5 +1,7 @@
 package com.pastudyhub.user.integration;
 
+import com.pastudyhub.user.security.RefreshTokenCookie;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
@@ -29,6 +31,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -53,6 +56,10 @@ class GoogleSignInIntegrationTest extends BaseIntegrationTest {
     @MockBean
     private GoogleTokenVerifier googleTokenVerifier;
 
+    // Lets every sign-up through unless a test says otherwise
+    @MockBean
+    private com.pastudyhub.user.security.SignupLimiter signupLimiter;
+
     @Autowired
     private MailSender mailSender;
 
@@ -75,7 +82,9 @@ class GoogleSignInIntegrationTest extends BaseIntegrationTest {
         MvcResult first = googleSignIn(sub, email)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
+                .andExpect(cookie().httpOnly(RefreshTokenCookie.NAME, true))
+                .andExpect(cookie().exists(RefreshTokenCookie.NAME))
                 .andExpect(jsonPath("$.user.email").value(email))
                 .andExpect(jsonPath("$.user.firstName").value("Riley"))
                 .andReturn();
@@ -244,6 +253,35 @@ class GoogleSignInIntegrationTest extends BaseIntegrationTest {
         googleSignIn(sub, email)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user.id").value(org.hamcrest.Matchers.not(first.get("user").get("id").asText())));
+    }
+
+    @Test
+    @DisplayName("When sign-up is paused, new accounts get a 429 with a clear message; existing ones still sign in")
+    void signupPaused() throws Exception {
+        String sub = "paused-" + java.util.UUID.randomUUID();
+        String existingEmail = sub + "-old@example.com";
+        fakeGoogle(sub, existingEmail, "Old", "User");
+        googleSignIn(sub, existingEmail).andExpect(status().isOk());
+
+        org.mockito.Mockito.doThrow(new com.pastudyhub.user.exception.TooManySignupsException())
+                .when(signupLimiter).checkRoomForOneMore();
+        try {
+            String newSub = sub + "-new";
+            String newEmail = newSub + "@example.com";
+            fakeGoogle(newSub, newEmail, "New", "User");
+            googleSignIn(newSub, newEmail)
+                    .andExpect(status().isTooManyRequests())
+                    .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("A lot of accounts were made recently")));
+            mockMvc.perform(post("/api/v1/auth/register")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("email", "paused-" + sub + "@example.com",
+                                    "password", "Str0ng!Passw0rd", "firstName", "A", "lastName", "B"))))
+                    .andExpect(status().isTooManyRequests());
+            // Someone who already has an account is not affected
+            googleSignIn(sub, existingEmail).andExpect(status().isOk());
+        } finally {
+            org.mockito.Mockito.reset(signupLimiter);
+        }
     }
 
     // ---- helpers -------------------------------------------------------------

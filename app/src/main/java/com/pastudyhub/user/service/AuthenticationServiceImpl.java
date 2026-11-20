@@ -13,6 +13,7 @@ import com.pastudyhub.user.repository.RefreshTokenRepository;
 import com.pastudyhub.user.repository.UserRepository;
 import com.pastudyhub.user.security.JwtTokenProvider;
 import com.pastudyhub.user.security.LoginAttemptLimiter;
+import com.pastudyhub.user.security.SignupLimiter;
 import com.pastudyhub.user.security.PasswordPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +51,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final LoginAttemptLimiter loginAttemptLimiter;
     private final GoogleTokenVerifier googleTokenVerifier;
     private final EmailLinkService emailLinkService;
+    private final SignupLimiter signupLimiter;
 
     @Value("${jwt.refresh-token-expiry-days:7}")
     private int refreshTokenExpiryDays;
@@ -75,6 +77,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     policyResult.getErrorMessage(),
                     org.springframework.http.HttpStatus.BAD_REQUEST) {};
         }
+
+        signupLimiter.checkRoomForOneMore();
 
         User user = User.builder()
                 .email(normalizedEmail)
@@ -249,6 +253,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             return finishGoogleSignIn(sameEmail);
         }
 
+        signupLimiter.checkRoomForOneMore();
         User user = User.builder()
                 .email(google.email())
                 .passwordHash(null)

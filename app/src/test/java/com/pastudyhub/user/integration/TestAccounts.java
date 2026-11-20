@@ -1,5 +1,7 @@
 package com.pastudyhub.user.integration;
 
+import com.pastudyhub.user.security.RefreshTokenCookie;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pastudyhub.user.dto.RegisterRequest;
@@ -48,6 +50,15 @@ final class TestAccounts {
                 .andReturn();
 
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
-        return new Account(email, body.get("accessToken").asText(), body.get("refreshToken").asText());
+        return new Account(email, body.get("accessToken").asText(), refreshCookie(result));
+    }
+
+    /** The refresh token from the HttpOnly cookie a sign-in response sets. */
+    static String refreshCookie(MvcResult result) {
+        jakarta.servlet.http.Cookie cookie = result.getResponse().getCookie(RefreshTokenCookie.NAME);
+        if (cookie == null || cookie.getValue().isEmpty()) {
+            throw new AssertionError("No refresh token cookie in the response");
+        }
+        return cookie.getValue();
     }
 }

@@ -51,6 +51,15 @@ jwt:
   access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:900000} # 15 minutes
   refresh-token-expiry-days: ${JWT_REFRESH_TOKEN_EXPIRY_DAYS:7}
 
+auth:
+  refresh-cookie:
+    # Secure cookies need HTTPS; docker-compose (plain http on localhost) turns it off
+    secure: ${AUTH_COOKIE_SECURE:true}
+  # New accounts for the whole site (see SignupLimiter)
+  signup-limit:
+    per-hour: ${SIGNUP_LIMIT_PER_HOUR:30}
+    per-day: ${SIGNUP_LIMIT_PER_DAY:200}
+
 # Which scheduler sets the next review date: sm2 or fsrs (see SchedulingProperties).
 # Both run on every review, so switching keeps every card's history.
 scheduling:

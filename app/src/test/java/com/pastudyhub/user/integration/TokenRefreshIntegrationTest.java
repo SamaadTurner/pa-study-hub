@@ -1,5 +1,8 @@
 package com.pastudyhub.user.integration;
 
+import com.pastudyhub.user.security.RefreshTokenCookie;
+import org.springframework.test.web.servlet.MvcResult;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
@@ -18,6 +21,7 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -38,16 +42,14 @@ class TokenRefreshIntegrationTest extends BaseIntegrationTest {
 
     private ResultActions refresh(String refreshToken) throws Exception {
         return mockMvc.perform(post("/api/v1/auth/refresh")
+                .cookie(new jakarta.servlet.http.Cookie(RefreshTokenCookie.NAME, refreshToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"refreshToken\":\"" + refreshToken + "\"}"));
     }
 
     /** Refreshes and returns the new refresh token. */
     private String refreshAndGetNewToken(String refreshToken) throws Exception {
-        String response = refresh(refreshToken)
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response).get("refreshToken").asText();
+        return TestAccounts.refreshCookie(refresh(refreshToken).andExpect(status().isOk()).andReturn());
     }
 
     @Test
@@ -55,12 +57,13 @@ class TokenRefreshIntegrationTest extends BaseIntegrationTest {
     void refresh_returnsNewTokens() throws Exception {
         Account account = TestAccounts.register(mockMvc, objectMapper);
 
-        String response = refresh(account.refreshToken())
+        MvcResult result = refresh(account.refreshToken())
                 .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-        JsonNode body = objectMapper.readTree(response);
+                .andReturn();
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
 
-        assertThat(body.get("refreshToken").asText()).isNotEqualTo(account.refreshToken());
+        assertThat(body.has("refreshToken")).isFalse();
+        assertThat(TestAccounts.refreshCookie(result)).isNotEqualTo(account.refreshToken());
         assertThat(body.get("user").get("email").asText()).isEqualTo(account.email());
 
         mockMvc.perform(get("/api/v1/users/me")
@@ -112,9 +115,9 @@ class TokenRefreshIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("A missing refresh token is a 400")
-    void refresh_blankToken_isBadRequest() throws Exception {
-        refresh("").andExpect(status().isBadRequest());
+    @DisplayName("An empty refresh token cookie is a 401 (not signed in)")
+    void refresh_blankToken_isUnauthorized() throws Exception {
+        refresh("").andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -123,11 +126,40 @@ class TokenRefreshIntegrationTest extends BaseIntegrationTest {
         Account account = TestAccounts.register(mockMvc, objectMapper);
 
         mockMvc.perform(post("/api/v1/auth/logout")
+                        .cookie(new jakarta.servlet.http.Cookie(RefreshTokenCookie.NAME, account.refreshToken())))
+                .andExpect(status().isNoContent())
+                // The browser is told to delete the cookie
+                .andExpect(cookie().maxAge(RefreshTokenCookie.NAME, 0));
+
+        refresh(account.refreshToken()).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("A tab opened before the cookie existed can still refresh once with the token in the body")
+    void refresh_withTheOldBodyToken() throws Exception {
+        Account account = TestAccounts.register(mockMvc, objectMapper);
+
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"" + account.refreshToken() + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        // From then on it has the cookie
+        refresh(TestAccounts.refreshCookie(result)).andExpect(status().isOk());
+        // Logout with the body token works too
+        mockMvc.perform(post("/api/v1/auth/logout")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"refreshToken\":\"" + account.refreshToken() + "\"}"))
                 .andExpect(status().isNoContent());
+    }
 
-        refresh(account.refreshToken()).andExpect(status().isUnauthorized());
+    @Test
+    @DisplayName("Refresh with no cookie and no body is a 401; logout without anything still clears the cookie")
+    void noToken() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/refresh")).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/auth/logout"))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge(RefreshTokenCookie.NAME, 0));
     }
 
     @Test

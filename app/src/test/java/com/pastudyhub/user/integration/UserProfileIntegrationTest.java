@@ -1,5 +1,7 @@
 package com.pastudyhub.user.integration;
 
+import com.pastudyhub.user.security.RefreshTokenCookie;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.user.integration.TestAccounts.Account;
@@ -50,6 +52,7 @@ class UserProfileIntegrationTest extends BaseIntegrationTest {
 
     private ResultActions refresh(String refreshToken) throws Exception {
         return mockMvc.perform(post("/api/v1/auth/refresh")
+                .cookie(new jakarta.servlet.http.Cookie(RefreshTokenCookie.NAME, refreshToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"refreshToken\":\"" + refreshToken + "\"}"));
     }
@@ -185,14 +188,14 @@ class UserProfileIntegrationTest extends BaseIntegrationTest {
         // token handed out before the change must not keep that someone logged in.
         Account account = TestAccounts.register(mockMvc, objectMapper);
 
-        String body = changePassword(account, TestAccounts.PASSWORD, NEW_PASSWORD)
+        org.springframework.test.web.servlet.MvcResult changed = changePassword(account, TestAccounts.PASSWORD, NEW_PASSWORD)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
-                .andReturn().getResponse().getContentAsString();
+                .andReturn();
 
         refresh(account.refreshToken()).andExpect(status().isUnauthorized());
         // The browser that made the change keeps working with the new refresh token
-        refresh(objectMapper.readTree(body).get("refreshToken").asText()).andExpect(status().isOk());
+        refresh(TestAccounts.refreshCookie(changed)).andExpect(status().isOk());
     }
 
     // ==================== CLOSING THE ACCOUNT ====================

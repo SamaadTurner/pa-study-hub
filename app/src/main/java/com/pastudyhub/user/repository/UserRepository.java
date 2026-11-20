@@ -18,6 +18,9 @@ import java.util.UUID;
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
 
+    /** Accounts made since the given time (SignupLimiter). */
+    long countByCreatedAtAfter(java.time.LocalDateTime since);
+
     /**
      * Find a user by their email address (case-insensitive via LOWER() in DB).
      * Email is normalized to lowercase before storage, so this lookup is consistent.

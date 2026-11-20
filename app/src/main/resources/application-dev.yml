@@ -19,3 +19,11 @@ logging:
   level:
     com.pastudyhub: DEBUG
     org.hibernate.SQL: DEBUG
+
+# Plain http, and the tests make hundreds of accounts an hour
+auth:
+  refresh-cookie:
+    secure: false
+  signup-limit:
+    per-hour: 100000
+    per-day: 100000

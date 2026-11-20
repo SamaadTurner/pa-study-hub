@@ -7,6 +7,7 @@ import com.pastudyhub.user.dto.GoogleSignInRequest;
 import com.pastudyhub.user.dto.UpdateProfileRequest;
 import com.pastudyhub.user.dto.UserResponse;
 import com.pastudyhub.user.security.JwtTokenProvider;
+import com.pastudyhub.user.security.RefreshTokenCookie;
 import com.pastudyhub.user.service.AccountEmailService;
 import com.pastudyhub.user.service.AuthenticationService;
 import com.pastudyhub.user.service.UserService;
@@ -15,7 +16,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,6 +38,7 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final RefreshTokenCookie refreshTokenCookie;
     private final AuthenticationService authenticationService;
     private final AccountEmailService accountEmailService;
 
@@ -91,13 +95,15 @@ public class UserController {
     }
 
     @DeleteMapping("/me")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Close the account and delete all of its data",
             description = "Needs the password, or the email typed out for an account without a password.")
-    public void deleteAccount(
+    public ResponseEntity<Void> deleteAccount(
             Authentication authentication,
             @RequestBody DeleteAccountRequest request) {
         userService.deleteAccount(extractUserId(authentication), request);
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.clear().toString())
+                .build();
     }
 
     @PostMapping("/me/confirmation-email")

@@ -39,3 +39,11 @@ jwt:
   secret: test-jwt-secret-key-must-be-at-least-32-characters-long-for-hs256
   access-token-expiry-ms: 900000
   refresh-token-expiry-days: 7
+
+# Plain http, and the tests make hundreds of accounts an hour
+auth:
+  refresh-cookie:
+    secure: false
+  signup-limit:
+    per-hour: 100000
+    per-day: 100000

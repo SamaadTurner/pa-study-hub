@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 417 backend tests, 121 frontend unit tests and 77 end-to-end browser tests
+the frontend. 423 backend tests, 121 frontend unit tests and 84 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -23,7 +23,7 @@ run in CI on every push.
 - **Fill-in-the-blank cards.** Write a sentence with blanks in Anki's syntax,
   `{{c1::answer}}` or `{{c1::answer::hint}}` (or select words and press Make blank). Each
   blank number becomes its own card that hides only that blank, so each fact gets its own
-  review schedule.
+  review schedule. The AI can suggest fill-in-the-blank cards too.
 - **Spaced repetition.** Studying a deck shows the cards that are due. You flip a card
   and rate it Again, Hard, Good or Easy, and the SM-2 algorithm decides when it comes
   back (see [How cards are scheduled](#how-cards-are-scheduled)).
@@ -122,16 +122,19 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 417 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 423 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
-  They cover 96.9% of lines and 85.6% of branches (JaCoCo, without the code Lombok
+  They cover 96.9% of lines and 86.4% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
 - **Frontend:** 121 unit tests with Vitest and React Testing Library.
-- **End to end:** 77 Playwright tests that click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
+- **End to end:** 84 Playwright tests in Chromium; the account, deck, study, exam and fill-in-the-blank tests (42) also run in WebKit (desktop Safari) and on an iPhone 13 screen. They click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
   and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
+- **Accessibility:** axe checks every main page against WCAG 2.1 A and AA rules in the
+  end-to-end suite (`accessibility.spec.ts`). Keyboard and screen reader use still needs a
+  person to check.
 - **Load test:** k6 (`perf/`), run by hand against a local backend; results under
   "One query for a whole deck list".
 - **CI** has four jobs: backend tests, frontend tests with lint and build, end-to-end
@@ -317,6 +320,19 @@ only the SHA-256 hash, a link works once and until it expires, a new link retire
 ones, and a user gets at most 3 of each kind an hour. "Forgot password" answers the same
 whether or not an account uses the email. The login lock counts live in the database, so a
 restart (every wake-up on the free plan) no longer clears them.
+
+**Testing in Safari's engine found real bugs.** Running the main flows in WebKit and on an
+iPhone screen showed three things Chrome never did: the hidden side of a flipped card still
+caught taps in Safari, so "Show Hint" flipped the card instead (the turned-away side now takes
+no taps); requests that failed together each refreshed the session with the same token, which
+the server took for theft and signed the user out (one shared refresh now); and the app
+signed a student out whenever checking the saved session failed for any reason, including a
+sleeping server, instead of only on a real 401 (it now waits and tries again for a minute).
+
+**A public deck that goes away is not lost for the students using it.** Other students can
+study a public deck without copying it. When the owner deletes it, or their account, each of
+them gets a private copy with their review schedules and history moved to the copied cards
+(`DeckHandoverService`).
 
 **Closing an account deletes its data.** One transaction removes the user's decks,
 cards, reviews, exams, activity, AI usage and own questions, in an order that never leaves

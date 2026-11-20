@@ -272,7 +272,22 @@ blocked, and the Docker smoke test in CI checks the headers are sent.
 (`SignupLimiter`, counted from `users.created_at`). Each new account sends a confirmation
 email and the free Brevo plan sends 300 a day, so a script making accounts could otherwise
 stop password reset emails for everyone. Like the login lock it is not per IP address, for
-the reason below; people who already have an account are not affected.
+the reason below; people who already have an account are not affected. So that a script
+can't simply use the cap up and pause sign-up for everyone, the sign-up form has a bot check:
+Cloudflare Turnstile (free), which most people pass without a click. The browser gets a
+one-time token and the server confirms it with Cloudflare before anything else (`BotCheck`),
+so a script learns nothing, not even whether an email is taken, without passing it. It is
+off when the keys are not set, so local runs, the tests and Docker need no Cloudflare
+account; it was checked in a real browser with Cloudflare's test keys under the site's
+Content-Security-Policy. Google sign-up skips it, since Google already checks the person.
+
+**The access token stays in `localStorage`, on purpose.** Keeping it only in memory would
+mean every open tab refreshes on its own, on load and every 15 minutes, all with the one
+refresh cookie. The server rotates that token and treats reuse as theft, so two tabs
+refreshing at the same moment would sign the student out everywhere. A script that got into
+the page could make requests as the student either way; what limits the damage is the
+Content-Security-Policy (no outside or inline scripts) and the refresh token being out of
+reach, which caps a stolen access token at 15 minutes.
 
 **Tests against real PostgreSQL.** The H2 run is fast, but H2 builds its tables from the
 Java classes and never runs the migration files. On PostgreSQL the schema comes from the
@@ -446,11 +461,6 @@ To turn it on locally, add `AI_API_KEY=<your Groq key>` to the backend command a
 
 ## Known limits
 
-- Sign-ups are capped for the whole site (30 an hour, 200 a day), so a script making
-  accounts can pause sign-up for everyone for up to an hour. A bot check on the sign-up form
-  would stop that.
-- The 15-minute access token is kept in `localStorage`, so a script that got past the
-  Content-Security-Policy could use it until it runs out (it can't get the refresh token).
 - The login lock is per email only: someone who knows your email can lock you out for 15
   minutes (the reset email unlocks it).
 - Emails come from a Brevo address, because a Gmail sender can't pass the checks receiving

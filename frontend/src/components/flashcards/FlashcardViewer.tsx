@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ReviewCard } from '@/types'
+import ClozeView from './ClozeView'
 
 interface Props {
   card: ReviewCard
@@ -9,6 +10,7 @@ interface Props {
 
 export default function FlashcardViewer({ card, isFlipped, onFlip }: Props) {
   const [showHint, setShowHint] = useState(false)
+  const isCloze = card.cardType === 'CLOZE'
 
   return (
     <div className="w-full max-w-2xl mx-auto select-none">
@@ -37,9 +39,11 @@ export default function FlashcardViewer({ card, isFlipped, onFlip }: Props) {
             style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
           >
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">
-              Question
+              {isCloze ? 'Fill in the blank' : 'Question'}
             </p>
-            <p className="text-xl font-medium text-gray-900 leading-relaxed">{card.front}</p>
+            <p className="text-xl font-medium text-gray-900 leading-relaxed">
+              {isCloze ? <ClozeView text={card.front} index={card.clozeIndex} revealed={false} /> : card.front}
+            </p>
 
             {card.hint && !showHint && (
               <button
@@ -73,7 +77,16 @@ export default function FlashcardViewer({ card, isFlipped, onFlip }: Props) {
             <p className="text-xs font-semibold text-primary-400 uppercase tracking-widest mb-4">
               Answer
             </p>
-            <p className="text-lg text-gray-900 leading-relaxed whitespace-pre-wrap">{card.back ?? ''}</p>
+            {isCloze ? (
+              <>
+                <p className="text-lg text-gray-900 leading-relaxed">
+                  <ClozeView text={card.front} index={card.clozeIndex} revealed />
+                </p>
+                {card.back && <p className="mt-3 text-sm text-gray-600 whitespace-pre-wrap">{card.back}</p>}
+              </>
+            ) : (
+              <p className="text-lg text-gray-900 leading-relaxed whitespace-pre-wrap">{card.back ?? ''}</p>
+            )}
 
             {card.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 justify-center mt-4">

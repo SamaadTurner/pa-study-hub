@@ -46,11 +46,16 @@ export interface Deck {
   updatedAt: string
 }
 
+// BASIC = question and answer; CLOZE = fill in the blank ({{c1::answer}} in front)
+export type CardType = 'BASIC' | 'CLOZE'
+
 export interface Card {
   id: string
   deckId: string
   front: string
   back: string
+  cardType: CardType
+  clozeIndex: number | null  // for a cloze card, the blank number it asks for
   hint?: string
   tags: string[]
   easeFactor: number
@@ -65,6 +70,8 @@ export interface ReviewCard {
   deckId: string
   front: string
   back: string
+  cardType: CardType
+  clozeIndex: number | null
   hint?: string
   tags: string[]
 }

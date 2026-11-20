@@ -1,6 +1,6 @@
 import apiClient from './client'
 import { fetchAllPages } from './pagination'
-import type { Card, Deck, PaginatedResponse, ReviewCard, ReviewResult } from '@/types'
+import type { Card, CardType, Deck, PaginatedResponse, ReviewCard, ReviewResult } from '@/types'
 
 // Backend response types (match Java DTOs)
 interface DeckResponse {
@@ -28,6 +28,8 @@ interface CardResponse {
   deckId: string
   front: string
   back: string
+  cardType?: CardType
+  clozeIndex?: number | null
   hint?: string
   imageUrl?: string
   tags: string[]
@@ -66,6 +68,8 @@ function mapCard(response: CardResponse): Card {
     deckId: response.deckId,
     front: response.front,
     back: response.back,
+    cardType: response.cardType ?? 'BASIC',
+    clozeIndex: response.clozeIndex ?? null,
     hint: response.hint,
     tags: response.tags || [],
     easeFactor: response.reviewSchedule?.easeFactor ?? 2.5,
@@ -160,6 +164,15 @@ export async function createCard(deckId: string, payload: { front: string; back:
   return mapCard(data)
 }
 
+// Fill-in-the-blank cards: one text makes one card per blank number
+export async function createClozeCards(
+  deckId: string,
+  payload: { text: string; extra?: string; tags?: string[] },
+): Promise<Card[]> {
+  const { data } = await apiClient.post<CardResponse[]>(`/decks/${deckId}/cloze-cards`, payload)
+  return data.map(mapCard)
+}
+
 export async function updateCard(cardId: string, payload: Partial<{ front: string; back: string; hint?: string; tags?: string[] }>): Promise<Card> {
   const { data } = await apiClient.put<CardResponse>(`/cards/${cardId}`, payload)
   return mapCard(data)
@@ -180,6 +193,8 @@ export async function getDueCards(deckId: string): Promise<ReviewCard[]> {
     front: card.front,
     // the answer, shown when the card is flipped
     back: card.back,
+    cardType: card.cardType ?? 'BASIC',
+    clozeIndex: card.clozeIndex ?? null,
     hint: card.hint,
     tags: card.tags || []
   }))

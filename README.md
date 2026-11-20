@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 396 backend tests, 115 frontend unit tests and 71 end-to-end browser tests
+the frontend. 399 backend tests, 115 frontend unit tests and 72 end-to-end browser tests
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -34,7 +34,7 @@ run in CI on every push.
   other users shared are only used when you tick "Include questions other users shared",
   and the results page marks them as not checked and has a Report button. A shared
   question with 3 reports leaves other people's exams. Shared questions can be browsed by
-  topic, and the setup page shows how many questions each topic has.
+  topic and searched, and the setup page shows how many questions each topic has.
 - **Progress.** Daily goals for cards and minutes, a study streak, and an analytics page
   with 30 days of activity and accuracy by topic. Flashcards and exams both count.
   Exam results are also split by blueprint task, and the analytics page names your
@@ -115,13 +115,13 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 396 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 399 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
   They cover 97.8% of lines and 86.1% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
 - **Frontend:** 115 unit tests with Vitest and React Testing Library.
-- **End to end:** 71 Playwright tests that click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens and the profile page), decks
+- **End to end:** 72 Playwright tests that click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens and the profile page), decks
   and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
@@ -266,8 +266,10 @@ or deleted. Shared questions are left out of exams unless the user asks for them
 nobody reviews them; the starter questions and your own are always in the pool. Users
 keep them in check instead: someone who had a shared question in a finished exam can report
 it once, and with 3 reports from different users it is left out of other people's exams.
-The author sees the reasons and notes (never who sent them), and fixing the question saves
-a new version that starts without reports. The
+The author sees the reasons and notes (never who sent them). Fixing the question saves a
+new version that comes back to shared exams, but it carries the count of the earlier
+reports: it leaves again once its own reports plus the earlier ones reach 3, so an edit
+alone can't clear them (`SharedQuestionService.isHiddenByReports`). The
 question bank grows this way without the app writing medical content itself.
 
 **The server enforces exam time limits.** The page counts down, but a closed tab or a

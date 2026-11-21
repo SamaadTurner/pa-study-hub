@@ -159,6 +159,26 @@ test.describe('Accounts', () => {
     await expect(banner).toBeHidden({ timeout: 10_000 })
   })
 
+  test('when the host gives up on a waking server, reading requests try again and the page still loads', async ({ page }) => {
+    await register(page, newUser())
+    // The first two tries get the 520 Render's edge sends after about a minute
+    let tries = 0
+    await page.route('**/api/v1/progress/dashboard', async route => {
+      tries++
+      if (tries <= 2) {
+        await route.fulfill({ status: 520, body: '' })
+      } else {
+        await route.continue()
+      }
+    })
+    await page.goto('/dashboard')
+    await expect(page.getByRole('status').filter({ hasText: 'Waking up the server' })).toBeVisible()
+    await expect(page.getByText('Today\'s Goals')).toBeVisible({ timeout: 20_000 })
+    // Two refused tries, then the real answer (the page may ask more than once)
+    expect(tries).toBeGreaterThanOrEqual(3)
+    await expect(page.getByText('An unexpected error occurred.')).toBeHidden()
+  })
+
   test('pages behind the login send a visitor to the login page', async ({ page }) => {
     await page.goto('/decks')
     await expect(page).toHaveURL(/\/login$/)

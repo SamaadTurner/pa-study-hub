@@ -154,7 +154,9 @@ test.describe('Accounts', () => {
     await page.goto('/dashboard')
     const banner = page.getByRole('status').filter({ hasText: 'Waking up the server' })
     await expect(banner).toBeVisible({ timeout: 6_000 })
-    await expect(banner).toContainText('takes up to a minute')
+    await expect(page.getByText('usually takes 1 to 2 minutes')).toBeVisible()
+    // A PA fact or a quick review question while waiting
+    await expect(page.getByText(/^(Did you know\?|Quick review)$/)).toBeVisible()
     // Gone once the answer is in
     await expect(banner).toBeHidden({ timeout: 10_000 })
   })

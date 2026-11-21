@@ -11,7 +11,7 @@ plans, so after 15 minutes without visitors the server sleeps and the first page
 about a minute to wake it up.
 
 Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 451 backend tests, 138 frontend unit tests and 92 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
+the frontend. 451 backend tests, 140 frontend unit tests and 93 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -132,8 +132,8 @@ cd frontend && npx playwright install chromium && npm run e2e
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
   They cover 96.6% of lines and 86.4% of branches (JaCoCo, without the code Lombok
   generates). The build fails below 95% and 78%.
-- **Frontend:** 138 unit tests with Vitest and React Testing Library.
-- **End to end:** 92 Playwright tests in Chromium; the account, deck, study, exam, fill-in-the-blank and picture card tests (48) also run in WebKit (desktop Safari) and on an iPhone 13 screen. They click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
+- **Frontend:** 140 unit tests with Vitest and React Testing Library.
+- **End to end:** 93 Playwright tests in Chromium; the account, deck, study, exam, fill-in-the-blank and picture card tests (49) also run in WebKit (desktop Safari) and on an iPhone 13 screen. They click through the real app: accounts (including sign-out, the login lock, the Google sign-in screens, the profile page, and the reset and confirmation links read from a dev-only outbox), decks
   and cards, studying, exams (including the timer running out), writing questions, public decks,
   analytics, the AI buttons (with the model's answers faked), and lists of more than 100
   decks and cards.
@@ -449,6 +449,12 @@ plan):
 - Every page calls the server as soon as it opens, so the wake-up starts while the student is
   still typing, and any request that waits more than 4 seconds shows a banner that says the
   server is waking up and counts the seconds.
+- Measured on Render, one cold start each: 114 s before these changes, about 95 s after. Less
+  than the local gain, likely because the bigger image (the archive adds about 94 MB) takes
+  longer to pull. During that wake-up Render's edge gave up after about a minute and answered
+  520, so 520 to 524 now count as "server starting", and requests that only read (GET) are sent
+  again up to three times while the banner stays up, so the page loads by itself. Requests that
+  change something are not repeated; they show the "server is starting" message.
 
 ## AI features
 

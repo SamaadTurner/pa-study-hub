@@ -39,6 +39,18 @@ describe('SlowRequestTracker', () => {
     expect(changes).toEqual([true, false])
   })
 
+  it('a retry for a waking server is slow right away', () => {
+    const tracker = new SlowRequestTracker()
+    const changes: boolean[] = []
+    tracker.subscribe(slow => changes.push(slow))
+    const id = tracker.start(true)
+    expect(changes).toEqual([true])
+    vi.advanceTimersByTime(SLOW_AFTER_MS)
+    expect(changes).toEqual([true])
+    tracker.end(id)
+    expect(changes).toEqual([true, false])
+  })
+
   it('stops telling a listener after it unsubscribes', () => {
     const tracker = new SlowRequestTracker()
     const listener = vi.fn()

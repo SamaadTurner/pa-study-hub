@@ -14,7 +14,12 @@ export function isServerUnreachable(status: number | undefined): boolean {
   }
   // Bad gateway, service unavailable, gateway timeout: the request reached the
   // host's proxy but not our backend
-  return status === 502 || status === 503 || status === 504
+  if (status === 502 || status === 503 || status === 504) {
+    return true
+  }
+  // 520 to 524: Render's edge (Cloudflare) gave up on the backend, for example
+  // after about a minute of waiting for it to wake up (seen on 2026-11-20)
+  return status >= 520 && status <= 524
 }
 
 // ---- Waiting for a sleeping server ------------------------------------------
@@ -36,12 +41,17 @@ export class SlowRequestTracker {
   private nextId = 1
   private listeners = new Set<Listener>()
 
-  start(): number {
+  // alreadySlow: the request is a retry for a server that is waking up, so the
+  // banner should stay up without waiting another few seconds
+  start(alreadySlow = false): number {
     const id = this.nextId++
-    this.waiting.set(id, setTimeout(() => {
+    const markSlow = () => {
+      if (this.slow.has(id)) return
       this.slow.add(id)
       if (this.slow.size === 1) this.emit(true)
-    }, SLOW_AFTER_MS))
+    }
+    this.waiting.set(id, setTimeout(markSlow, SLOW_AFTER_MS))
+    if (alreadySlow) markSlow()
     return id
   }
 

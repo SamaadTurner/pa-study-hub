@@ -26,15 +26,23 @@ export function deviceTimeZone(): string | null {
   }
 }
 
-// Remembers which waiting request is which, so the banner knows when all are done
-type TrackedConfig = InternalAxiosRequestConfig & { _slowId?: number }
+// Remembers which waiting request is which, so the banner knows when all are done,
+// and how many times a request was sent again because the server was waking up
+type TrackedConfig = InternalAxiosRequestConfig & { _slowId?: number; _wakeRetries?: number }
+
+// A sleeping server can take up to about two minutes to answer. Requests that only
+// read are sent again a few times meanwhile, so the page loads by itself. Requests
+// that change something are not repeated (they could happen twice); they show the
+// "server is starting" message instead.
+const WAKE_RETRIES = 3
+const WAKE_RETRY_WAIT_MS = 3_000
 
 function finishTracking(config: TrackedConfig | undefined) {
   if (config?._slowId !== undefined) slowRequests.end(config._slowId)
 }
 
 apiClient.interceptors.request.use((config: TrackedConfig) => {
-  config._slowId = slowRequests.start()
+  config._slowId = slowRequests.start((config._wakeRetries ?? 0) > 0)
   const token = localStorage.getItem(TOKEN_KEY)
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
@@ -114,6 +122,21 @@ apiClient.interceptors.response.use(
       title: 'Request Failed',
       detail: 'An unexpected error occurred.',
       fieldErrors: undefined,
+    }
+
+    const config = error.config as TrackedConfig | undefined
+    const readsOnly = ['get', 'head'].includes((config?.method ?? '').toLowerCase())
+    if (config && readsOnly && isServerUnreachable(error.response?.status)
+        && (config._wakeRetries ?? 0) < WAKE_RETRIES) {
+      config._wakeRetries = (config._wakeRetries ?? 0) + 1
+      // Keeps the waking-up banner up during the pause before the next try
+      const pause = slowRequests.start(true)
+      try {
+        await new Promise(resolve => setTimeout(resolve, WAKE_RETRY_WAIT_MS))
+        return await apiClient(config)
+      } finally {
+        slowRequests.end(pause)
+      }
     }
 
     if (isServerUnreachable(error.response?.status)) {

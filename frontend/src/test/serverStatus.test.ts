@@ -12,6 +12,13 @@ describe('isServerUnreachable', () => {
     expect(isServerUnreachable(504)).toBe(true)
   })
 
+  it("is true for the 520 to 524 errors Render's edge returns when it gives up waiting", () => {
+    for (const status of [520, 521, 522, 523, 524]) {
+      expect(isServerUnreachable(status), String(status)).toBe(true)
+    }
+    expect(isServerUnreachable(525)).toBe(false)
+  })
+
   it('is false for answers that came from the backend', () => {
     expect(isServerUnreachable(200)).toBe(false)
     expect(isServerUnreachable(400)).toBe(false)

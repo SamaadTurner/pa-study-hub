@@ -110,6 +110,8 @@ test.describe('Picture cards', () => {
     await page.getByRole('button', { name: /Study/ }).first().click()
     await page.getByRole('button', { name: 'Reveal Answer' }).click()
     await page.getByRole('button', { name: /^Good/ }).click()
+    // The next card shows once the rating is saved; leaving earlier could cancel it
+    await expect(page.getByText(/Card\s*2\s*of\s*2/)).toBeVisible()
 
     // Edit: remove box 2, add a new one with a label
     await page.goto(new URL(deckUrl).pathname)

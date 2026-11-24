@@ -22,6 +22,8 @@ for (const zone of ZONES) {
       await page.getByRole('button', { name: /Study/ }).first().click()
       await page.getByRole('button', { name: 'Reveal Answer' }).click()
       await page.getByRole('button', { name: /^Good/ }).click()
+      // Shown once the rating is saved; leaving earlier could cancel it
+      await expect(page.getByRole('heading', { name: 'Session Complete!' })).toBeVisible()
 
       await page.goto('/analytics')
       const label = await todayLabel(page)

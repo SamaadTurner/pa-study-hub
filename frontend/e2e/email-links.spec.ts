@@ -46,6 +46,8 @@ test.describe('Links sent by email', () => {
     await expect(page).toHaveURL(/\/login$/)
 
     await page.getByRole('link', { name: 'Forgot password?' }).click()
+    // The login page has an Email address field too, so wait for the new page first
+    await expect(page.getByRole('button', { name: 'Send reset link' })).toBeVisible()
     await page.getByLabel('Email address').fill(user.email)
     await page.getByRole('button', { name: 'Send reset link' }).click()
     await expect(page.getByText(/If an account uses that email, a reset link is on its way/)).toBeVisible()

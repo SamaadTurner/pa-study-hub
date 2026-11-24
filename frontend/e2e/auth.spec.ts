@@ -163,6 +163,9 @@ test.describe('Accounts', () => {
 
   test('when the host gives up on a waking server, reading requests try again and the page still loads', async ({ page }) => {
     await register(page, newUser())
+    // Let the dashboard that sign-up opens finish loading, so its own request
+    // does not use up the refused tries below
+    await expect(page.getByText('Today\'s Goals')).toBeVisible()
     // The first two tries get the 520 Render's edge sends after about a minute
     let tries = 0
     await page.route('**/api/v1/progress/dashboard', async route => {

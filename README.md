@@ -89,7 +89,7 @@ a user through port 3000, so this setup is tested.
 
 ### Without Docker
 
-Needs JDK 17, Node 20 and a PostgreSQL 15 database. The backend creates its tables
+Needs JDK 17, Node 22.12 or newer and a PostgreSQL 15 database. The backend creates its tables
 on first start.
 
 ```bash

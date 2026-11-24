@@ -104,6 +104,8 @@ test.describe('Studying a deck', () => {
     ])
 
     await page.getByRole('button', { name: 'Study (1)' }).click()
+    // The deck page lists the question too, so wait for the review page's own button
+    await expect(page.getByRole('button', { name: 'Reveal Answer' })).toBeVisible()
     await expect(page.getByText('Keyboard question')).toBeVisible()
 
     // Space reveals the answer, 3 rates it Good

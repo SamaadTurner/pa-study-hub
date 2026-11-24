@@ -68,6 +68,9 @@ export async function openDeck(page: Page, title: string) {
     .last()
   await deckCard.getByRole('button', { name: 'View' }).click()
   await expect(page).toHaveURL(/\/decks\/[0-9a-f-]{36}$/)
+  // React Router changes the address first and keeps the old page up until the new
+  // page's code has loaded, so wait for the deck list (and its View buttons) to go.
+  await expect(page.getByRole('button', { name: 'View' })).toHaveCount(0)
   await expect(page.getByRole('heading', { name: title })).toBeVisible()
 }
 
@@ -84,6 +87,8 @@ export async function addCard(page: Page, front: string, back: string, hint?: st
   await page.getByRole('button', { name: 'Save Card' }).click()
 
   await expect(page).toHaveURL(/\/decks\/[0-9a-f-]{36}$/)
+  // The editor stays on screen until the deck page is ready (see openDeck)
+  await expect(page.getByRole('button', { name: 'Save Card' })).toHaveCount(0)
   await expect(page.getByText(front)).toBeVisible()
 }
 

@@ -16,7 +16,7 @@ import com.pastudyhub.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -53,15 +53,15 @@ class GoogleSignInIntegrationTest extends BaseIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
-    @MockBean
+    @MockitoBean
     private GoogleTokenVerifier googleTokenVerifier;
 
     // Lets every sign-up through unless a test says otherwise
-    @MockBean
+    @MockitoBean
     private com.pastudyhub.user.security.SignupLimiter signupLimiter;
 
     // Off-like by default (lets everything through, no site key)
-    @MockBean
+    @MockitoBean
     private com.pastudyhub.user.botcheck.BotCheck botCheck;
 
     @Autowired

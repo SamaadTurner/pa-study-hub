@@ -1,7 +1,7 @@
 package com.pastudyhub.flashcard.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.flashcard.model.ReviewLog;
 import com.pastudyhub.flashcard.model.ReviewSchedule;
@@ -53,7 +53,7 @@ class FsrsSchedulingIntegrationTest extends BaseIntegrationTest {
         JsonNode response = review(user, cardId, 4);
 
         assertThat(response.get("interval").asInt()).isEqualTo(3);
-        assertThat(response.get("nextReviewDate").asText()).isEqualTo(LocalDate.now().plusDays(3).toString());
+        assertThat(response.get("nextReviewDate").asString()).isEqualTo(LocalDate.now().plusDays(3).toString());
 
         ReviewSchedule schedule = schedule(user, cardId);
         assertThat(schedule.getFsrsStability()).isCloseTo(2.3065, within(1e-8));
@@ -143,7 +143,7 @@ class FsrsSchedulingIntegrationTest extends BaseIntegrationTest {
                         .content("{\"title\":\"FSRS deck\",\"category\":\"CARDIOLOGY\",\"isPublic\":false}"))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asString();
     }
 
     private String createCard(UUID user) throws Exception {
@@ -157,6 +157,6 @@ class FsrsSchedulingIntegrationTest extends BaseIntegrationTest {
                         .content("{\"front\":\"Question\",\"back\":\"Answer\"}"))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asString();
     }
 }

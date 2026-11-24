@@ -1,7 +1,7 @@
 package com.pastudyhub.ai;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.ai.dto.GeneratedCard;
 import com.pastudyhub.ai.usage.AiUsageLimiter;
 import com.pastudyhub.flashcard.engine.ClozeText;
@@ -83,8 +83,8 @@ public class FlashcardGenerator {
 
         List<GeneratedCard> cards = new ArrayList<>();
         for (JsonNode cardNode : cardsNode) {
-            String text = cardNode.path("text").asText("").trim();
-            String extra = cardNode.path("extra").asText("").trim();
+            String text = cardNode.path("text").asString("").trim();
+            String extra = cardNode.path("extra").asString("").trim();
             boolean usable = ClozeText.problem(text) == null
                     && text.length() <= MAX_FRONT_LENGTH && extra.length() <= MAX_BACK_LENGTH;
             if (usable) {
@@ -114,8 +114,8 @@ public class FlashcardGenerator {
 
         List<GeneratedCard> cards = new ArrayList<>();
         for (JsonNode cardNode : cardsNode) {
-            String front = cardNode.path("front").asText("").trim();
-            String back = cardNode.path("back").asText("").trim();
+            String front = cardNode.path("front").asString("").trim();
+            String back = cardNode.path("back").asString("").trim();
 
             boolean complete = !front.isEmpty() && !back.isEmpty();
             boolean fits = front.length() <= MAX_FRONT_LENGTH && back.length() <= MAX_BACK_LENGTH;

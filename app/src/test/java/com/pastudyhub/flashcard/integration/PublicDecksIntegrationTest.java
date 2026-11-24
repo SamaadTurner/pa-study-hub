@@ -1,7 +1,7 @@
 package com.pastudyhub.flashcard.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -206,7 +206,7 @@ class PublicDecksIntegrationTest extends BaseIntegrationTest {
         List<LocalDateTime> dates = new ArrayList<>();
         for (JsonNode page : List.of(first, second, third)) {
             for (JsonNode deck : page.get("content")) {
-                dates.add(LocalDateTime.parse(deck.get("updatedAt").asText()));
+                dates.add(LocalDateTime.parse(deck.get("updatedAt").asString()));
             }
         }
         assertThat(dates).isSortedAccordingTo(Comparator.reverseOrder());
@@ -244,7 +244,7 @@ class PublicDecksIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asString();
     }
 
     // Calls the public list with the given parameters (name, value, name, value, ...)
@@ -264,7 +264,7 @@ class PublicDecksIntegrationTest extends BaseIntegrationTest {
     private List<String> idsOf(JsonNode page) {
         List<String> ids = new ArrayList<>();
         for (JsonNode deck : page.get("content")) {
-            ids.add(deck.get("id").asText());
+            ids.add(deck.get("id").asString());
         }
         return ids;
     }

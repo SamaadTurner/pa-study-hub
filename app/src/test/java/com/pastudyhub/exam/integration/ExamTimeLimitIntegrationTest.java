@@ -1,7 +1,7 @@
 package com.pastudyhub.exam.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.exam.engine.ExamTimeLimit;
 import com.pastudyhub.exam.service.ExamTimeLimitJob;
@@ -79,7 +79,7 @@ class ExamTimeLimitIntegrationTest extends BaseIntegrationTest {
         JsonNode second = getExam(user, sessionId).get("questions").get(1);
         startedSecondsAgo(sessionId, 60 + ExamTimeLimit.GRACE_SECONDS + 5);
 
-        mockMvc.perform(post("/api/v1/exams/{id}/questions/{q}/answer", sessionId, second.get("id").asText())
+        mockMvc.perform(post("/api/v1/exams/{id}/questions/{q}/answer", sessionId, second.get("id").asString())
                         .header("Authorization", bearerToken(user))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(answerBody(rightOption(second))))
@@ -156,7 +156,7 @@ class ExamTimeLimitIntegrationTest extends BaseIntegrationTest {
                                 + minutes + "}"))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asString();
     }
 
     // Two questions for the user, written only the first time
@@ -201,8 +201,8 @@ class ExamTimeLimitIntegrationTest extends BaseIntegrationTest {
 
     private String rightOption(JsonNode question) {
         for (JsonNode option : question.get("answerOptions")) {
-            if (option.get("text").asText().equals(RIGHT)) {
-                return option.get("id").asText();
+            if (option.get("text").asString().equals(RIGHT)) {
+                return option.get("id").asString();
             }
         }
         throw new IllegalStateException("No right option");
@@ -214,7 +214,7 @@ class ExamTimeLimitIntegrationTest extends BaseIntegrationTest {
 
     private void answerFirstQuestionRight(UUID user, String sessionId) throws Exception {
         JsonNode first = getExam(user, sessionId).get("questions").get(0);
-        mockMvc.perform(post("/api/v1/exams/{id}/questions/{q}/answer", sessionId, first.get("id").asText())
+        mockMvc.perform(post("/api/v1/exams/{id}/questions/{q}/answer", sessionId, first.get("id").asString())
                         .header("Authorization", bearerToken(user))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(answerBody(rightOption(first))))

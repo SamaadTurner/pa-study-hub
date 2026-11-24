@@ -5,6 +5,18 @@ spring:
   main:
     allow-bean-definition-overriding: true
 
+  # Logins go through our own JWT filter. Without this, Spring Boot 4 also makes a default
+  # in-memory user and prints its random password in the log at every start.
+  autoconfigure:
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+
+  # Jackson 3 (Spring Boot 4) refuses a missing or null value for a true/false or number
+  # field. Requests leave optional ones out (followBlueprint, includeSharedQuestions...),
+  # so a missing value means false or 0, as it did with Jackson 2.
+  jackson:
+    deserialization:
+      fail-on-null-for-primitives: false
+
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:pa_study_hub}
     username: ${DB_USER:postgres}

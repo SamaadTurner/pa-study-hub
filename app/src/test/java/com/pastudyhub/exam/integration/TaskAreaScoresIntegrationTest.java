@@ -1,7 +1,7 @@
 package com.pastudyhub.exam.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.exam.model.AnswerOption;
 import com.pastudyhub.exam.model.DifficultyLevel;
@@ -157,7 +157,7 @@ class TaskAreaScoresIntegrationTest extends BaseIntegrationTest {
                         .content("{\"questionCount\": 4, \"categoryFilter\": \"ENDOCRINOLOGY\", \"timeLimitMinutes\": 0}"))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asString();
     }
 
     /**
@@ -175,20 +175,20 @@ class TaskAreaScoresIntegrationTest extends BaseIntegrationTest {
         JsonNode exam = objectMapper.readTree(result.getResponse().getContentAsString());
 
         for (JsonNode question : exam.get("questions")) {
-            boolean diagnostic = question.get("taskArea").asText().equals("DIAGNOSTIC_STUDIES");
+            boolean diagnostic = question.get("taskArea").asString().equals("DIAGNOSTIC_STUDIES");
             boolean right = diagnostic ? diagnosticRight : interventionRight;
-            if (!diagnostic && !interventionRight && question.get("stem").asText().endsWith("(2)")) {
+            if (!diagnostic && !interventionRight && question.get("stem").asString().endsWith("(2)")) {
                 continue;  // left unanswered
             }
             String optionId = null;
             for (JsonNode option : question.get("answerOptions")) {
-                if (option.get("text").asText().equals(RIGHT) == right) {
-                    optionId = option.get("id").asText();
+                if (option.get("text").asString().equals(RIGHT) == right) {
+                    optionId = option.get("id").asString();
                     break;
                 }
             }
             mockMvc.perform(post("/api/v1/exams/{sessionId}/questions/{questionId}/answer",
-                                    sessionId, question.get("id").asText())
+                                    sessionId, question.get("id").asString())
                             .header("Authorization", bearerToken(user))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"selectedOptionId\": \"" + optionId + "\", \"timeSpentSeconds\": 10}"))

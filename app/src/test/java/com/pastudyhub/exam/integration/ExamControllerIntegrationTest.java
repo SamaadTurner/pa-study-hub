@@ -1,6 +1,6 @@
 package com.pastudyhub.exam.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.exam.dto.StartExamRequest;
 import com.pastudyhub.exam.dto.SubmitAnswerRequest;
@@ -85,12 +85,12 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
                 .andReturn();
 
         var session = objectMapper.readTree(result.getResponse().getContentAsString());
-        sessionId = session.get("id").asText();
+        sessionId = session.get("id").asString();
         assertThat(sessionId).isNotBlank();
 
         // Remember which question the exam picked and what its right answer is.
         // The exam picks at random, so the tests can't assume it is the one seeded above.
-        questionId = session.get("questions").get(0).get("id").asText();
+        questionId = session.get("questions").get(0).get("id").asString();
         correctOptionId = answerOptionRepository.findByQuestionId(UUID.fromString(questionId)).stream()
                 .filter(AnswerOption::isCorrect)
                 .findFirst()
@@ -111,7 +111,7 @@ class ExamControllerIntegrationTest extends BaseIntegrationTest {
                         .header("Authorization", bearerToken(USER))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isUnprocessableContent());
     }
 
     @Test

@@ -1,7 +1,7 @@
 package com.pastudyhub.flashcard.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,7 +54,7 @@ class ClozeCardsIntegrationTest extends BaseIntegrationTest {
         // Listed after the basic card, in number order, and both are due to study
         JsonNode cards = getJson(user, "/api/v1/decks/" + deckId + "/cards").get("content");
         assertThat(cards).hasSize(3);
-        assertThat(cards.get(0).get("cardType").asText()).isEqualTo("BASIC");
+        assertThat(cards.get(0).get("cardType").asString()).isEqualTo("BASIC");
         assertThat(cards.get(1).get("clozeIndex").asInt()).isEqualTo(1);
         assertThat(cards.get(2).get("clozeIndex").asInt()).isEqualTo(2);
         JsonNode queue = getJson(user, "/api/v1/decks/" + deckId + "/review");
@@ -82,7 +82,7 @@ class ClozeCardsIntegrationTest extends BaseIntegrationTest {
     void editing() throws Exception {
         UUID user = UUID.randomUUID();
         String deckId = createDeck(user, false);
-        String secondCard = parse(createCloze(user, deckId, TEXT, null)).get(1).get("id").asText();
+        String secondCard = parse(createCloze(user, deckId, TEXT, null)).get(1).get("id").asString();
 
         Map<String, Object> withoutC2 = Map.of("front", "{{c1::Metoprolol}} lowers heart rate", "back", "");
         update(user, secondCard, withoutC2)
@@ -111,10 +111,10 @@ class ClozeCardsIntegrationTest extends BaseIntegrationTest {
 
         String copyId = parse(mockMvc.perform(post("/api/v1/decks/{id}/clone", deckId)
                         .header("Authorization", bearerToken(other)))
-                .andExpect(status().isCreated())).get("id").asText();
+                .andExpect(status().isCreated())).get("id").asString();
         JsonNode copied = getJson(other, "/api/v1/decks/" + copyId + "/cards").get("content");
         assertThat(copied).hasSize(2);
-        assertThat(copied.get(0).get("cardType").asText()).isEqualTo("CLOZE");
+        assertThat(copied.get(0).get("cardType").asString()).isEqualTo("CLOZE");
         assertThat(copied.get(1).get("clozeIndex").asInt()).isEqualTo(2);
     }
 
@@ -125,14 +125,14 @@ class ClozeCardsIntegrationTest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("title", "Cloze deck", "description", "",
                                 "category", "PHARMACOLOGY", "isPublic", isPublic))))
-                .andExpect(status().isCreated())).get("id").asText();
+                .andExpect(status().isCreated())).get("id").asString();
     }
 
     private String createBasicCard(UUID user, String deckId, String front) throws Exception {
         return parse(mockMvc.perform(post("/api/v1/decks/{id}/cards", deckId).header("Authorization", bearerToken(user))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("front", front, "back", "Answer", "tags", List.of()))))
-                .andExpect(status().isCreated())).get("id").asText();
+                .andExpect(status().isCreated())).get("id").asString();
     }
 
     private ResultActions createCloze(UUID user, String deckId, String text, String extra) throws Exception {

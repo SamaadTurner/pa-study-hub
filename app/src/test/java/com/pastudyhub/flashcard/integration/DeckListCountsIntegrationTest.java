@@ -1,7 +1,7 @@
 package com.pastudyhub.flashcard.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -86,12 +86,12 @@ class DeckListCountsIntegrationTest extends BaseIntegrationTest {
     private String createDeck(UUID user, String title, boolean isPublic) throws Exception {
         return postJson(user, "/api/v1/decks",
                 Map.of("title", title, "description", "", "category", "CARDIOLOGY", "isPublic", isPublic))
-                .get("id").asText();
+                .get("id").asString();
     }
 
     private String createCard(UUID user, String deckId, String front) throws Exception {
         return postJson(user, "/api/v1/decks/" + deckId + "/cards",
-                Map.of("front", front, "back", "Back", "tags", List.of())).get("id").asText();
+                Map.of("front", front, "back", "Back", "tags", List.of())).get("id").asString();
     }
 
     private void review(UUID user, String cardId) throws Exception {
@@ -116,7 +116,7 @@ class DeckListCountsIntegrationTest extends BaseIntegrationTest {
 
     private JsonNode find(JsonNode decks, String deckId) {
         for (JsonNode deck : decks) {
-            if (deck.get("id").asText().equals(deckId)) {
+            if (deck.get("id").asString().equals(deckId)) {
                 return deck;
             }
         }

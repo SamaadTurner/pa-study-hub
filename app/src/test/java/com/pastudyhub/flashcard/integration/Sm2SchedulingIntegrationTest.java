@@ -1,6 +1,6 @@
 package com.pastudyhub.flashcard.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.flashcard.model.ReviewSchedule;
 import com.pastudyhub.flashcard.repository.ReviewScheduleRepository;
@@ -68,7 +68,7 @@ class Sm2SchedulingIntegrationTest extends BaseIntegrationTest {
                         .content("{\"title\":\"SM-2 deck\",\"category\":\"CARDIOLOGY\",\"isPublic\":false}"))
                 .andExpect(status().isCreated())
                 .andReturn();
-        String deckId = objectMapper.readTree(deck.getResponse().getContentAsString()).get("id").asText();
+        String deckId = objectMapper.readTree(deck.getResponse().getContentAsString()).get("id").asString();
 
         MvcResult card = mockMvc.perform(post("/api/v1/decks/{deckId}/cards", deckId)
                         .header("Authorization", bearerToken(user))
@@ -76,6 +76,6 @@ class Sm2SchedulingIntegrationTest extends BaseIntegrationTest {
                         .content("{\"front\":\"Question\",\"back\":\"Answer\"}"))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return objectMapper.readTree(card.getResponse().getContentAsString()).get("id").asText();
+        return objectMapper.readTree(card.getResponse().getContentAsString()).get("id").asString();
     }
 }

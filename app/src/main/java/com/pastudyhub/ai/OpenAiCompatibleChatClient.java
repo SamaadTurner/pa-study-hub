@@ -1,6 +1,6 @@
 package com.pastudyhub.ai;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -92,10 +92,10 @@ public class OpenAiCompatibleChatClient implements ChatClient {
         }
 
         JsonNode content = reply == null ? null : reply.path("choices").path(0).path("message").path("content");
-        if (content == null || !content.isTextual() || content.asText().isBlank()) {
+        if (content == null || !content.isString() || content.asString().isBlank()) {
             throw new AiResponseException("The AI service sent an empty answer.");
         }
-        return content.asText();
+        return content.asString();
     }
 
     // The key is never logged, only the status code

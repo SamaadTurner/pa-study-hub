@@ -1,6 +1,6 @@
 package com.pastudyhub.ai;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.ai.usage.AiUsageLimiter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -46,7 +46,7 @@ public class AnswerExplainer {
         usageLimiter.useOne(userId);
 
         String reply = chatClient.complete(SYSTEM_PROMPT, userPrompt);
-        String explanation = AiJson.readObject(objectMapper, reply).path("explanation").asText("").trim();
+        String explanation = AiJson.readObject(objectMapper, reply).path("explanation").asString("").trim();
 
         if (explanation.isEmpty()) {
             throw new AiResponseException("The AI answer did not contain an explanation.");

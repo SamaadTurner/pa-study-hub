@@ -2,7 +2,7 @@ package com.pastudyhub.user.integration;
 
 import com.pastudyhub.user.security.RefreshTokenCookie;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.mail.LoggingMailSender;
 import com.pastudyhub.mail.MailSender;

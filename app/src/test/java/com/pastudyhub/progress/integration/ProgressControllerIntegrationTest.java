@@ -1,6 +1,6 @@
 package com.pastudyhub.progress.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.progress.dto.LogActivityRequest;
 import com.pastudyhub.progress.dto.UpdateGoalRequest;

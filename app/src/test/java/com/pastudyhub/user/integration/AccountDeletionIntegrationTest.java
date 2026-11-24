@@ -1,7 +1,7 @@
 package com.pastudyhub.user.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.user.integration.TestAccounts.Account;
 import org.junit.jupiter.api.DisplayName;
@@ -50,12 +50,12 @@ class AccountDeletionIntegrationTest extends BaseIntegrationTest {
 
         // Alex: a public deck with a card, studied by Alex and by Blake; Blake copies it
         String deckId = post(alex, "/api/v1/decks",
-                Map.of("title", "Alex's renal deck", "category", "NEPHROLOGY", "isPublic", true)).get("id").asText();
+                Map.of("title", "Alex's renal deck", "category", "NEPHROLOGY", "isPublic", true)).get("id").asString();
         String cardId = post(alex, "/api/v1/decks/" + deckId + "/cards",
-                Map.of("front", "Front", "back", "Back")).get("id").asText();
+                Map.of("front", "Front", "back", "Back")).get("id").asString();
         post(alex, "/api/v1/cards/" + cardId + "/review", Map.of("quality", 4, "timeSpentSeconds", 5));
         post(blake, "/api/v1/cards/" + cardId + "/review", Map.of("quality", 4, "timeSpentSeconds", 5));
-        String copyId = post(blake, "/api/v1/decks/" + deckId + "/clone", Map.of()).get("id").asText();
+        String copyId = post(blake, "/api/v1/decks/" + deckId + "/clone", Map.of()).get("id").asString();
 
         // Alex writes two questions; one is shared and ends up in Blake's exam
         String sharedQuestion = writeQuestion(alex, "Shared by Alex", true);
@@ -105,7 +105,7 @@ class AccountDeletionIntegrationTest extends BaseIntegrationTest {
     private UUID userId(Account account) throws Exception {
         String body = mockMvc.perform(get("/api/v1/users/me").header("Authorization", account.authorization()))
                 .andReturn().getResponse().getContentAsString();
-        return UUID.fromString(objectMapper.readTree(body).get("id").asText());
+        return UUID.fromString(objectMapper.readTree(body).get("id").asString());
     }
 
     private JsonNode post(Account account, String url, Map<String, Object> body) throws Exception {
@@ -130,7 +130,7 @@ class AccountDeletionIntegrationTest extends BaseIntegrationTest {
         body.put("isPublic", shared);
         body.put("answerOptions", List.of(Map.of("text", "Right", "isCorrect", true),
                 Map.of("text", "Wrong", "isCorrect", false)));
-        return post(account, "/api/v1/questions", body).get("id").asText();
+        return post(account, "/api/v1/questions", body).get("id").asString();
     }
 
     // Blake's exam has 1 question (the shared one), Alex's has both of Alex's
@@ -138,10 +138,10 @@ class AccountDeletionIntegrationTest extends BaseIntegrationTest {
         int count = includeShared ? 1 : 2;
         JsonNode exam = post(account, "/api/v1/exams", Map.of("questionCount", count, "categoryFilter", "NEPHROLOGY",
                 "timeLimitMinutes", 0, "includeSharedQuestions", includeShared));
-        String sessionId = exam.get("id").asText();
+        String sessionId = exam.get("id").asString();
         JsonNode question = exam.get("questions").get(0);
-        post(account, "/api/v1/exams/" + sessionId + "/questions/" + question.get("id").asText() + "/answer",
-                Map.of("selectedOptionId", question.get("answerOptions").get(0).get("id").asText(),
+        post(account, "/api/v1/exams/" + sessionId + "/questions/" + question.get("id").asString() + "/answer",
+                Map.of("selectedOptionId", question.get("answerOptions").get(0).get("id").asString(),
                         "timeSpentSeconds", 5));
         post(account, "/api/v1/exams/" + sessionId + "/complete", Map.of());
         return sessionId;

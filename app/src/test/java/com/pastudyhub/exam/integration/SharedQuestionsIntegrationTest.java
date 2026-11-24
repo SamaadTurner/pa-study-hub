@@ -1,7 +1,7 @@
 package com.pastudyhub.exam.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.exam.model.AnswerOption;
 import com.pastudyhub.exam.model.DifficultyLevel;
@@ -116,7 +116,7 @@ class SharedQuestionsIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(post("/api/v1/exams").header("Authorization", bearerToken(someoneNew))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(examBody("EMERGENCY_MEDICINE", 1, true)))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isUnprocessableContent());
         mockMvc.perform(get("/api/v1/questions/counts").param("includeShared", "true")
                         .header("Authorization", bearerToken(someoneNew)))
                 .andExpect(jsonPath("$.byCategory.EMERGENCY_MEDICINE").doesNotExist());
@@ -148,7 +148,7 @@ class SharedQuestionsIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.content[0].explanation").value("Why the right answer is right."))
                 .andReturn();
         JsonNode content = objectMapper.readTree(result.getResponse().getContentAsString()).get("content");
-        List<String> stems = List.of(content.get(0).get("stem").asText(), content.get(1).get("stem").asText());
+        List<String> stems = List.of(content.get(0).get("stem").asString(), content.get(1).get("stem").asString());
         assertThat(stems).containsExactlyInAnyOrder("Shared one", "Shared two");
         assertThat(content.get(0).has("ownerId")).isFalse();
     }
@@ -190,7 +190,7 @@ class SharedQuestionsIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.earlierReportCount").value(2))
                 .andExpect(jsonPath("$.hiddenFromShared").value(false))
                 .andReturn().getResponse().getContentAsString();
-        String secondVersion = objectMapper.readTree(body).get("id").asText();
+        String secondVersion = objectMapper.readTree(body).get("id").asString();
 
         // Still in shared exams, until a single new report
         UUID third = UUID.randomUUID();
@@ -200,7 +200,7 @@ class SharedQuestionsIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(post("/api/v1/exams").header("Authorization", bearerToken(UUID.randomUUID()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(examBody("PSYCHIATRY", 1, true)))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isUnprocessableContent());
         mockMvc.perform(get("/api/v1/questions/mine").header("Authorization", bearerToken(author)))
                 .andExpect(jsonPath("$.content[0].earlierReportCount").value(2))
                 .andExpect(jsonPath("$.content[0].reports", hasSize(1)))
@@ -222,7 +222,7 @@ class SharedQuestionsIntegrationTest extends BaseIntegrationTest {
                         .content(objectMapper.writeValueAsString(questionBody("EENT question, fixed", "EENT", true))))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        String fixed = objectMapper.readTree(body).get("id").asText();
+        String fixed = objectMapper.readTree(body).get("id").asString();
 
         UUID newcomer = UUID.randomUUID();
         String sessionId = takeExam(newcomer, "EENT", 1, true);
@@ -233,7 +233,7 @@ class SharedQuestionsIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(post("/api/v1/exams").header("Authorization", bearerToken(UUID.randomUUID()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(examBody("EENT", 1, true)))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isUnprocessableContent());
     }
 
     @Test
@@ -276,7 +276,7 @@ class SharedQuestionsIntegrationTest extends BaseIntegrationTest {
                         .content(objectMapper.writeValueAsString(questionBody(stem, category, shared))))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asString();
     }
 
     private Question saveStarterQuestion() {
@@ -307,12 +307,12 @@ class SharedQuestionsIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn();
         JsonNode exam = objectMapper.readTree(started.getResponse().getContentAsString());
-        String sessionId = exam.get("id").asText();
+        String sessionId = exam.get("id").asString();
         for (JsonNode question : exam.get("questions")) {
-            mockMvc.perform(post("/api/v1/exams/{id}/questions/{q}/answer", sessionId, question.get("id").asText())
+            mockMvc.perform(post("/api/v1/exams/{id}/questions/{q}/answer", sessionId, question.get("id").asString())
                             .header("Authorization", bearerToken(user))
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"selectedOptionId\": \"" + question.get("answerOptions").get(0).get("id").asText()
+                            .content("{\"selectedOptionId\": \"" + question.get("answerOptions").get(0).get("id").asString()
                                     + "\", \"timeSpentSeconds\": 5}"))
                     .andExpect(status().isOk());
         }

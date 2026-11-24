@@ -1,7 +1,7 @@
 package com.pastudyhub.flashcard.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -67,9 +67,9 @@ class DeckHandoverIntegrationTest extends BaseIntegrationTest {
         String title = "Owner's deck " + UUID.randomUUID();
 
         String deckId = postJson(ownerToken, "/api/v1/decks",
-                Map.of("title", title, "description", "", "category", "CARDIOLOGY", "isPublic", true)).get("id").asText();
+                Map.of("title", title, "description", "", "category", "CARDIOLOGY", "isPublic", true)).get("id").asString();
         String firstCard = postJson(ownerToken, "/api/v1/decks/" + deckId + "/cards",
-                Map.of("front", "First", "back", "Back", "tags", List.of())).get("id").asText();
+                Map.of("front", "First", "back", "Back", "tags", List.of())).get("id").asString();
         postJson(ownerToken, "/api/v1/decks/" + deckId + "/cards",
                 Map.of("front", "Second", "back", "Back", "tags", List.of()));
         review(student, firstCard);
@@ -88,16 +88,16 @@ class DeckHandoverIntegrationTest extends BaseIntegrationTest {
         JsonNode decks = decksOf(student);
         assertThat(decks).hasSize(1);
         JsonNode copy = decks.get(0);
-        assertThat(copy.get("title").asText()).isEqualTo(title);
+        assertThat(copy.get("title").asString()).isEqualTo(title);
         assertThat(copy.get("isPublic").asBoolean()).isFalse();
         assertThat(copy.get("cardCount").asInt()).isEqualTo(2);
         assertThat(copy.get("cardsToReview").asInt()).isEqualTo(1);
 
-        JsonNode cards = getJson(bearerToken(student), "/api/v1/decks/" + copy.get("id").asText() + "/cards").get("content");
-        assertThat(cards.get(0).get("front").asText()).isEqualTo("First");
+        JsonNode cards = getJson(bearerToken(student), "/api/v1/decks/" + copy.get("id").asString() + "/cards").get("content");
+        assertThat(cards.get(0).get("front").asString()).isEqualTo("First");
         // The review history moved with the schedule
         Integer logs = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM review_logs WHERE user_id = ? AND card_id = ?",
-                Integer.class, student, UUID.fromString(cards.get(0).get("id").asText()));
+                Integer.class, student, UUID.fromString(cards.get(0).get("id").asString()));
         assertThat(logs).isEqualTo(1);
     }
 
@@ -110,17 +110,17 @@ class DeckHandoverIntegrationTest extends BaseIntegrationTest {
                                 "firstName", "Owner", "lastName", "Test"))))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString());
-        return "Bearer " + body.get("accessToken").asText();
+        return "Bearer " + body.get("accessToken").asString();
     }
 
     private String createDeck(UUID owner, String title) throws Exception {
         return postJson(bearerToken(owner), "/api/v1/decks",
-                Map.of("title", title, "description", "", "category", "CARDIOLOGY", "isPublic", true)).get("id").asText();
+                Map.of("title", title, "description", "", "category", "CARDIOLOGY", "isPublic", true)).get("id").asString();
     }
 
     private String createCard(UUID owner, String deckId, String front) throws Exception {
         return postJson(bearerToken(owner), "/api/v1/decks/" + deckId + "/cards",
-                Map.of("front", front, "back", "Back", "tags", List.of())).get("id").asText();
+                Map.of("front", front, "back", "Back", "tags", List.of())).get("id").asString();
     }
 
     private void review(UUID user, String cardId) throws Exception {

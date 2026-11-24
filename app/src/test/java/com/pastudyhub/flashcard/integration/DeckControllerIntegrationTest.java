@@ -1,6 +1,6 @@
 package com.pastudyhub.flashcard.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.flashcard.dto.CreateDeckRequest;
 import com.pastudyhub.flashcard.model.MedicalCategory;
@@ -62,7 +62,7 @@ class DeckControllerIntegrationTest extends BaseIntegrationTest {
                 .andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
-        createdDeckId = objectMapper.readTree(responseBody).get("id").asText();
+        createdDeckId = objectMapper.readTree(responseBody).get("id").asString();
         assertThat(createdDeckId).isNotBlank();
     }
 

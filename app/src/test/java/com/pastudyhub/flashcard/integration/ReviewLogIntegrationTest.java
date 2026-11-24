@@ -1,6 +1,6 @@
 package com.pastudyhub.flashcard.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.flashcard.model.ReviewLog;
 import com.pastudyhub.flashcard.model.ReviewSchedule;
@@ -172,6 +172,6 @@ class ReviewLogIntegrationTest extends BaseIntegrationTest {
     }
 
     private String idFrom(MvcResult result) throws Exception {
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asString();
     }
 }

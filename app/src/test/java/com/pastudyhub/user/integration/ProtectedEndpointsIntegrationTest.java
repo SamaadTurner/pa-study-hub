@@ -1,6 +1,6 @@
 package com.pastudyhub.user.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.flashcard.dto.CreateDeckRequest;
 import com.pastudyhub.flashcard.model.MedicalCategory;
@@ -89,7 +89,7 @@ class ProtectedEndpointsIntegrationTest extends BaseIntegrationTest {
                 .andReturn();
 
         String deckId = objectMapper.readTree(result.getResponse().getContentAsString())
-                .get("id").asText();
+                .get("id").asString();
 
         // The deck has to belong to A, the user the token is for.
         // So A can open it...

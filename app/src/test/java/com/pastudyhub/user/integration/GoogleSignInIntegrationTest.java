@@ -2,8 +2,8 @@ package com.pastudyhub.user.integration;
 
 import com.pastudyhub.user.security.RefreshTokenCookie;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.mail.LoggingMailSender;
 import com.pastudyhub.mail.MailSender;
@@ -102,13 +102,13 @@ class GoogleSignInIntegrationTest extends BaseIntegrationTest {
 
         // The app's own tokens work like after a normal login
         mockMvc.perform(get("/api/v1/users/me")
-                        .header("Authorization", "Bearer " + body.get("accessToken").asText()))
+                        .header("Authorization", "Bearer " + body.get("accessToken").asString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value(email));
 
         googleSignIn(sub, email)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.user.id").value(body.get("user").get("id").asText()));
+                .andExpect(jsonPath("$.user.id").value(body.get("user").get("id").asString()));
     }
 
     @Test
@@ -243,7 +243,7 @@ class GoogleSignInIntegrationTest extends BaseIntegrationTest {
         fakeGoogle(sub, email, "Sam", "Lee");
         JsonNode first = objectMapper.readTree(googleSignIn(sub, email).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString());
-        String authorization = "Bearer " + first.get("accessToken").asText();
+        String authorization = "Bearer " + first.get("accessToken").asString();
 
         mockMvc.perform(delete("/api/v1/users/me").header("Authorization", authorization)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -256,7 +256,7 @@ class GoogleSignInIntegrationTest extends BaseIntegrationTest {
 
         googleSignIn(sub, email)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.user.id").value(org.hamcrest.Matchers.not(first.get("user").get("id").asText())));
+                .andExpect(jsonPath("$.user.id").value(org.hamcrest.Matchers.not(first.get("user").get("id").asString())));
     }
 
     @Test

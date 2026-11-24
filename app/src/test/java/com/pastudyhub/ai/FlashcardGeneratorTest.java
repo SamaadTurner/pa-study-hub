@@ -1,6 +1,6 @@
 package com.pastudyhub.ai;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.ai.dto.GeneratedCard;
 import com.pastudyhub.flashcard.model.CardType;
 import com.pastudyhub.ai.usage.AiLimitReachedException;

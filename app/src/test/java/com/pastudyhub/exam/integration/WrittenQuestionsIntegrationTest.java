@@ -1,7 +1,7 @@
 package com.pastudyhub.exam.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.exam.model.AnswerOption;
 import com.pastudyhub.exam.model.DifficultyLevel;
@@ -101,8 +101,8 @@ class WrittenQuestionsIntegrationTest extends BaseIntegrationTest {
 
         // Saved in the same clock tick the two dates can be equal, so compare them
         JsonNode content = objectMapper.readTree(result.getResponse().getContentAsString()).get("content");
-        String firstUpdated = content.get(0).get("updatedAt").asText();
-        String secondUpdated = content.get(1).get("updatedAt").asText();
+        String firstUpdated = content.get(0).get("updatedAt").asString();
+        String secondUpdated = content.get(1).get("updatedAt").asString();
         assertThat(firstUpdated.compareTo(secondUpdated)).isGreaterThanOrEqualTo(0);
     }
 
@@ -243,7 +243,7 @@ class WrittenQuestionsIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.id").value(not(questionId)))
                 .andExpect(jsonPath("$.stem").value("Better wording"))
                 .andReturn();
-        String newId = objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+        String newId = objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asString();
 
         // The list shows only the new version, and the old id is gone for editing
         mockMvc.perform(get("/api/v1/questions/mine")
@@ -301,7 +301,7 @@ class WrittenQuestionsIntegrationTest extends BaseIntegrationTest {
                         .header("Authorization", bearerToken(author))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(examBody(CATEGORY, 1, false)))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isUnprocessableContent());
     }
 
     // ---- which questions an exam can pick -----------------------------------
@@ -320,7 +320,7 @@ class WrittenQuestionsIntegrationTest extends BaseIntegrationTest {
                         .header("Authorization", bearerToken(student))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(examBody(POOL_CATEGORY, 2, false)))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isUnprocessableContent());
         String ownOnly = startExam(student, POOL_CATEGORY, 1, false);
         assertThat(questionIdsOf(student, ownOnly)).containsExactly(ownId);
 
@@ -329,7 +329,7 @@ class WrittenQuestionsIntegrationTest extends BaseIntegrationTest {
                         .header("Authorization", bearerToken(student))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(examBody(POOL_CATEGORY, 3, true)))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isUnprocessableContent());
         String withShared = startExam(student, POOL_CATEGORY, 2, true);
         assertThat(questionIdsOf(student, withShared)).containsExactlyInAnyOrder(ownId, sharedId);
 
@@ -341,8 +341,8 @@ class WrittenQuestionsIntegrationTest extends BaseIntegrationTest {
                 .andReturn();
         JsonNode details = objectMapper.readTree(result.getResponse().getContentAsString()).get("answerDetails");
         for (JsonNode detail : details) {
-            String expected = detail.get("questionId").asText().equals(ownId) ? "YOU" : "ANOTHER_USER";
-            assertThat(detail.get("source").asText()).isEqualTo(expected);
+            String expected = detail.get("questionId").asString().equals(ownId) ? "YOU" : "ANOTHER_USER";
+            assertThat(detail.get("source").asString()).isEqualTo(expected);
         }
 
         // The author's own exam uses both of the author's questions, shared or not
@@ -379,7 +379,7 @@ class WrittenQuestionsIntegrationTest extends BaseIntegrationTest {
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asString();
     }
 
     private void expectBadRequest(UUID author, Map<String, Object> body, String detail) throws Exception {
@@ -423,7 +423,7 @@ class WrittenQuestionsIntegrationTest extends BaseIntegrationTest {
                         .content(examBody(category, count, includeShared)))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asString();
     }
 
     private JsonNode getExam(UUID user, String sessionId) throws Exception {
@@ -437,7 +437,7 @@ class WrittenQuestionsIntegrationTest extends BaseIntegrationTest {
     private List<String> questionIdsOf(UUID user, String sessionId) throws Exception {
         List<String> ids = new ArrayList<>();
         for (JsonNode question : getExam(user, sessionId).get("questions")) {
-            ids.add(question.get("id").asText());
+            ids.add(question.get("id").asString());
         }
         return ids;
     }
@@ -446,12 +446,12 @@ class WrittenQuestionsIntegrationTest extends BaseIntegrationTest {
         for (JsonNode question : getExam(user, sessionId).get("questions")) {
             String optionId = null;
             for (JsonNode option : question.get("answerOptions")) {
-                if (option.get("text").asText().equals(RIGHT)) {
-                    optionId = option.get("id").asText();
+                if (option.get("text").asString().equals(RIGHT)) {
+                    optionId = option.get("id").asString();
                 }
             }
             mockMvc.perform(post("/api/v1/exams/{sessionId}/questions/{questionId}/answer",
-                                    sessionId, question.get("id").asText())
+                                    sessionId, question.get("id").asString())
                             .header("Authorization", bearerToken(user))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"selectedOptionId\": \"" + optionId + "\", \"timeSpentSeconds\": 10}"))

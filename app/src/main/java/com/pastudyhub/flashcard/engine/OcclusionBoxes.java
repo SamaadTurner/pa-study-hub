@@ -1,8 +1,8 @@
 package com.pastudyhub.flashcard.engine;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.flashcard.dto.OcclusionBox;
 
 import java.util.List;
@@ -62,7 +62,7 @@ public final class OcclusionBoxes {
     public static String toJson(List<OcclusionBox> boxes) {
         try {
             return JSON.writeValueAsString(boxes);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Could not store the boxes", e);
         }
     }
@@ -74,7 +74,7 @@ public final class OcclusionBoxes {
         }
         try {
             return JSON.readValue(json, new TypeReference<List<OcclusionBox>>() { });
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Stored boxes could not be read", e);
         }
     }

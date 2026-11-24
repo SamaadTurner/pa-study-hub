@@ -1,6 +1,6 @@
 plugins {
     java
-    id("org.springframework.boot") version "3.5.16"
+    id("org.springframework.boot") version "4.2.0"
     id("io.spring.dependency-management") version "1.1.7"
     id("jacoco")
 }
@@ -19,7 +19,9 @@ repositories {
 
 dependencies {
     // Spring Boot starters
-    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    // RestClient.Builder for the AI, bot check and email clients (its own module in Boot 4)
+    implementation("org.springframework.boot:spring-boot-starter-restclient")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -28,7 +30,7 @@ dependencies {
     implementation("org.springframework.security:spring-security-oauth2-jose")
 
     // Database
-    implementation("org.flywaydb:flyway-core")
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
     // Flyway 10 and later keep each database's support in its own module
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
@@ -39,11 +41,7 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.7")
 
     // OpenAPI / Swagger
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17")
-
-    // Jackson for JSON
-    implementation("com.fasterxml.jackson.core:jackson-databind")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.1")
 
     // Lombok
     compileOnly("org.projectlombok:lombok")
@@ -53,7 +51,9 @@ dependencies {
 
     // Testing
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.springframework.security:spring-security-test")
+    // MockMvc and the Flyway and security test helpers moved to their own modules in Boot 4
+    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-security-test")
     testImplementation("com.h2database:h2")
 }
 

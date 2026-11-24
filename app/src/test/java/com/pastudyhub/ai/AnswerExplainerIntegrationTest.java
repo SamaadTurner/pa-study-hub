@@ -1,7 +1,7 @@
 package com.pastudyhub.ai;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.exam.model.AnswerOption;
 import com.pastudyhub.exam.model.DifficultyLevel;
@@ -135,23 +135,23 @@ class AnswerExplainerIntegrationTest extends BaseIntegrationTest {
     void explainsAWrongAnswer() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode exam = startExam(user);
-        String sessionId = exam.get("id").asText();
+        String sessionId = exam.get("id").asString();
         JsonNode question = exam.get("questions").get(0);
-        String questionId = question.get("id").asText();
+        String questionId = question.get("id").asString();
 
         // Find the right option and a wrong one in the order the exam shows them
         int rightPosition = -1;
         int wrongPosition = -1;
         JsonNode options = question.get("answerOptions");
         for (int i = 0; i < options.size(); i++) {
-            boolean right = options.get(i).get("text").asText().endsWith("option 0");
+            boolean right = options.get(i).get("text").asString().endsWith("option 0");
             if (right) {
                 rightPosition = i;
             } else if (wrongPosition < 0) {
                 wrongPosition = i;
             }
         }
-        answer(user, sessionId, questionId, options.get(wrongPosition).get("id").asText());
+        answer(user, sessionId, questionId, options.get(wrongPosition).get("id").asString());
         finish(user, sessionId);
 
         explain(user, sessionId, questionId)
@@ -161,8 +161,8 @@ class AnswerExplainerIntegrationTest extends BaseIntegrationTest {
         String prompt = sentPrompt();
         assertThat(prompt)
                 .contains("Case: A 30-year-old with a sudden severe headache.")
-                .contains("Question: " + question.get("stem").asText())
-                .contains(letter(rightPosition) + ". " + options.get(rightPosition).get("text").asText())
+                .contains("Question: " + question.get("stem").asString())
+                .contains(letter(rightPosition) + ". " + options.get(rightPosition).get("text").asString())
                 .contains("Right answer: " + letter(rightPosition))
                 .contains("The student picked: " + letter(wrongPosition))
                 .contains("Teaching note from the question bank: Teaching note");
@@ -173,10 +173,10 @@ class AnswerExplainerIntegrationTest extends BaseIntegrationTest {
     void explainsAnUnansweredQuestion() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode exam = startExam(user);
-        String sessionId = exam.get("id").asText();
+        String sessionId = exam.get("id").asString();
         finish(user, sessionId);
 
-        explain(user, sessionId, exam.get("questions").get(1).get("id").asText())
+        explain(user, sessionId, exam.get("questions").get(1).get("id").asString())
                 .andExpect(status().isOk());
 
         assertThat(sentPrompt()).contains("The student did not answer this question.");
@@ -188,7 +188,7 @@ class AnswerExplainerIntegrationTest extends BaseIntegrationTest {
         UUID user = UUID.randomUUID();
         JsonNode exam = startExam(user);
 
-        explain(user, exam.get("id").asText(), exam.get("questions").get(0).get("id").asText())
+        explain(user, exam.get("id").asString(), exam.get("questions").get(0).get("id").asString())
                 .andExpect(status().isConflict());
 
         verify(chatClient, never()).complete(anyString(), anyString());
@@ -199,10 +199,10 @@ class AnswerExplainerIntegrationTest extends BaseIntegrationTest {
     void otherUsersExam() throws Exception {
         UUID owner = UUID.randomUUID();
         JsonNode exam = startExam(owner);
-        String sessionId = exam.get("id").asText();
+        String sessionId = exam.get("id").asString();
         finish(owner, sessionId);
 
-        explain(UUID.randomUUID(), sessionId, exam.get("questions").get(0).get("id").asText())
+        explain(UUID.randomUUID(), sessionId, exam.get("questions").get(0).get("id").asString())
                 .andExpect(status().isNotFound());
 
         verify(chatClient, never()).complete(anyString(), anyString());
@@ -213,7 +213,7 @@ class AnswerExplainerIntegrationTest extends BaseIntegrationTest {
     void questionNotInExam() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode exam = startExam(user);
-        String sessionId = exam.get("id").asText();
+        String sessionId = exam.get("id").asString();
         finish(user, sessionId);
 
         explain(user, sessionId, UUID.randomUUID().toString())
@@ -230,10 +230,10 @@ class AnswerExplainerIntegrationTest extends BaseIntegrationTest {
         when(chatClient.complete(anyString(), anyString())).thenReturn("{\"explanation\": \"  \"}");
         UUID user = UUID.randomUUID();
         JsonNode exam = startExam(user);
-        String sessionId = exam.get("id").asText();
+        String sessionId = exam.get("id").asString();
         finish(user, sessionId);
 
-        explain(user, sessionId, exam.get("questions").get(0).get("id").asText())
+        explain(user, sessionId, exam.get("questions").get(0).get("id").asString())
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.detail").value("The AI answer did not contain an explanation."));
     }
@@ -245,15 +245,15 @@ class AnswerExplainerIntegrationTest extends BaseIntegrationTest {
         when(chatClient.complete(anyString(), anyString())).thenReturn("{\"explanation\": \"" + longText + "\"}");
         UUID user = UUID.randomUUID();
         JsonNode exam = startExam(user);
-        String sessionId = exam.get("id").asText();
+        String sessionId = exam.get("id").asString();
         finish(user, sessionId);
 
-        MvcResult result = explain(user, sessionId, exam.get("questions").get(0).get("id").asText())
+        MvcResult result = explain(user, sessionId, exam.get("questions").get(0).get("id").asString())
                 .andExpect(status().isOk())
                 .andReturn();
 
         String explanation = objectMapper.readTree(result.getResponse().getContentAsString())
-                .get("explanation").asText();
+                .get("explanation").asString();
         assertThat(explanation).hasSize(AnswerExplainer.MAX_EXPLANATION_LENGTH + 3).endsWith("...");
     }
 }

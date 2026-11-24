@@ -2,8 +2,8 @@ package com.pastudyhub.user.integration;
 
 import com.pastudyhub.user.security.RefreshTokenCookie;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.user.dto.RegisterRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -50,7 +50,7 @@ final class TestAccounts {
                 .andReturn();
 
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
-        return new Account(email, body.get("accessToken").asText(), refreshCookie(result));
+        return new Account(email, body.get("accessToken").asString(), refreshCookie(result));
     }
 
     /** The refresh token from the HttpOnly cookie a sign-in response sets. */

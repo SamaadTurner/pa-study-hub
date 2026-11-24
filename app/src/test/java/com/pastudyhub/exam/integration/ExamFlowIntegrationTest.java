@@ -1,7 +1,7 @@
 package com.pastudyhub.exam.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.exam.model.AnswerOption;
 import com.pastudyhub.exam.model.DifficultyLevel;
@@ -115,7 +115,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 4);
 
-        JsonNode loaded = loadExam(user, started.get("id").asText());
+        JsonNode loaded = loadExam(user, started.get("id").asString());
 
         // This used to come back empty, because the picked questions were never saved
         assertThat(questionIds(loaded)).hasSize(4);
@@ -128,12 +128,12 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void answerOne_keepsAllQuestions() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 3);
-        String sessionId = started.get("id").asText();
+        String sessionId = started.get("id").asString();
         JsonNode second = started.get("questions").get(1);
-        String pickedOption = second.get("answerOptions").get(2).get("id").asText();
+        String pickedOption = second.get("answerOptions").get(2).get("id").asString();
 
         // The answer response is the whole exam again, not just the answered question
-        answer(user, sessionId, second.get("id").asText(), pickedOption)
+        answer(user, sessionId, second.get("id").asString(), pickedOption)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.questions", hasSize(3)))
                 .andExpect(jsonPath("$.answeredCount").value(1));
@@ -141,7 +141,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
         JsonNode loaded = loadExam(user, sessionId);
         assertThat(questionIds(loaded)).isEqualTo(questionIds(started));
         assertThat(loaded.get("answeredCount").asInt()).isEqualTo(1);
-        assertThat(loaded.get("questions").get(1).get("selectedOptionId").asText()).isEqualTo(pickedOption);
+        assertThat(loaded.get("questions").get(1).get("selectedOptionId").asString()).isEqualTo(pickedOption);
         assertThat(loaded.get("questions").get(0).hasNonNull("selectedOptionId")).isFalse();
         assertThat(loaded.get("questions").get(2).hasNonNull("selectedOptionId")).isFalse();
     }
@@ -151,17 +151,17 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void changeAnswer_replacesThePick() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 2);
-        String sessionId = started.get("id").asText();
+        String sessionId = started.get("id").asString();
         JsonNode first = started.get("questions").get(0);
-        String firstPick = first.get("answerOptions").get(1).get("id").asText();
-        String secondPick = first.get("answerOptions").get(3).get("id").asText();
+        String firstPick = first.get("answerOptions").get(1).get("id").asString();
+        String secondPick = first.get("answerOptions").get(3).get("id").asString();
 
-        answer(user, sessionId, first.get("id").asText(), firstPick).andExpect(status().isOk());
-        answer(user, sessionId, first.get("id").asText(), secondPick).andExpect(status().isOk());
+        answer(user, sessionId, first.get("id").asString(), firstPick).andExpect(status().isOk());
+        answer(user, sessionId, first.get("id").asString(), secondPick).andExpect(status().isOk());
 
         JsonNode loaded = loadExam(user, sessionId);
         assertThat(loaded.get("answeredCount").asInt()).isEqualTo(1);
-        assertThat(loaded.get("questions").get(0).get("selectedOptionId").asText()).isEqualTo(secondPick);
+        assertThat(loaded.get("questions").get(0).get("selectedOptionId").asString()).isEqualTo(secondPick);
     }
 
     @Test
@@ -171,7 +171,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
         JsonNode started = startExam(user, 1);
         JsonNode question = started.get("questions").get(0);
 
-        answer(user, started.get("id").asText(), question.get("id").asText(), correctOptionOf(question))
+        answer(user, started.get("id").asString(), question.get("id").asString(), correctOptionOf(question))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.questions[0].selectedOptionId").isString())
                 .andExpect(jsonPath("$.questions[0].answerOptions[0].isCorrect").doesNotExist())
@@ -185,7 +185,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
         UUID otherUser = UUID.randomUUID();
         JsonNode started = startExam(owner, 2);
 
-        mockMvc.perform(get("/api/v1/exams/{sessionId}", started.get("id").asText())
+        mockMvc.perform(get("/api/v1/exams/{sessionId}", started.get("id").asString())
                         .header("Authorization", bearerToken(otherUser)))
                 .andExpect(status().isNotFound());
     }
@@ -197,7 +197,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void answerQuestionFromOutsideTheExam_returns400() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 2);
-        String sessionId = started.get("id").asText();
+        String sessionId = started.get("id").asString();
 
         // Two of the four dermatology questions were picked, so find one that was not
         List<String> picked = questionIds(started);
@@ -224,13 +224,13 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void answerWithOptionOfAnotherQuestion_returns400() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 2);
-        String sessionId = started.get("id").asText();
+        String sessionId = started.get("id").asString();
         JsonNode first = started.get("questions").get(0);
         JsonNode second = started.get("questions").get(1);
 
         // The right option of question two, sent as the answer to question one.
         // This used to be saved and counted as a correct answer.
-        answer(user, sessionId, first.get("id").asText(), correctOptionOf(second))
+        answer(user, sessionId, first.get("id").asString(), correctOptionOf(second))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("That answer option does not belong to this question"));
 
@@ -242,9 +242,9 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void answerWithUnknownOption_returns400() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 1);
-        String questionId = started.get("questions").get(0).get("id").asText();
+        String questionId = started.get("questions").get(0).get("id").asString();
 
-        answer(user, started.get("id").asText(), questionId, UUID.randomUUID().toString())
+        answer(user, started.get("id").asString(), questionId, UUID.randomUUID().toString())
                 .andExpect(status().isBadRequest());
     }
 
@@ -253,10 +253,10 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void answerWithoutOption_returns400() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 1);
-        String questionId = started.get("questions").get(0).get("id").asText();
+        String questionId = started.get("questions").get(0).get("id").asString();
 
         mockMvc.perform(post("/api/v1/exams/{sessionId}/questions/{questionId}/answer",
-                        started.get("id").asText(), questionId)
+                        started.get("id").asString(), questionId)
                         .header("Authorization", bearerToken(user))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"timeSpentSeconds\": 5}"))
@@ -271,10 +271,10 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
         JsonNode started = startExam(owner, 1);
         JsonNode question = started.get("questions").get(0);
 
-        answer(otherUser, started.get("id").asText(), question.get("id").asText(), correctOptionOf(question))
+        answer(otherUser, started.get("id").asString(), question.get("id").asString(), correctOptionOf(question))
                 .andExpect(status().isNotFound());
 
-        assertThat(loadExam(owner, started.get("id").asText()).get("answeredCount").asInt()).isZero();
+        assertThat(loadExam(owner, started.get("id").asString()).get("answeredCount").asInt()).isZero();
     }
 
     // ---- finishing and results ---------------------------------------------
@@ -287,7 +287,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
 
         // This used to be a 500 error, which is what happened when the timer ran out
         // before the first answer
-        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", started.get("id").asText())
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", started.get("id").asString())
                         .header("Authorization", bearerToken(user)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.rawScore").value(0))
@@ -307,15 +307,15 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void unansweredQuestions_countAsWrong() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 4);
-        String sessionId = started.get("id").asText();
+        String sessionId = started.get("id").asString();
         JsonNode questions = started.get("questions");
 
         // Two right, one wrong, and the last one is never answered
-        answer(user, sessionId, questions.get(0).get("id").asText(), correctOptionOf(questions.get(0)))
+        answer(user, sessionId, questions.get(0).get("id").asString(), correctOptionOf(questions.get(0)))
                 .andExpect(status().isOk());
-        answer(user, sessionId, questions.get(1).get("id").asText(), correctOptionOf(questions.get(1)))
+        answer(user, sessionId, questions.get(1).get("id").asString(), correctOptionOf(questions.get(1)))
                 .andExpect(status().isOk());
-        answer(user, sessionId, questions.get(2).get("id").asText(), wrongOptionOf(questions.get(2)))
+        answer(user, sessionId, questions.get(2).get("id").asString(), wrongOptionOf(questions.get(2)))
                 .andExpect(status().isOk());
 
         // 2 out of 4. Before, the unanswered question was left out and this was 2 out of 3.
@@ -328,8 +328,8 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.categoryBreakdown.DERMATOLOGY").value(50.0))
                 // every question is listed, in the order of the exam
                 .andExpect(jsonPath("$.answerDetails", hasSize(4)))
-                .andExpect(jsonPath("$.answerDetails[0].questionId").value(questions.get(0).get("id").asText()))
-                .andExpect(jsonPath("$.answerDetails[3].questionId").value(questions.get(3).get("id").asText()))
+                .andExpect(jsonPath("$.answerDetails[0].questionId").value(questions.get(0).get("id").asString()))
+                .andExpect(jsonPath("$.answerDetails[3].questionId").value(questions.get(3).get("id").asString()))
                 .andExpect(jsonPath("$.answerDetails[0].isCorrect").value(true))
                 .andExpect(jsonPath("$.answerDetails[1].isCorrect").value(true))
                 .andExpect(jsonPath("$.answerDetails[2].isCorrect").value(false))
@@ -345,10 +345,10 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void allRight_scores100() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 2);
-        String sessionId = started.get("id").asText();
+        String sessionId = started.get("id").asString();
 
         for (JsonNode question : started.get("questions")) {
-            answer(user, sessionId, question.get("id").asText(), correctOptionOf(question))
+            answer(user, sessionId, question.get("id").asString(), correctOptionOf(question))
                     .andExpect(status().isOk());
         }
 
@@ -366,9 +366,9 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void results_canBeLoadedAgain() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 2);
-        String sessionId = started.get("id").asText();
+        String sessionId = started.get("id").asString();
         JsonNode first = started.get("questions").get(0);
-        answer(user, sessionId, first.get("id").asText(), correctOptionOf(first)).andExpect(status().isOk());
+        answer(user, sessionId, first.get("id").asString(), correctOptionOf(first)).andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
                         .header("Authorization", bearerToken(user)))
@@ -401,7 +401,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 1);
 
-        mockMvc.perform(get("/api/v1/exams/{sessionId}/result", started.get("id").asText())
+        mockMvc.perform(get("/api/v1/exams/{sessionId}/result", started.get("id").asString())
                         .header("Authorization", bearerToken(user)))
                 .andExpect(status().isConflict());
     }
@@ -411,7 +411,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void abandonedExam_hasNoResults() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 2);
-        String sessionId = started.get("id").asText();
+        String sessionId = started.get("id").asString();
 
         mockMvc.perform(post("/api/v1/exams/{sessionId}/abandon", sessionId)
                         .header("Authorization", bearerToken(user)))
@@ -432,7 +432,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void finishedExam_isClosed() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 1);
-        String sessionId = started.get("id").asText();
+        String sessionId = started.get("id").asString();
         JsonNode question = started.get("questions").get(0);
 
         mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
@@ -440,7 +440,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isOk());
 
         // Trying to slip in the right answer after seeing the results
-        answer(user, sessionId, question.get("id").asText(), correctOptionOf(question))
+        answer(user, sessionId, question.get("id").asString(), correctOptionOf(question))
                 .andExpect(status().isConflict());
 
         mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
@@ -458,7 +458,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
         UUID owner = UUID.randomUUID();
         UUID otherUser = UUID.randomUUID();
         JsonNode started = startExam(owner, 1);
-        String sessionId = started.get("id").asText();
+        String sessionId = started.get("id").asString();
 
         mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
                         .header("Authorization", bearerToken(otherUser)))
@@ -493,7 +493,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
         assertThat(started.get("timeRemainingSeconds").asInt()).isBetween(590, 600);
 
         // Loading it again continues the same clock instead of starting over
-        JsonNode loaded = loadExam(user, started.get("id").asText());
+        JsonNode loaded = loadExam(user, started.get("id").asString());
         assertThat(loaded.get("timeRemainingSeconds").asInt())
                 .isBetween(580, started.get("timeRemainingSeconds").asInt());
     }
@@ -515,13 +515,13 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void finishedExam_showsOnDashboard() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 2);
-        String sessionId = started.get("id").asText();
+        String sessionId = started.get("id").asString();
         JsonNode first = started.get("questions").get(0);
         JsonNode second = started.get("questions").get(1);
 
         // One right and one wrong, 70 seconds each
-        answer(user, sessionId, first.get("id").asText(), correctOptionOf(first), 70).andExpect(status().isOk());
-        answer(user, sessionId, second.get("id").asText(), wrongOptionOf(second), 70).andExpect(status().isOk());
+        answer(user, sessionId, first.get("id").asString(), correctOptionOf(first), 70).andExpect(status().isOk());
+        answer(user, sessionId, second.get("id").asString(), wrongOptionOf(second), 70).andExpect(status().isOk());
         mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
                         .header("Authorization", bearerToken(user)))
                 .andExpect(status().isOk());
@@ -552,7 +552,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 3);
 
-        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", started.get("id").asText())
+        mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", started.get("id").asString())
                         .header("Authorization", bearerToken(user)))
                 .andExpect(status().isOk());
 
@@ -569,9 +569,9 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void abandonedExam_doesNotCount() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 2);
-        String sessionId = started.get("id").asText();
+        String sessionId = started.get("id").asString();
         JsonNode first = started.get("questions").get(0);
-        answer(user, sessionId, first.get("id").asText(), correctOptionOf(first)).andExpect(status().isOk());
+        answer(user, sessionId, first.get("id").asString(), correctOptionOf(first)).andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/exams/{sessionId}/abandon", sessionId)
                         .header("Authorization", bearerToken(user)))
@@ -589,10 +589,10 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void longQuestionTime_isCapped() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 1);
-        String sessionId = started.get("id").asText();
+        String sessionId = started.get("id").asString();
         JsonNode question = started.get("questions").get(0);
 
-        answer(user, sessionId, question.get("id").asText(), correctOptionOf(question), 3600)
+        answer(user, sessionId, question.get("id").asString(), correctOptionOf(question), 3600)
                 .andExpect(status().isOk());
         mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
                         .header("Authorization", bearerToken(user)))
@@ -613,7 +613,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 4);
 
-        JsonNode loaded = loadExam(user, started.get("id").asText());
+        JsonNode loaded = loadExam(user, started.get("id").asString());
 
         for (int i = 0; i < 4; i++) {
             assertThat(optionIds(loaded.get("questions").get(i)))
@@ -626,7 +626,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     void results_keepOptionOrder() throws Exception {
         UUID user = UUID.randomUUID();
         JsonNode started = startExam(user, 4);
-        String sessionId = started.get("id").asText();
+        String sessionId = started.get("id").asString();
 
         MvcResult finished = mockMvc.perform(post("/api/v1/exams/{sessionId}/complete", sessionId)
                         .header("Authorization", bearerToken(user)))
@@ -655,7 +655,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
         JsonNode started = startExam(user, 1);
 
         assertThat(started.get("followsBlueprint").asBoolean()).isFalse();
-        assertThat(started.get("questions").get(0).get("taskArea").asText()).isEqualTo("MOST_LIKELY_DIAGNOSIS");
+        assertThat(started.get("questions").get(0).get("taskArea").asString()).isEqualTo("MOST_LIKELY_DIAGNOSIS");
     }
 
     @Test
@@ -675,7 +675,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.questions", hasSize(3)))
                 .andExpect(jsonPath("$.questions[*].category", everyItem(is("DERMATOLOGY"))))
                 .andReturn();
-        String sessionId = objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+        String sessionId = objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asString();
 
         // a reload still says it follows the blueprint
         assertThat(loadExam(user, sessionId).get("followsBlueprint").asBoolean()).isTrue();
@@ -702,7 +702,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
                         .header("Authorization", bearerToken(user))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isUnprocessableContent());
     }
 
     // ---- helpers -----------------------------------------------------------
@@ -711,7 +711,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     private List<String> optionIds(JsonNode question) {
         List<String> ids = new ArrayList<>();
         for (JsonNode option : question.get("answerOptions")) {
-            ids.add(option.get("id").asText());
+            ids.add(option.get("id").asString());
         }
         return ids;
     }
@@ -760,14 +760,14 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     private List<String> questionIds(JsonNode exam) {
         List<String> ids = new ArrayList<>();
         for (JsonNode question : exam.get("questions")) {
-            ids.add(question.get("id").asText());
+            ids.add(question.get("id").asString());
         }
         return ids;
     }
 
     // The exam never says which option is right, so the tests look it up in the database
     private String correctOptionOf(JsonNode question) {
-        UUID questionId = UUID.fromString(question.get("id").asText());
+        UUID questionId = UUID.fromString(question.get("id").asString());
         return answerOptionRepository.findByQuestionId(questionId).stream()
                 .filter(AnswerOption::isCorrect)
                 .findFirst()
@@ -777,7 +777,7 @@ class ExamFlowIntegrationTest extends BaseIntegrationTest {
     }
 
     private String wrongOptionOf(JsonNode question) {
-        UUID questionId = UUID.fromString(question.get("id").asText());
+        UUID questionId = UUID.fromString(question.get("id").asString());
         return answerOptionRepository.findByQuestionId(questionId).stream()
                 .filter(option -> !option.isCorrect())
                 .findFirst()

@@ -76,9 +76,9 @@ public class GlobalExceptionHandler {
     // An upload over the multipart limit never reaches the controller
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ProblemDetail handleUploadTooLarge(MaxUploadSizeExceededException ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.PAYLOAD_TOO_LARGE, "The picture is larger than 1 MB");
-        problem.setTitle(HttpStatus.PAYLOAD_TOO_LARGE.getReasonPhrase());
-        problem.setType(URI.create(ERROR_TYPE_BASE + HttpStatus.PAYLOAD_TOO_LARGE.value()));
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE, "The picture is larger than 1 MB");
+        problem.setTitle(HttpStatus.CONTENT_TOO_LARGE.getReasonPhrase());
+        problem.setType(URI.create(ERROR_TYPE_BASE + HttpStatus.CONTENT_TOO_LARGE.value()));
         problem.setProperty("timestamp", Instant.now().toString());
         return problem;
     }

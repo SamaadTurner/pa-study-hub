@@ -1,7 +1,7 @@
 package com.pastudyhub.user.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.user.time.UserClock;
 import org.junit.jupiter.api.DisplayName;
@@ -53,7 +53,7 @@ class TimeZoneIntegrationTest extends BaseIntegrationTest {
                             .content("{\"quality\": 4}"))
                     .andExpect(status().isOk()));
             int interval = review.get("interval").asInt();
-            assertThat(review.get("nextReviewDate").asText()).isEqualTo(today.plusDays(interval).toString());
+            assertThat(review.get("nextReviewDate").asString()).isEqualTo(today.plusDays(interval).toString());
 
             // A later request without the header still uses the zone the browser sent
             JsonNode dashboard = json(mockMvc.perform(get("/api/v1/progress/dashboard")
@@ -63,7 +63,7 @@ class TimeZoneIntegrationTest extends BaseIntegrationTest {
                     .andExpect(jsonPath("$.todayGoal.cardsReviewedToday").value(1)));
             JsonNode days = dashboard.get("last30DaysActivity");
             JsonNode last = days.get(days.size() - 1);
-            assertThat(last.get("date").asText()).as(zone).isEqualTo(today.toString());
+            assertThat(last.get("date").asString()).as(zone).isEqualTo(today.toString());
             assertThat(last.get("cardsReviewed").asInt()).isEqualTo(1);
         }
     }
@@ -95,11 +95,11 @@ class TimeZoneIntegrationTest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("title", "Zones", "description", "",
                                 "category", "CARDIOLOGY", "isPublic", false))))
-                .andExpect(status().isCreated())).get("id").asText();
+                .andExpect(status().isCreated())).get("id").asString();
         return json(mockMvc.perform(post("/api/v1/decks/{id}/cards", deckId).header("Authorization", bearerToken(user))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("front", "Q", "back", "A"))))
-                .andExpect(status().isCreated())).get("id").asText();
+                .andExpect(status().isCreated())).get("id").asString();
     }
 
     private JsonNode json(org.springframework.test.web.servlet.ResultActions result) throws Exception {

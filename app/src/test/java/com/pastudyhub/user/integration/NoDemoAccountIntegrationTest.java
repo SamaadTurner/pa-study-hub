@@ -1,6 +1,6 @@
 package com.pastudyhub.user.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.pastudyhub.BaseIntegrationTest;
 import com.pastudyhub.user.dev.DemoAccountLoader;
 import com.pastudyhub.user.dto.LoginRequest;

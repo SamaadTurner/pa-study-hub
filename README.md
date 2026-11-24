@@ -10,8 +10,8 @@ streaks, daily goals and accuracy by topic.
 plans, so after 15 minutes without visitors the server sleeps and the first page takes
 about a minute to wake it up.
 
-Spring Boot 3.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
-the frontend. 451 backend tests, 143 frontend unit tests and 93 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
+Spring Boot 3.5 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
+the frontend. 453 backend tests, 143 frontend unit tests and 93 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
 run in CI on every push.
 
 ![Dashboard with a one-day streak, daily goals and recent activity](docs/screenshots/dashboard.png)
@@ -127,7 +127,7 @@ cd frontend && npm test && npm run lint
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
-- **Backend:** 451 tests. Unit tests for the scheduling, scoring and streak logic, and
+- **Backend:** 453 tests. Unit tests for the scheduling, scoring and streak logic, and
   integration tests that call the API through Spring's MockMvc. CI runs them twice, on
   H2 and on PostgreSQL 15 with the Flyway migrations, so the SQL is tested too.
   They cover 96.6% of lines and 86.4% of branches (JaCoCo, without the code Lombok

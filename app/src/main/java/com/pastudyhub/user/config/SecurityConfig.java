@@ -54,7 +54,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         // Only answers with the dev profile (DevOutboxController); a 404 everywhere else
                         .requestMatchers("/api/v1/dev/**").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )

@@ -10,7 +10,7 @@ streaks, daily goals and accuracy by topic.
 plans, so after 15 minutes without visitors the server sleeps and the first page takes
 about a minute to wake it up.
 
-Spring Boot 3.5 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
+Spring Boot 4.2 (Java 17) and PostgreSQL 15 on the backend, React 18 with TypeScript on
 the frontend. 453 backend tests, 143 frontend unit tests and 93 end-to-end browser tests (the main flows also in Safari's engine and on an iPhone screen)
 run in CI on every push.
 
